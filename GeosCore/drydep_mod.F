@@ -557,6 +557,12 @@
                DVZ = DVZ * sqrt(State_Chm%SpcData(id_ISOPND)%Info%MW_g)
      &                   / sqrt(SpcInfo%MW_g)            
 
+            ELSE IF ( FLAG(D) .eq. 4 ) THEN
+            ! Added replacement flag to replace nitrate as HNO3 (jmm, 2/12/19)
+               ! Replace NIT with HNO3 velocity
+               SpcInfo => State_Chm%SpcData(id_HNO3)%Info
+               DVZ = DVEL(I,J,(SpcInfo%DryDepID)) * 100.e+0_f8           
+
             ENDIF
 
             !-----------------------------------------------------------
@@ -4339,6 +4345,11 @@
                   ! DEPNAME for SO4s has to be in all caps, for 
                   ! backwards compatibility with older code
                   DEPNAME(NUMDEP) = 'SO4S'
+
+               CASE( 'NIT' ) !jmm 2/17/19
+                  ! DEPNAME for NITs has to be in all caps, for
+                  ! backwards compatibility with older code.
+                  FLAG(NUMDEP) = 4
 
                CASE DEFAULT
                   ! Do nothing
