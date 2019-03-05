@@ -5126,7 +5126,7 @@
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE GET_HPLUS( SO4nss, TNH3, TNO3, SO2, TDCA, TFA, FAA,
+      SUBROUTINE GET_HPLUS( SO4nss, TNH3, TNO3, SO2, TDCA, TFA, TAA,
      &                      T,      PRES, LWC,  iHPLUS, HPLUS )
 !
 ! !USES:
