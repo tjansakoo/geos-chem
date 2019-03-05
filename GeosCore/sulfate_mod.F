@@ -291,6 +291,7 @@
       INTEGER                :: id_SO4d1,  id_SO4d2,  id_SO4d3 
       INTEGER                :: id_SO4d4,  id_SO4s,   id_pFe
       INTEGER                :: id_HOBr,   id_SO4H1,  id_SO4H2
+      INTEGER                :: id_HCOOH,  id_ACTA            !jmm 1/31/19
 
       ! Species drydep ID flags
       INTEGER                :: DRYSO4s,   DRYNITs,   DRYSO4d1 
@@ -2676,6 +2677,8 @@
       REAL(fp)              :: HPLUS,  SO4nss, TNH3,   TNO3,  GNO3, ANIT
       REAL(fp)              :: LSTOT,  ALKdst, ALKss,  ALKds, NH3
       REAL(fp)              :: SSCvv,  aSO4,   SO2_sr, SR,    TANIT
+      REAL(fp)              :: TFA,  TAA,   TDCA    ! (jmm, 12/03/2018)
+
       !tdf 03/02/2K9
       REAL(fp)              :: PSO4d_tot, PNITd_tot
       REAL(fp)              :: SO2_gas,   PH2SO4d_tot
@@ -2805,7 +2808,7 @@
 !$OMP+PRIVATE( RK2, RK, RKT, SO2_cd, L1, Ld, L2, L2S, L3, L3S, FC, LWC )
 !$OMP+PRIVATE( KaqH2O2, KaqO3, ALK, ALK1, ALK2                         )
 !$OMP+PRIVATE( Kt1, Kt2, AREASS1, AREASS2, SO2_ss, Kt1N, Kt2N          )
-!$OMP+PRIVATE( PSO4E, PSO4F, XX                                        )
+!$OMP+PRIVATE( PSO4E, PSO4F, XX, TAA, TFA, TDCA                        )
 !$OMP+PRIVATE( HPLUS, SO4nss, TNH3, TNO3,  GNO3, ANIT,   LSTOT, ALKdst )
 !$OMP+PRIVATE( ALKds, ALKss,  NH3,  SSCvv, aSO4, SO2_sr, SR,    TANIT  )
 !$OMP+PRIVATE( BULK,  SIZE_RES,     RC, AlkA, AlkC                     )
@@ -3164,6 +3167,54 @@
             TNH3     = ( Spc(I,J,L,id_NH4) * 0.7e+0_fp ) + 
      &                   Spc(I,J,L,id_NH3)
 
+            ! Get total formic acid concentration [v/v]
+            ! jmm (12/3/18)
+            ! no cloud scavenging because gases?
+            TFA     = Spc(I,J,L,id_HCOOH)
+
+            ! Get total acetic acid concentration [v/v]
+            ! jmm (12/3/18)
+            ! no cloud scavenging b/c gases?
+            TAA     = Spc(I,J,L,id_ACTA)
+
+            ! Get total dust cation concentration [mol/L]
+            ! Use a cloud scavenging ratio of 1 for dust
+            ! to be consistent for how it was calculated for 
+            ! metal catalyzed SO2 oxidation
+            ! Use asumption of dust being 3% soluble Ca2+ and 
+            ! 0.6% soluble Mg2+ by mass (Fairlie et al., 2010)
+            ! 
+            ! Dust treated at non-volatile cation and charge applied in 
+            ! pH calculation
+            !
+            ! Move dust calculation from SO2 Metal catalzyed oxidation
+            ! up here becasue needed for cloud pH
+            ! jmm (12/3/18)
+            !
+            ! Get dust concentrations [v/v -> ng/m3]
+
+               DUST = ( Spc(I,J,L,id_DST1) + Spc(I,J,L,id_DST2) +
+     &                  Spc(I,J,L,id_DST3) + Spc(I,J,L,id_DST4) ) *
+     &                  1.e+12_fp * State_Met%AD(I,J,L)
+     &                  / ( AIRMW 
+     &                    / State_Chm%SpcData(id_DST1)%Info%emMW_g )
+     &                  / State_Met%AIRVOL(I,J,L)
+               
+            ! [ng/m3 -> mol/L]
+            ! Conversion from dust mass to Ca2+ and Mg2+ mol:
+            !     0.03*(1/40.08)+0.006*(1/24.31) = 9.953e-4_fp
+            !     0e-12_fp from m3->L & ng->g
+               TDCA     = DUST * 9.95e-16_fp / LWC
+
+#if defined( TOMAS )
+               ! TOMAS uses its own dust tracers and does not
+               ! carry DST1-4.  Set DUST to zero here. (mps, 2/2/18)
+               DUST = 0e+0_fp
+#else
+               DUST = DUST
+
+#endif
+
 	    ! Get total nitrate (HNO3 + NIT) concentrations [v/v] 
      	    ! Use a cloud scavenging ratio of 0.7 for NIT
 	    IF ( IS_FULLCHEM ) THEN
@@ -3178,8 +3229,8 @@
 	    ENDIF
 		
             ! Calculate cloud pH
-	    CALL GET_HPLUS( SO4nss, TNH3, TNO3,     SO2_ss, TK, 
-     &                        PATM,   LWC,  HPLUS_45, HPLUS )
+	    CALL GET_HPLUS( SO4nss, TNH3, TNO3, SO2_ss, TDCA, TFA, TAA,
+     &                        TK, PATM,   LWC,  HPLUS_45, HPLUS )
 
             ! Store the cloud pH
             pHCloud(I,J,L) = -1.0e+0_fp * log10(HPLUS)
@@ -3190,20 +3241,6 @@
                !--------------------------------------------------------
                ! Metal catalyzed oxidation of SO2 pathway
                !--------------------------------------------------------
-
-               ! Get dust concentrations [v/v -> ng/m3]
-#if defined( TOMAS )
-               ! TOMAS uses its own dust tracers and does not
-               ! carry DST1-4.  Set DUST to zero here. (mps, 2/2/18)
-               DUST = 0e+0_fp
-#else
-               DUST = ( Spc(I,J,L,id_DST1) + Spc(I,J,L,id_DST2) +
-     &                  Spc(I,J,L,id_DST3) + Spc(I,J,L,id_DST4) ) *
-     &                  1.e+12_fp * State_Met%AD(I,J,L)
-     &                  / ( AIRMW 
-     &                    / State_Chm%SpcData(id_DST1)%Info%emMW_g )
-     &                  / State_Met%AIRVOL(I,J,L)
-#endif
 
                ! Calculate Fe and Mn natural [ng m-3]
                ! Assume that Fe is 3.5% of total dust mass based on
@@ -5089,7 +5126,7 @@
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE GET_HPLUS( SO4nss, TNH3, TNO3, SO2,
+      SUBROUTINE GET_HPLUS( SO4nss, TNH3, TNO3, SO2, TDCA, TFA, FAA,
      &                      T,      PRES, LWC,  iHPLUS, HPLUS )
 !
 ! !USES:
@@ -5103,6 +5140,9 @@
                                        ! ratio [v/v]
       REAL(fp),  INTENT(IN)    :: TNH3   ! NH3 mixing ratio [v/v]
       REAL(fp),  INTENT(IN)    :: SO2    ! SO2 mixing ratio [v/v] 
+      REAL(fp),  INTENT(IN)    :: TDCA   ! Total Ca2+ and Mg2+ mixing ratio [M] ! jmm 12/3/18
+      REAL(fp),  INTENT(IN)    :: TAA    ! Acetic acid mixing ratio [v/v] ! jmm 12/3/18
+      REAL(fp),  INTENT(IN)    :: TFA    ! Formic acid mixing ratio [v/v] ! jmm 12/3/18
       REAL(fp),  INTENT(IN)    :: T      ! Temperature [K]
       REAL(fp),  INTENT(IN)    :: PRES   ! Dry air partial ressure [atm]
       REAL(fp),  INTENT(IN)    :: LWC    ! Cloud liquid water content [m3/m3]
@@ -5116,14 +5156,14 @@
 !  ============================================================================
 !  Solve the following electroneutrality equation:
 !  0 = 2[SO4]nss + [OH] + [HCO3] + 2[CO3] + [HSO3] + 2[SO3] + [NO3]
-!        - [NH4] - [H+] 
+!        - [NH4] - [H+] - [Mg] - [Ca] + [HCOOH] + [ACTA]
 !
 !  Uses Newton's method to solve the equation:
 !     x_1 = x_0 -f(x_0)/f'(x_0)
 !     iterate until converge 
 !
-!  Let concentrations of [HCO3], [CO3], [HSO3], [SO3], [NO3], 
-!     and [NH4] evolve according to Henry's law and equilibrium.
+!  Let concentrations of [HCO3], [CO3], [HSO3], [SO3], [NO3], [HCOOH],
+!     [ACTA] and [NH4] evolve according to Henry's law and equilibrium.
 !
 !  To add new species:
 !    - Add species not affected by HPLUS to the "D' term
@@ -5162,6 +5202,7 @@
       REAL(fp)               :: dHCO3, dCO3
       REAL(fp)               :: dHSO3, dSO3
       REAL(fp)               :: dHNO3, dNH4, dHCl
+      REAL(fp)               :: fAA, fFA, dAA, dFA
       REAL(fp)               :: f, df, nnHPLUS
       INTEGER                :: count
 
@@ -5175,7 +5216,7 @@
       ! Non-volatile aerosol concentration [M] 
       ! For now sulfate is the only non-volatile species
       ! Make sure to use negative coefficients when adding cations
-      D = (2.e+0_fp*SO4nss) 
+      D = (2.e+0_fp*SO4nss) - (2.e+0_fp*TDCA) 
 
       ! Temperature dependent water equilibrium constant
       Kw_T = Kw*exp(DhrKw*((1.e+0_fp/T)-(1.e+0_fp/298.e+0_fp)))
@@ -5209,6 +5250,10 @@
 
 	 fNH4  = kNH3  ( PRES, T, LWC, nHPLUS, TNH3, Kw_T )
 
+         fFA   = kFA   ( PRES, T, LWC, nHPLUS, TFA ) ! jmm 12/3/18
+
+         fAA   = kAA   ( PRES, T, LWC, nHPLUS, TAA ) ! jmm 12/3/18   
+
 
          ! Get f'(x) terms
          dHCO3  = dkCO21 ( PRES, T, LWC, nHPLUS ) 
@@ -5223,15 +5268,20 @@
 
 	 dNH4  = dkNH3  ( PRES, T, LWC, nHPLUS, TNH3, Kw_T )
 
+         dFA   = dkFA   ( PRES, T, LWC, nHPLUS, TFA ) ! jmm 12/3/18
+
+         dAA   = dkAA   ( PRES, T, LWC, nHPLUS, TAA ) ! jmm 12/3/18   
 
          ! Define f(x)
          ! note Kw/nHPLUS is OH-
          f = D - nHPLUS + Kw/nHPLUS + fHCO3 + 2.e+0_fp * 
-     &        fCO3 + fHSO3 + 2.e+0_fp * fSO3 + fHNO3 - fNH4
+     &        fCO3 + fHSO3 + 2.e+0_fp * fSO3 + fHNO3 - fNH4 +
+     &        fFA + fAA
 
          ! Define f'(x)
          df = - 1.e+0_fp - Kw/nHPLUS/nHPLUS + dHCO3 + 2.e+0_fp * 
-     &        dCO3 + dHSO3 + 2.e+0_fp * dSO3 + dHNO3 - dNH4 
+     &        dCO3 + dHSO3 + 2.e+0_fp * dSO3 + dHNO3 - dNH4 +
+     &        dFA + dAA
 
          ! Apply Newton's method
          nnHPLUS = nHPLUS - f/df
@@ -6110,9 +6160,9 @@
 !------------------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: kNH3
+! !IROUTINE: dkNH3
 !
-! !DESCRIPTION: Function kNH3
+! !DESCRIPTION: Function dkNH3
 !\\
 !\\
 ! !INTERFACE:
@@ -6167,6 +6217,274 @@
      &     HPLUS ) + Kw)**2
 
       END FUNCTION dkNH3
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: kFA
+!
+! !DESCRIPTION: Function kFA
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION kFA ( P, T, LWC, HPLUS, FA ) RESULT ( kFAp )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS, FA
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: KFAp
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!  17 Oct 2017 - M. Sulprizio- Dhck value is from Table 7.3 of Seinfeld and
+!                              Pandis (2006, pp 289) and should be positive for
+!                              consistency with the way it is used here. Also,
+!                              the value of R, in units of kcal mol-1 K-1, is
+!                              1.986x10^-3, not 0.04. (Qianjie Chen)
+!  03 Dec 2018 - J. Moch     - Modified for formic acid (HCOOH). Values taken from 
+!                              Sienfeld and Pandis. Made it to output is [FA]
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! HCOOH dissociation constants
+      REAL(fp),  PARAMETER  :: Kformate = 1.8e-4_fp ! equib const
+      REAL(fp),  PARAMETER  :: Hfa = 880e+0_fp ! henry const
+      REAL(fp),  PARAMETER  :: Dhfa = 11.4e+0_fp/1.986e-3_fp ! henry temp
+      REAL(fp),  PARAMETER  :: DhrKfa = -20.e+0_fp ! equib temp
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)              :: Hfa_T, Kfa_T
+      REAL(fp)              :: Hfaeff, xFA, pFA
+
+      !=================================================================
+      ! kFA begins here!
+      !=================================================================
+
+      ! Formic acid dissolution constants
+      HFA_T = Hfa*exp(Dhfa*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
+      Kfa_T = Kformate*exp(DhrKfa*((1.0e+0_fp/T)
+     &     - (1.0e+0_fp/298.0e+0_fp)))
+
+      !HCOOH  dissolution
+      Hfaeff = Hfa_T*(1.0e+0_fp+(Kfa_T/HPLUS))
+      xFA = 1.0e+0_fp / ( 1.0e+0_fp 
+     &    + ( Hfaeff * 0.08205e+0_fp * T * LWC ) )
+      pFA = FA * P * xFA
+
+      kFAp = Hfa_T * Kfa_T * pFA / HPLUS
+
+      END FUNCTION kFA
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: dkFA
+!
+! !DESCRIPTION: Function dkFA
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION dkFA ( P, T, LWC, HPLUS, FA ) RESULT ( kFAp )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS, FA
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: KFAp
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!  17 Oct 2017 - M. Sulprizio- Dhck value is from Table 7.3 of Seinfeld and
+!                              Pandis (2006, pp 289) and should be positive for
+!                              consistency with the way it is used here. Also,
+!                              the value of R, in units of kcal mol-1 K-1, is
+!                              1.986x10^-3, not 0.04. (Qianjie Chen)
+!  03 Dec 2018 - J. Moch     - Modified for formic acid (HCOOH). Values taken from 
+!                              Sienfeld and Pandis. Made it to output is [FA]
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! HCOOH dissociation constants
+      REAL(fp),  PARAMETER  :: Kformate = 1.8e-4_fp ! equib const
+      REAL(fp),  PARAMETER  :: Hfa = 880e+0_fp ! henry const
+      REAL(fp),  PARAMETER  :: Dhfa = 11.4e+0_fp/1.986e-3_fp ! henry temp
+      REAL(fp),  PARAMETER  :: DhrKfa = -20.e+0_fp ! equib temp
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)              :: Hfa_T, Kfa_T
+
+      !=================================================================
+      ! dkFA begins here!
+      !=================================================================
+
+      ! Formic acid dissolution constants
+      HFA_T = Hfa*exp(Dhfa*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
+      Kfa_T = Kformate*exp(DhrKfa*((1.0e+0_fp/T)
+     &     - (1.0e+0_fp/298.0e+0_fp)))
+
+      !HCOOH  dissolution
+
+      kFAp = -1.0e+0_fp * Kfa_T * HFA_T * FA * P * 
+     &     ( 1.0e+0_fp + HFA_T * 0.08205e+0_fp * T * LWC ) / 
+     &     ( Kfa_T * HFA_T * 0.08205e+0_fp * T * LWC + 
+     &     HFA_T * 0.08205e+0_fp * T * LWC * HPLUS +
+     &     HPLUS )**2
+
+      END FUNCTION dkFA
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: kAA
+!
+! !DESCRIPTION: Function kAA
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION kAA ( P, T, LWC, HPLUS, AA ) RESULT ( kAAp )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS, AA
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: KAAp
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!  17 Oct 2017 - M. Sulprizio- Dhck value is from Table 7.3 of Seinfeld and
+!                              Pandis (2006, pp 289) and should be positive for
+!                              consistency with the way it is used here. Also,
+!                              the value of R, in units of kcal mol-1 K-1, is
+!                              1.986x10^-3, not 0.04. (Qianjie Chen)
+!  03 Dec 2018 - J. Moch     - Modified for acetic acid (CH3COOH). Values taken from 
+!                              Sienfeld and Pandis, value of [HCOOH]
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! HCOOH dissociation constants
+      REAL(fp),  PARAMETER  :: Kacetate = 1.7e-5_fp
+      REAL(fp),  PARAMETER  :: Haa = 400e+0_fp
+      REAL(fp),  PARAMETER  :: Dhaa = 11.4e+0_fp/1.986e-3_fp
+      REAL(fp),  PARAMETER  :: DhrKaa = -13.9e+0_fp ! Neidig and Yingling, 1965                                                    
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)              :: Haa_T, Kaa_T
+      REAL(fp)              :: Haaeff, xAA, pAA
+      !=================================================================
+      ! kAA begins here!
+      !=================================================================
+
+      ! Formic acid dissolution constants
+      HAA_T = Haa*exp(Dhaa*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
+      Kaa_T = Kacetate*exp(DhrKaa*((1.0e+0_fp/T)
+     &     - (1.0e+0_fp/298.0e+0_fp)))
+
+      !HCOOH  dissolution
+      Haaeff = Haa_T*(1.0e+0_fp+(Kaa_T/HPLUS))
+      xAA = 1.0e+0_fp / ( 1.0e+0_fp 
+     &    + ( Haaeff * 0.08205e+0_fp * T * LWC ) )
+      pAA = AA * P * xAA
+
+      kAAp = Haa_T * Kaa_T * pAA / HPLUS
+
+      END FUNCTION kAA
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: dkAA
+!
+! !DESCRIPTION: Function kdAA
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION dkAA ( P, T, LWC, HPLUS, AA ) RESULT ( kAAp )
+!
+! !INPUT PARAMETERS: 
+!
+      REAL(fp),  INTENT(IN) :: T, P, LWC, HPLUS, AA
+!
+! !OUTPUT PARAMETERS: 
+!
+      REAL(fp)              :: KAAp
+!
+! !REVISION HISTORY:
+!  25 Jan 2012 - M. Payer    - Added ProTeX headers
+!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!  17 Oct 2017 - M. Sulprizio- Dhck value is from Table 7.3 of Seinfeld and
+!                              Pandis (2006, pp 289) and should be positive for
+!                              consistency with the way it is used here. Also,
+!                              the value of R, in units of kcal mol-1 K-1, is
+!                              1.986x10^-3, not 0.04. (Qianjie Chen)
+!  03 Dec 2018 - J. Moch     - Modified for acetic acid (CH3COOH). Values taken from 
+!                              Sienfeld and Pandis. Output is derivative.
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+      ! HCOOH dissociation constants
+      REAL(fp),  PARAMETER  :: Kacetate = 1.7e-5_fp
+      REAL(fp),  PARAMETER  :: Haa = 400e+0_fp
+      REAL(fp),  PARAMETER  :: Dhaa = 11.4e+0_fp/1.986e-3_fp
+      REAL(fp),  PARAMETER  :: DhrKaa = -13.9e+0_fp ! Neidig and Yingling, 1965                                                    
+!
+! !LOCAL VARIABLES:
+!
+      REAL(fp)              :: Haa_T, Kaa_T
+      !=================================================================
+      ! kAA begins here!
+      !=================================================================
+
+      ! Formic acid dissolution constants
+      HAA_T = Haa*exp(Dhaa*((1.0e+0_fp/T)-(1.0e+0_fp/298.0e+0_fp)))
+      Kaa_T = Kacetate*exp(DhrKaa*((1.0e+0_fp/T)
+     &     - (1.0e+0_fp/298.0e+0_fp)))
+
+      !HCOOH  dissolution
+      kAAp =  -1.0e+0_fp * Kaa_T * HAA_T * AA * P * 
+     &     ( 1.0e+0_fp + HAA_T * 0.08205e+0_fp * T * LWC ) / 
+     &     ( Kaa_T * HAA_T * 0.08205e+0_fp * T * LWC + 
+     &     HAA_T * 0.08205e+0_fp * T * LWC * HPLUS +
+     &     HPLUS )**2
+
+
+      END FUNCTION dkAA
 !EOC
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
@@ -8560,6 +8878,8 @@
       id_SO4s  = Ind_('SO4s'     )
       id_SO4H1 = Ind_('SO4H1'    )
       id_SO4H2 = Ind_('SO4H2'    )
+      id_HCOOH = Ind_('HCOOH'    ) ! (jmm, 12/3/18)
+      id_ACTA  = Ind_('ACTA'     ) ! (jmm, 12/3/18)
 
       ! Define flags for species drydep indices
       DRYNITs  = Ind_('NITs', 'D')
