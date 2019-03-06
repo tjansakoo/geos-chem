@@ -42,6 +42,7 @@
       ! SALC        : Coarse mode seasalt aerosol        [kg/m3]
       ! SO4_NH4_NIT : Lumped SO4-NH4-NIT aerosol         [kg/m3]
       ! SO4         : Sulfate aerosol                    [kg/m3]
+      ! HMS         : Hydroxymethane sulfonate aerosol   [kg/m3] ! (jmm, 06/29/18)
       ! NH4         : Ammonium aerosol                   [kg/m3]
       ! NIT         : Inorganic nitrate aerosol          [kg/m3]
       ! SOILDUST    : Mineral dust aerosol from soils    [kg/m3]
@@ -68,6 +69,7 @@
       REAL(fp), ALLOCATABLE, PUBLIC :: SALC(:,:,:)
       REAL(fp), ALLOCATABLE, PUBLIC :: SO4_NH4_NIT(:,:,:)
       REAL(fp), ALLOCATABLE, PUBLIC :: SO4(:,:,:)
+      REAL(fp), ALLOCATABLE, PUBLIC :: HMS(:,:,:) ! (jmm, 06/29/18)
       REAL(fp), ALLOCATABLE, PUBLIC :: NH4(:,:,:)
       REAL(fp), ALLOCATABLE, PUBLIC :: NIT(:,:,:)
       REAL(fp), ALLOCATABLE, PUBLIC :: FRAC_SNA(:,:,:,:)
@@ -166,7 +168,7 @@
       INTEGER :: id_BCPI,  id_BCPO,  id_DST1,  id_DST2
       INTEGER :: id_DST3,  id_DST4,  id_NH4,   id_NIT  
       INTEGER :: id_OCPO,  id_OCPI,  id_SALA,  id_SALC 
-      INTEGER :: id_SO4,   id_SO4s
+      INTEGER :: id_SO4,   id_SO4s,  id_HMS   ! (jmm, 06/29/18)
       INTEGER :: id_NITs,  id_POA1,  id_POA2,  id_OPOA1
       INTEGER :: id_OPOA2, id_TSOA1, id_TSOA2, id_TSOA3 
       INTEGER :: id_TSOA0, id_ISOA1, id_ISOA2, id_ISOA3
@@ -324,7 +326,7 @@
       LOGICAL             :: LUCX
       LOGICAL             :: IS_OCPO,  IS_OCPI,  IS_BC
       LOGICAL             :: IS_SO4,   IS_NH4,   IS_NIT
-      LOGICAL             :: IS_SAL,   IS_DST
+      LOGICAL             :: IS_SAL,   IS_DST,   IS_HMS ! (jmm, 06/29/18)
       LOGICAL             :: IS_TSOA,  IS_ISOA,  IS_ASOA
       LOGICAL             :: IS_POA,   IS_OPOA
       LOGICAL             :: IS_SOAGX, IS_SOAMG
@@ -375,6 +377,7 @@
       IS_OCPO    = ( id_OCPO  > 0 )
       IS_BC      = ( id_BCPI  > 0 .AND. id_BCPO  > 0 )
       IS_SO4     = ( id_SO4   > 0 )
+      IS_HMS     = ( id_HMS   > 0 ) !(jmm, 06/29/18)
       IS_NH4     = ( id_NH4   > 0 )
       IS_NIT     = ( id_NIT   > 0 )
       IS_DST     = ( id_DST1  > 0 .AND. id_DST2  > 0 )
@@ -562,6 +565,7 @@
      &                                   Spc(I,J,L,id_NH4)    +
      &                                   Spc(I,J,L,id_NIT)    +
      &                                   Spc(I,J,L,id_SO4s)   +
+     &                                   Spc(I,J,L,id_HMS)   +  ! (jmm, 07/2/18)
      &                                   Spc(I,J,L,id_NITs) ) /
      &                                   AIRVOL(I,J,L)
                   SO4(I,J,L) = Spc(I,J,L,id_SO4) / AIRVOL(I,J,L)
@@ -569,6 +573,7 @@
                   NIT(I,J,L) = Spc(I,J,L,id_NIT) / AIRVOL(I,J,L)
                   SLA(I,J,L) = 0e+0_fp
                   SPA(I,J,L) = 0e+0_fp
+                  HMS(I,J,L) = Spc(I,J,L,id_HMS) / AIRVOL(I,J,L) ! (jmm, 06/30/18)
 
                ELSE
 
@@ -579,6 +584,7 @@
                   NIT(I,J,L) = 0e+0_fp
                   SLA(I,J,L) = KG_STRAT_AER(I,J,L,1) / AIRVOL(I,J,L)
                   SPA(I,J,L) = KG_STRAT_AER(I,J,L,2) / AIRVOL(I,J,L)
+                  HMS(I,J,L) = 0e+0_fp ! (jmm, 06/30/18)
 
                ENDIF
 
@@ -598,12 +604,14 @@
      &                                Spc(I,J,L,id_NH4)    +
      &                                Spc(I,J,L,id_NIT)    +
      &                                Spc(I,J,L,id_SO4s)   +
+     &                                Spc(I,J,L,id_HMS)   + ! (jmm, 07/02/18)
      &                                Spc(I,J,L,id_NITs) ) /
      &                                AIRVOL(I,J,L)
                
                SO4(I,J,L) = Spc(I,J,L,id_SO4) / AIRVOL(I,J,L)
                NH4(I,J,L) = Spc(I,J,L,id_NH4) / AIRVOL(I,J,L)
                NIT(I,J,L) = Spc(I,J,L,id_NIT) / AIRVOL(I,J,L)
+               HMS(I,J,L) = Spc(I,J,L,id_HMS) / AIRVOL(I,J,L) !(jmm, 06/30/18)
 
             ENDIF
             
@@ -613,6 +621,7 @@
                ! Save these fractions for partitioning of optics
                ! until later when these may be treated independently
                FRAC_SNA(I,J,L,1) = ( ( Spc(I,J,L,id_SO4 ) 
+     &                           +     Spc(I,J,L,id_HMS )   ! (jmm, 07/02/18)
      &                           +     Spc(I,J,L,id_SO4s) )
      &                           /   AIRVOL(I,J,L)          )
      &                           / SO4_NH4_NIT(I,J,L)
@@ -1002,13 +1011,14 @@
          !
          ! Compute PM2.5 concentration [kg/m3]
          !
-         ! PM25 = 1.33 (NH4 + NIT  + SO4) + BCPI + BCPO +
+         ! PM25 = 1.33 (NH4 + NIT  + SO4 + HMS) + BCPI + BCPO +
          !        2.10 (OCPO + 1.16 OCPI) + 1.16 SOA    +
          !        DST1 + 0.38 DST2 + 1.86 SALA + SOAGX + SOAMG
          !
          ! NOTES:
          ! - We apply growth factors at 35% RH (computed above): 
          !    1.33 for SO4, NIT, and NH4
+         !    1.33 for HMS (? jmm, 06/30/18)
          !    1.16 for OCPI and SOA
          !    1.86 for SALA
          ! - Ratio of OM/OC = 2.1 is applied to OCPI and OCPO above
@@ -1037,6 +1047,8 @@
      &               + SOILDUST(I,J,L,3)                 ! DST1
      &               + SOILDUST(I,J,L,4)                 ! DST1
      &               + SOILDUST(I,J,L,5) * 0.38          ! 38% of DST2
+     &               + HMS(I,J,L)        * SIA_GROWTH    ! (jmm, 06/30/18)
+
 
          ! Include either simple SOA (default) or Complex SOA in
          ! PM2.5 calculation.  In simulations where both Simple SOA and
@@ -2624,6 +2636,7 @@
       id_SALC   = Ind_( 'SALC'   )   
       id_SO4    = Ind_( 'SO4'    )         
       id_SO4s   = Ind_( 'SO4s'   )  
+      id_HMS    = Ind_( 'HMS'    )  ! (jmm, 06/30/18)
       id_NITs   = Ind_( 'NITs'   ) 
       id_POA1   = Ind_( 'POA1'   )   
       id_POA2   = Ind_( 'POA2'   )    
@@ -2695,6 +2708,12 @@
       CALL GC_CheckVar( 'aerosol_mod.F:SO4', 0, RC )
       IF ( RC /= GC_SUCCESS ) RETURN
       SO4 = 0.0_fp
+
+      ! (jmm, 06/30/18)
+      ALLOCATE( HMS( IIPAR, JJPAR, LLPAR ), STAT=RC )
+      CALL GC_CheckVar( 'aerosol_mod.F:HMS', 0, RC )
+      IF ( RC /= GC_SUCCESS ) RETURN
+      HMS = 0.0_fp
 
       ALLOCATE( NH4( IIPAR, JJPAR, LLPAR ), STAT=RC )
       CALL GC_CheckVar( 'aerosol_mod.F:NH4', 0, RC )
@@ -2835,6 +2854,7 @@
       IF ( ALLOCATED( SALC        ) ) DEALLOCATE( SALC        )
       IF ( ALLOCATED( SO4_NH4_NIT ) ) DEALLOCATE( SO4_NH4_NIT )
       IF ( ALLOCATED( SO4         ) ) DEALLOCATE( SO4         )
+      IF ( ALLOCATED( HMS         ) ) DEALLOCATE( HMS         ) ! (jmm, 06/30/18)
       IF ( ALLOCATED( NH4         ) ) DEALLOCATE( NH4         )
       IF ( ALLOCATED( NIT         ) ) DEALLOCATE( NIT         )
       IF ( ALLOCATED( FRAC_SNA    ) ) DEALLOCATE( FRAC_SNA    )
