@@ -3251,6 +3251,15 @@
             State_Diag%AerMassSO4(I,J,L)      = SO4(I,J,L)          
      &                                        * kgm3_to_ugm3
          ENDIF
+
+         !--------------------------------------
+         ! AerMassHMS [ug/m3]
+         ! jmm 3/6/19
+         !--------------------------------------
+         IF ( State_Diag%Archive_AerMassHMS ) THEN
+            State_Diag%AerMassHMS(I,J,L)      = HMS(I,J,L)          
+     &                                        * kgm3_to_ugm3
+         ENDIF
       
          !--------------------------------------
          ! AerMassSOAGX [ug/m3]

@@ -3734,8 +3734,9 @@ CONTAINS
           CALL GC_CheckVar( arrayID, 0, RC )
           IF ( RC /= GC_SUCCESS ) RETURN
           State_Diag%ProdHMSfromSO2andHCHOinCloud = 0.0_f4
+          State_Diag%Archive_ProdHMSfromSO2andHCHOinCloud = .TRUE.
           CALL Register_DiagField( am_I_Root, diagID,                        &
-                                   State_Diag%ProdHMSfromSO2andHCHOinCloud,        &
+                                   State_Diag%ProdHMSfromSO2andHCHOinCloud,  &
                                    State_Chm, State_Diag, RC                )
           IF ( RC /= GC_SUCCESS ) RETURN
        ENDIF
@@ -3753,7 +3754,8 @@ CONTAINS
           CALL GC_CheckVar( arrayID, 0, RC )
           IF ( RC /= GC_SUCCESS ) RETURN
           State_Diag%ProdSO4fromHMSinCloud = 0.0_f4
-          CALL Register_DiagField( am_I_Root, diagID,                        &
+          State_Diag%Archive_ProdSO4fromHMSinCloud = .TRUE.
+          CALL Register_DiagField( am_I_Root, diagID,                       &
                                    State_Diag%ProdSO4fromHMSinCloud,        &
                                    State_Chm, State_Diag, RC                )
           IF ( RC /= GC_SUCCESS ) RETURN
@@ -3886,6 +3888,7 @@ CONTAINS
           CALL GC_CheckVar( arrayID, 0, RC )
           IF ( RC /= GC_SUCCESS ) RETURN
           State_Diag%AerMassHMS = 0.0_f4
+          State_Diag%Archive_AerMassHMS = .TRUE.
           CALL Register_DiagField( am_I_Root, diagID,                        &
                                    State_Diag%AerMassHMS,                    &
                                    State_Chm, State_Diag, RC                )

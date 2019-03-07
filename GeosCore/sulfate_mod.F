@@ -3584,7 +3584,7 @@
                   PRINT *,'in exp:',XX
                   PRINT *,'L6:',L6
                   PRINT *,'KaqHCHO',KaqHCHO
-                  CALL ERROR_STOP( 'L6s >1e15 or <0,  point 2', LOC )
+!                  CALL ERROR_STOP( 'L6s >1e15 or <0,  point 2', LOC )
                ENDIF
                  
 
@@ -3637,7 +3637,7 @@
                   PRINT *,'TK: ',TK
                   PRINT *,'LWC: ',LWC
                   PRINT *,'PATM :',PATM
-                  CALL ERROR_STOP( 'L6s_b >1e15 or <0,  point 3', LOC )
+!                  CALL ERROR_STOP( 'L6s_b >1e15 or <0,  point 3', LOC )
                ENDIF
 
 
@@ -4258,14 +4258,14 @@
 
             ! P(HMS) by SO2 and HCHO [kg S/s]
             ! jmm (06/13/18)
-            IF ( Archive_ProdHMSfromSO2andHCHOinCloud ) THEN
+            IF ( State_Diag%Archive_ProdHMSfromSO2andHCHOinCloud ) THEN
                State_Diag%ProdHMSfromSO2andHCHOinCloud(I,J,L) =
      &            ( L6S * State_Met%AD(I,J,L) / TCVV_S ) / DTCHEM
             ENDIF
 
             ! P(SO4) from aqueous-phase oxidation of HMS [kg S/s]
             ! jmm (07/06/18)
-            IF ( Archive_ProdSO4fromHMSinCloud ) THEN
+            IF ( State_Daig%Archive_ProdSO4fromHMSinCloud ) THEN
                State_Diag%ProdSO4fromHMSinCloud(I,J,L) =
      &            ( 2.e+0_fp * L7S * State_Met%AD(I,J,L) /
      &              TCVV_S ) / DTCHEM
