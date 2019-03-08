@@ -48,6 +48,7 @@ MODULE UValbedo_Mod
 !  17 Dec 2014 - R. Yantosca - Leave time/date variables as 8-byte
 !  12 Jan 2015 - R. Yantosca - Remove CLEANUP_UVALBEDO routine
 !  04 Mar 2015 - R. Yantosca - UV albedo data now comes via HEMCO
+!  28 Feb 2019 - J. Moch     - Added call for STATE_NCP to override cloud pH
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -104,6 +105,7 @@ CONTAINS
 
     ! Pointers
     REAL(f4), POINTER :: Ptr2D(:,:)
+    REAL(f4), POINTER :: Ptr2Db(:,:)
 
     ! Strings
     CHARACTER(LEN=255) :: ErrMsg
@@ -142,6 +144,41 @@ CONTAINS
 
     ! Free the pointer
     Ptr2d => NULL()
+
+    !=======================================================================
+    ! READ_STATE_NCP begins here!
+    ! jmm 2/28/19
+    !=======================================================================
+
+    ! Assume success
+    RC      = GC_SUCCESS
+    ErrMsg  = ''
+    ThisLoc = ' -> at Get_UValbedo STATE_NCP (in GeosCore/uvalbedo_mod.F90)'
+
+    ! Skip unless we are doing a fullchem or aerosol-only simulation
+    IF ( ( .not. Input_Opt%ITS_A_FULLCHEM_SIM ) .and. &
+         ( .not. Input_Opt%ITS_AN_AEROSOL_SIM ) ) THEN
+       RETURN
+    ENDIF
+
+    ! Nullify pointer
+    Ptr2Db => NULL()
+
+    ! Get the pointer to the UV albedo data in the HEMCO data structure
+    CALL HCO_GetPtr( am_I_Root, HcoState, 'STATE_NCP', Ptr2Db, RC, FOUND=FND )
+
+    ! Trap potential errors
+    IF ( RC /= GC_SUCCESS .or. ( .not. FND ) ) THEN
+       ErrMsg = 'Could not find STATE_NCP in HEMCO data list!'
+       CALL GC_Error( ErrMsg, RC, ThisLoc )
+       RETURN       
+    ENDIF
+
+    ! Add to State_Met
+    State_Met%STATE_NCP = Ptr2Db(:,:) 
+
+    ! Free the pointer
+    Ptr2db => NULL()    
 
   END SUBROUTINE Get_UValbedo
 !EOC

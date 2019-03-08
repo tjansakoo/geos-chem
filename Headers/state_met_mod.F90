@@ -121,6 +121,7 @@ MODULE State_Met_Mod
      REAL(fp), POINTER :: U10M          (:,:  ) ! E/W wind speed @ 10m ht [m/s]
      REAL(fp), POINTER :: USTAR         (:,:  ) ! Friction velocity [m/s]
      REAL(fp), POINTER :: UVALBEDO      (:,:  ) ! UV surface albedo [1]
+     REAL(fp), POINTER :: STATE_NCP     (:,:  ) ! in North China Plain [1] !jmm 2/28/19     
      REAL(fp), POINTER :: V10M          (:,:  ) ! N/S wind speed @ 10m ht [m/s]
      REAL(fp), POINTER :: Z0            (:,:  ) ! Surface roughness height [m]
      REAL(fp), POINTER :: CNV_FRC       (:,:  ) ! Convective fraction [1] 
@@ -470,6 +471,7 @@ CONTAINS
     State_Met%U10M           => NULL()
     State_Met%USTAR          => NULL()
     State_Met%UVALBEDO       => NULL()
+    State_Met%STATE_NCP      => NULL() ! jmm 2/28/19
     State_Met%V10M           => NULL()
     State_Met%Z0             => NULL()
     State_Met%CNV_FRC        => NULL()
@@ -1012,6 +1014,18 @@ CONTAINS
                             State_Met, RC )
     IF ( RC /= GC_SUCCESS ) RETURN
 
+    !-------------------------
+    ! STATE_NCP [1]
+    ! jmm 2/28/19
+    !-------------------------
+    ALLOCATE( State_Met%STATE_NCP( IM, JM ), STAT=RC )
+    CALL GC_CheckVar( 'State_Met%STATE_NCP', 0, RC )
+    IF ( RC /= GC_SUCCESS ) RETURN
+    State_Met%STATE_NCP = 0.0_fp
+    CALL Register_MetField( am_I_Root, 'STATE_NCP', State_Met%STATE_NCP, &
+                            State_Met, RC )
+    IF ( RC /= GC_SUCCESS ) RETURN
+    
     !-------------------------
     ! V10M [m s-1]
     !-------------------------
@@ -2396,6 +2410,14 @@ CONTAINS
        State_Met%UVALBEDO => NULL()
     ENDIF
 
+    ! jmm 2/28/19
+    IF ( ASSOCIATED( State_Met%STATE_NCP ) ) THEN
+       DEALLOCATE( State_Met%STATE_NCP, STAT=RC  )
+       CALL GC_CheckVar( 'State_Met%STATE_NCP', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Met%STATE_NCP => NULL()
+    ENDIF       
+
     IF ( ASSOCIATED( State_Met%V10M ) ) THEN
        DEALLOCATE( State_Met%V10M, STAT=RC  )
        CALL GC_CheckVar( 'State_Met%V10M', 2, RC )
@@ -3438,6 +3460,12 @@ CONTAINS
           IF ( isUnits ) Units = '1'
           IF ( isRank  ) Rank  = 2
 
+          ! jmm 2/28/19
+       CASE ( 'STATE_NCP' )
+          IF ( isDesc  ) Desc  = 'Presence in North China Plain'
+          IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  = 2   
+          
        CASE ( 'V10M' )
           IF ( isDesc  ) Desc  = 'North-south wind at 10 meter height'
           IF ( isUnits ) Units = 'm s-1'
