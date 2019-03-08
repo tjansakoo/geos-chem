@@ -3755,8 +3755,8 @@ CONTAINS
           IF ( RC /= GC_SUCCESS ) RETURN
           State_Diag%ProdSO4fromHMSinCloud = 0.0_f4
           State_Diag%Archive_ProdSO4fromHMSinCloud = .TRUE.
-          CALL Register_DiagField( am_I_Root, diagID,                       &
-                                   State_Diag%ProdSO4fromHMSinCloud,        &
+          CALL Register_DiagField( am_I_Root, diagID,                        &
+                                   State_Diag%ProdSO4fromHMSinCloud,         &
                                    State_Chm, State_Diag, RC                )
           IF ( RC /= GC_SUCCESS ) RETURN
        ENDIF

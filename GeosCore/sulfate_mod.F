@@ -3112,7 +3112,7 @@
          L6S_b   = 0.e+0_fp !(jmm, 06/13/18)
          L7      = 0.e+0_fp !(jmm, 06/26/18)
          L7S     = 0.e+0_fp !(jmm, 06/26/18)
-=         
+         
          ! If (1) there is cloud, (2) there is SO2 present, and 
          ! (3) the T > -15 C, then compute aqueous SO2 chemistry
          ! Prevent divide-by-zero if LWC=0 (mpayer, 9/6/13)
@@ -4278,7 +4278,7 @@
 
             ! P(SO4) from aqueous-phase oxidation of HMS [kg S/s]
             ! jmm (07/06/18)
-            IF ( State_Daig%Archive_ProdSO4fromHMSinCloud ) THEN
+            IF ( State_Diag%Archive_ProdSO4fromHMSinCloud ) THEN
                State_Diag%ProdSO4fromHMSinCloud(I,J,L) =
      &            ( 2.e+0_fp * L7S * State_Met%AD(I,J,L) /
      &              TCVV_S ) / DTCHEM
