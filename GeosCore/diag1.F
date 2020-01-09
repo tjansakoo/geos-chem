@@ -5,14 +5,14 @@
 !
 ! !MODULE: diag1.F
 !
-! !DESCRIPTION: Subroutine DIAG1 accumulates diagnostic quantities on every 
+! !DESCRIPTION: Subroutine DIAG1 accumulates diagnostic quantities on every
 !  dynamic timestep.
 !\\
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE DIAG1( am_I_Root, Input_Opt,
-     &                  State_Met, State_Chm, RC )
+      SUBROUTINE DIAG1( am_I_Root,  Input_Opt, State_Chm,
+     &                  State_Grid, State_Met, RC )
 !
 ! !USES:
 !
@@ -21,20 +21,19 @@
       USE DAO_MOD,            ONLY : IS_ICE, IS_WATER, IS_LAND
 #if defined( BPCH_DIAG )
       USE CMN_DIAG_MOD
-      USE DIAG_MOD,           ONLY : AD33, AD35, AD54 
+      USE DIAG_MOD,           ONLY : AD33, AD35, AD54
       USE DIAG_MOD,           ONLY : AD47
-      USE DIAG_MOD,           ONLY : AD30, AD31, AD45, AD57 
+      USE DIAG_MOD,           ONLY : AD30, AD31, AD45, AD57
       USE DIAG_MOD,           ONLY : AD67, AD68, AD69, LTOTH
       USE DIAG_MOD,           ONLY : AD71
       USE DIAG_MOD,           ONLY : AD71_DAY,   AD71_HR
       USE DIAG_MOD,           ONLY : AD71_LDAY,  AD71_LHR
       USE DIAG_MOD,           ONLY : AD71_COUNT, AD71_HRCT
-      USE DIAG03_MOD,         ONLY : AD03_RGM, AD03_PBM, ND03   
+      USE DIAG03_MOD,         ONLY : AD03_RGM, AD03_PBM, ND03
 #endif
       USE ErrCode_Mod
       USE ERROR_MOD,          ONLY : ERROR_STOP
       USE ERROR_MOD,          ONLY : SAFE_DIV
-      USE GC_GRID_MOD,        ONLY : GET_AREA_M2
       USE HCO_DIAGN_MOD,      ONLY : Diagn_Update
       USE HCO_ERROR_MOD
       USE Input_Opt_Mod,      ONLY : OptInput
@@ -43,6 +42,7 @@
       USE Species_Mod,        ONLY : Species
       USE State_Chm_Mod,      ONLY : ChmState
       USE State_Chm_Mod,      ONLY : Ind_
+      USE State_Grid_Mod,     ONLY : GrdState
       USE State_Met_Mod,      ONLY : MetState
       USE TIME_MOD,           ONLY : ITS_TIME_FOR_CHEM
       USE TIME_MOD,           ONLY : GET_DAY
@@ -55,6 +55,7 @@
 !
       LOGICAL,        INTENT(IN)    :: am_I_Root   ! Are we on the root CPU?
       TYPE(OptInput), INTENT(IN)    :: Input_Opt   ! Input Options object
+      TYPE(GrdState), INTENT(IN)    :: State_Grid  ! Grid State object
       TYPE(MetState), INTENT(IN)    :: State_Met   ! Meteorology State object
 !
 ! !INPUT/OUTPUT PARAMETERS:
@@ -75,7 +76,7 @@
 !  (3 ) UWND, VWND, WW no longer needs to be passed (bmy, 4/7/99)
 !  (4 ) Use F90 syntax for declarations, etc (bmy, 4/7/99)
 !  (5 ) Remove counter KWACC...this is now redundant (bmy, 11/5/99)
-!  (6 ) ND31, ND33, ND35, ND67, and ND69 now use dynamically 
+!  (6 ) ND31, ND33, ND35, ND67, and ND69 now use dynamically
 !        allocatable arrays declared in "diag_mod.f". (bmy, 3/9/00)
 !  (7 ) LTOTH is now an allocatable array in "diag_mod.f". (bmy, 3/17/00)
 !  (8 ) Add parallel loops over tracer where expedient (bmy, 5/4/00)
@@ -86,7 +87,7 @@
 !  (12) Updated diagnostic list & comments, cosmetic changes (bmy, 6/19/01)
 !  (13) Updated diagnostic list & comments (bmy, 9/4/01)
 !  (14) Now reference AVGW from "dao_mod.f", and make sure it is allocated
-!        before we reference it in the ND68 diagnostic.  Also reference PBL, 
+!        before we reference it in the ND68 diagnostic.  Also reference PBL,
 !        PS, AIRDEN from "dao_mod.f". (bmy, 9/25/01)
 !  (15) Removed obsolete code from 9/01 (bmy, 10/23/01)
 !  (16) Renamed ND33 to "ATMOSPHERIC COLUMN SUM OF TRACER", since this is
@@ -101,7 +102,7 @@
 !  (18) Replaced references to P(I,J) with call to GET_PEDGE(I,J,1) from
 !        "pressure_mod.f"  Eliminated obsolete commented-out code from
 !        6/02. (dsa, bdf, bmy, 8/20/02)
-!  (19) Now reference AD, and BXHEIGHT from "dao_mod.f".  Removed obsolete 
+!  (19) Now reference AD, and BXHEIGHT from "dao_mod.f".  Removed obsolete
 !        code.  Now refEerence IDTOX from "tracerid_mod.f". (bmy, 11/6/02)
 !  (20) Now replace DXYP(J) with routine GET_AREA_M2 from "grid_mod.f"
 !        (bmy, 2/4/03)
@@ -197,7 +198,7 @@
       !=================================================================
       ! First-time setup
       !=================================================================
-      IF ( FIRST ) THEN 
+      IF ( FIRST ) THEN
 
          ! Define species ID's  on the first call
          id_Hg2  = Ind_( 'Hg2' )
@@ -214,7 +215,7 @@
          ENDIF
 
          ! Are certain diagnostics turned on?
-         Do_ND03 = ( Input_Opt%ND03 > 0 ) 
+         Do_ND03 = ( Input_Opt%ND03 > 0 )
          Do_ND30 = ( Input_Opt%ND30 > 0 )
          Do_ND31 = ( Input_Opt%ND31 > 0 )
          Do_ND45 = ( Input_Opt%ND45 > 0 )
@@ -224,17 +225,17 @@
          Do_ND67 = ( Input_Opt%ND67 > 0 )
          Do_ND68 = ( Input_Opt%ND68 > 0 )
          Do_ND71 = ( Input_Opt%ND71 > 0 )
-         
+
          !--------------------------------------------------------------
          ! ND69: Surface area [m2]
          !
-         ! NOTE: This is a time-invariant diagnostic, 
+         ! NOTE: This is a time-invariant diagnostic,
          ! so we can just archive this on the first call
          !--------------------------------------------------------------
          IF ( Input_Opt%ND69 > 0 ) THEN
-            DO J = 1, JJPAR
-            DO I = 1, IIPAR
-               AD69(I,J,1) = GET_AREA_M2( I, J, 1 )
+            DO J = 1, State_Grid%NY
+            DO I = 1, State_Grid%NX
+               AD69(I,J,1) = State_Grid%Area_M2(I,J)
             ENDDO
             ENDDO
          ENDIF
@@ -261,9 +262,9 @@
          EmMW_g = State_Chm%SpcData(N)%Info%EmMW_g  ! Emitted MW (g)
 
          ! Loop over grid boxes
-         DO L = 1, LLPAR
-         DO J = 1, JJPAR
-         DO I = 1, IIPAR
+         DO L = 1, State_Grid%NZ
+         DO J = 1, State_Grid%NY
+         DO I = 1, State_Grid%NX
 
             ! Initialize
             P0      = 0.0_fp
@@ -278,7 +279,7 @@
                ! Reactive gaseous mercury [pptv]
                !--------------------------------------------------------
                IF ( id_Hg2 > 0 ) THEN
-                  AD03_RGM(I,J,L) = AD03_RGM(I,J,L) 
+                  AD03_RGM(I,J,L) = AD03_RGM(I,J,L)
      &                            + State_Chm%Species(I,J,L,id_Hg2)
      &                            * ( AIRMW / EmMw_g_Hg2 * 1e+12_fp )
                ENDIF
@@ -287,17 +288,17 @@
                ! Particulate bound mercury [pptv]
                !--------------------------------------------------------
                IF ( id_HgP > 0 ) THEN
-                  AD03_PBM(I,J,L) = AD03_PBM(I,J,L) 
+                  AD03_PBM(I,J,L) = AD03_PBM(I,J,L)
      &                            + State_Chm%Species(I,J,L,id_HgP)
      &                            * ( AIRMW / EmMW_g_HgP * 1e+12_fp )
                ENDIF
             ENDIF
-         
+
             !===========================================================
             ! ND30: Land/water/ice flags
             !===========================================================
             IF ( Do_ND30 .and. NA == 1 .and. L == 1 ) THEN
-            
+
                ! Water
                IF ( IS_WATER( I, J, State_Met ) ) THEN
                   AD30(I,J) = AD30(I,J) + 0e0
@@ -307,7 +308,7 @@
                IF ( IS_LAND ( I, J, State_Met ) ) THEN
                   AD30(I,J) = AD30(I,J) + 1e0
                ENDIF
-               
+
                ! Ice
                IF ( IS_ICE  ( I, J, State_Met ) ) THEN
                   AD30(I,J) = AD30(I,J) + 2e0
@@ -319,12 +320,12 @@
             ! ND31: Pressure [hPa] at level edges
             !===========================================================
             IF ( Do_ND31 .and. NA == 1 .and. L <= LD31 ) THEN
-               AD31(I,J,L) = AD31(I,J,L) + State_Met%PEDGE(I,J,L) 
+               AD31(I,J,L) = AD31(I,J,L) + State_Met%PEDGE(I,J,L)
 
-               ! Also archive the LLPAR+1th pressure edge
-               IF ( L == LLPAR ) THEN
-                  AD31(I,J,L+1) = AD31(I,J,L+1) 
-     &                          + State_Met%PEDGE(I,J,L+1) 
+               ! Also archive the State_Grid%NZ+1th pressure edge
+               IF ( L == State_Grid%NZ ) THEN
+                  AD31(I,J,L+1) = AD31(I,J,L+1)
+     &                          + State_Met%PEDGE(I,J,L+1)
                ENDIF
             ENDIF
 
@@ -340,7 +341,7 @@
                ! ND45: Species concentration between HR_OTH1 and HR_OTH2
                !--------------------------------------------------------
                IF ( Do_ND45 .and. L <= LD45 ) THEN
-                  AD45(I,J,L,NA) = AD45(I,J,L,NA) 
+                  AD45(I,J,L,NA) = AD45(I,J,L,NA)
      &                           + ( Spc_VV * LTOTH(I,J) )
                ENDIF
 
@@ -359,18 +360,18 @@
                IF ( Do_ND71 .and. L== 1 ) THEN
                   AD71_HR(I,J,NA) = AD71_HR(I,J,NA) + Spc_VV
                ENDIF
-            
+
             ENDIF
 
             !===========================================================
             ! ND54: Count time the box was tropospheric
-            !=========================================================== 
+            !===========================================================
             IF ( Do_ND54 .and. NA == 1 .and. L <= LD54 ) THEN
 
                IF ( State_Met%InTroposphere(I,J,L) ) THEN
                   AD54(I,J,L) = AD54(I,J,L) + 1.0_f4
                ENDIF
-               
+
             ENDIF
 
             !===========================================================
@@ -387,13 +388,13 @@
 
                ! PBL is in [m], use hydrostatic law to get [hPa]
                AD67(I,J,13) = AD67(I,J,13)
-     &                      +  ( State_Met%PEDGE(I,J,1) 
+     &                      +  ( State_Met%PEDGE(I,J,1)
      &                      *    EXP( -State_Met%PBLH(I,J)
      &                      /          SCALE_HEIGHT        ) )
             ENDIF
 
             !===========================================================
-            ! ND68: 1: BXHEIGHT   - box height [m] 
+            ! ND68: 1: BXHEIGHT   - box height [m]
             !       2: AD         - dry air mass [kg]
             !       3: AVGW       - mol H2O / mol dry air [v/v]
             !       4: AIRNUMDEN  - dry air number density [molecs/cm3]
@@ -401,7 +402,7 @@
             !       6: PMID       - arithmetic mean pressure [hPa]
             !       7: PEDGE      - level pressure (bottom edge) [hPa]
             !       8: RH         - relative humidity [%]
-            !=========================================================== 
+            !===========================================================
             IF ( Do_ND68 .and. NA == 1 .and. L <= LD68 ) THEN
 
                AD68(I,J,L,1) = AD68(I,J,L,1)
@@ -414,7 +415,7 @@
      &                       + State_Met%AVGW(I,J,L)
 
                AD68(I,J,L,4) = AD68(I,J,L,4)
-     &                       + State_Met%AIRNUMDEN(I,J,L) 
+     &                       + State_Met%AIRNUMDEN(I,J,L)
 
                AD68(I,J,L,5) = AD68(I,J,L,5)
      &                       + State_Met%T(I,J,L)
@@ -422,7 +423,7 @@
                AD68(I,J,L,6) = AD68(I,J,L,6)
      &                       + State_Met%PMID(I,J,L)
 
-               AD68(I,J,L,7) = AD68(I,J,L,7) 
+               AD68(I,J,L,7) = AD68(I,J,L,7)
      &                       + State_Met%PEDGE(I,J,L)
 
                AD68(I,J,L,8) = AD68(I,J,L,8)
@@ -436,9 +437,9 @@
       ENDDO
 !$OMP END PARALLEL DO
 
-      !================================================================= 
+      !=================================================================
       ! ND71: Species (V/V) at level 1, daily maximum hourly avg.
-      !================================================================= 
+      !=================================================================
       IF ( ND71 > 0 ) THEN
 
          IF ((GET_DAY().ne.AD71_LDAY).and.(AD71_LDAY.ge.0)) THEN
@@ -452,17 +453,17 @@
             ! New hour - get average of last data
 !            AD71_HR = AD71_HR / AD71_HRCT
             ! Set daily max
-!$OMP PARALLEL DO 
+!$OMP PARALLEL DO
 !$OMP+DEFAULT( SHARED )
 !$OMP+PRIVATE( I, J, L, NA )
             DO NA = 1, State_Chm%nAdvect
-            DO J = 1, JJPAR
-            DO I = 1, IIPAR
+            DO J = 1, State_Grid%NY
+            DO I = 1, State_Grid%NX
                AD71_DAY(I,J,NA) = MAX(AD71_DAY(I,J,NA),
      &                            (AD71_HR(I,J,N)/(AD71_HRCT)))
-            ENDDO   
             ENDDO
-            ENDDO 
+            ENDDO
+            ENDDO
 !$OMP END PARALLEL DO
             AD71_HR = 0e0
             AD71_HRCT = 0

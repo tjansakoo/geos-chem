@@ -5,7 +5,7 @@
 #
 # !IROUTINE: Makefile_SrcDoc.mk (in doc subdirectory)
 #
-# !DESCRIPTION: This Makefile fragment contains commands to build the 
+# !DESCRIPTION: This Makefile fragment contains commands to build the
 #  documentation for the GEOS-Chem Source Code.  It is inlined into
 #  the Makefile (in the doc subdirectory) by an "include" command.
 #\\
@@ -20,7 +20,7 @@
 # You must have the LaTeX utilities (latex, dvips, dvipdf) installed
 # on your system in order to build the documentation.
 #
-# !REVISION HISTORY: 
+# !REVISION HISTORY:
 #  14 Sep 2010 - R. Yantosca - Initial version, split off from Makefile
 #  14 Sep 2010 - R. Yantosca - Added optdepth_mod.f to list
 #  15 Sep 2010 - R. Yantosca - Added diag_2pm, diag_56, diagoh, ohsave
@@ -69,7 +69,7 @@
 #  23 Oct 2012 - R. Yantosca - Added tagged_co_mod
 #  23 Oct 2012 - M. Payer    - Added soil NOx modules; Removed upbdflx_mod.F
 #  27 Nov 2012 - M. Payer    - Added modules for POPs simulation
-#  13 Dec 2012 - R. Yantosca - Added biofit, sunparam, and removed some 
+#  13 Dec 2012 - R. Yantosca - Added biofit, sunparam, and removed some
 #                              obsolete functions
 #  22 Jul 2013 - M. Sulprizio- Added rcp_mod
 #  01 Aug 2013 - M. Sulprizio- Added aeic_mod
@@ -102,12 +102,10 @@ $(wildcard $(HDR)/*.F*)               \
 $(CORE)/main.F                        \
 $(CORE)/input_mod.F                   \
 $(CORE)/gc_environment_mod.F90        \
-$(CORE)/restart_mod.F                 \
 $(CORE)/cleanup.F                     \
 ./gc_transport.P                      \
 $(CORE)/transport_mod.F               \
 $(CORE)/pjc_pfix_mod.F                \
-$(CORE)/tpcore_bc_mod.F               \
 $(CORE)/tpcore_fvdas_mod.F90          \
 $(CORE)/tpcore_window_mod.F90         \
 ./gc_convection.P                     \
@@ -145,13 +143,11 @@ $(CORE)/carbon_mod.F                  \
 $(CORE)/dust_mod.F                    \
 $(CORE)/seasalt_mod.F                 \
 $(CORE)/sulfate_mod.F                 \
-$(CORE)/isoropiaII_mod.F              \
+$(CORE)/isorropiaII_mod.F             \
 ./gc_met.P                            \
 $(CORE)/dao_mod.F                     \
-$(CORE)/merra2_read_mod.F90           \
-$(CORE)/geosfp_read_mod.F90           \
+$(CORE)/flexgrid_read_mod.F90         \
 ./gc_specialty.P                      \
-$(CORE)/c2h6_mod.F                    \
 $(CORE)/co2_mod.F                     \
 $(CORE)/exchange_mod.F                \
 $(CORE)/global_ch4_mod.F              \
@@ -171,7 +167,7 @@ DVI2 := GC_v11-02_Core_Modules.dvi
 PDF2 := GC_v11-02_Core_Modules.pdf
 
 # Make commands
-srcdoc: 
+srcdoc:
 	rm -f $(TEX2)
 	./protex -sfp $(SRC2) > $(TEX2)
 	latex $(TEX2)

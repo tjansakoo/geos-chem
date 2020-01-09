@@ -6,7 +6,7 @@
 ! !MODULE: CMN_DIAG_mod.F
 !
 ! !DESCRIPTION: Module CMN\_DIAG\_mod contains size parameters and global
-!  variables for the GEOS-Chem diagnostic arrays.  This is mostly historical 
+!  variables for the GEOS-Chem diagnostic arrays.  This is mostly historical
 !  baggage.
 !\\
 !\\
@@ -42,31 +42,31 @@
       INTEGER, PARAMETER :: PD07=15
       INTEGER, PARAMETER :: PD08=4
       INTEGER, PARAMETER :: PD09=6
-      INTEGER, PARAMETER :: PD10=20            
+      INTEGER, PARAMETER :: PD10=20
       INTEGER, PARAMETER :: PD11=5
-      INTEGER, PARAMETER :: PD16=2  
-      INTEGER, PARAMETER :: PD17=8           
+      INTEGER, PARAMETER :: PD16=2
+      INTEGER, PARAMETER :: PD17=8
       INTEGER, PARAMETER :: PD18=8
       INTEGER, PARAMETER :: PD19=3
 #if defined( BPCH_DIAG ) || defined( BPCH_TIMESER ) || defined( MODEL_GEOS )
       INTEGER, PARAMETER :: PD21=8+(NRHAER+NDUST)*3+(NRHAER*2)+
      &                           (NSTRATAER*3)
 #endif
-      INTEGER, PARAMETER :: PD22=76
+      INTEGER, PARAMETER :: PD22=78
       INTEGER, PARAMETER :: PD43=4
       INTEGER, PARAMETER :: PD52=6
       INTEGER, PARAMETER :: PD55=3
       ! Potential temperature diagnostic (hotp 7/31/09)
-      INTEGER, PARAMETER :: PD57=1           
+      INTEGER, PARAMETER :: PD57=1
       INTEGER, PARAMETER :: PD58=15
 #if   defined( TOMAS )
       ! Special settings for TOMAS aerosol microphysics (win, bmy, 1/22/10)
-      INTEGER, PARAMETER :: PD59=TOMASBIN*TOMASSPEC   
-      INTEGER, PARAMETER :: PD60=TOMASBIN*TOMASSPEC    
-      INTEGER, PARAMETER :: PD61=2 
+      INTEGER, PARAMETER :: PD59=TOMASBIN*TOMASSPEC
+      INTEGER, PARAMETER :: PD60=TOMASBIN*TOMASSPEC
+      INTEGER, PARAMETER :: PD61=2
 #else
       ! Normal settings for non-TOMAS simulations
-      INTEGER, PARAMETER :: PD59=0            
+      INTEGER, PARAMETER :: PD59=0
       INTEGER, PARAMETER :: PD60=1
       INTEGER, PARAMETER :: PD61=0
 #endif
@@ -74,7 +74,7 @@
       INTEGER            :: PD65
       INTEGER, PARAMETER :: PD66=7
       INTEGER, PARAMETER :: PD67=23 ! (Lin, 31/03/09)
-      INTEGER, PARAMETER :: PD68=8     
+      INTEGER, PARAMETER :: PD68=8
       INTEGER, PARAMETER :: PD69=1
 
       !number of rad flux and optics output types
@@ -88,7 +88,7 @@
       INTEGER, PARAMETER :: PD72=187 ! Radiation (Ridley 10/2012)
 
       ! (eam, 2015): ISORROPIA pH, H+, & aerosol water
-      INTEGER, PARAMETER :: PD73=3 
+      INTEGER, PARAMETER :: PD73=3
 #endif
 
       !=================================================================
@@ -112,7 +112,7 @@
       INTEGER :: KDA48
 
       !=================================================================
-      ! Variables for the number of levels in multi-level diagnostics  
+      ! Variables for the number of levels in multi-level diagnostics
       ! Removed LD03 -- this is now in diag03_mod.f (bmy, 1/21/05)
       ! Added LD09 (bmy, 6/27/05)
       ! Added LD54 (phs, 9/22/06)
@@ -139,14 +139,16 @@
       INTEGER :: ND52, ND54, ND55, ND57, ND59
       INTEGER :: ND60, ND61, ND62, ND64, ND65, ND66, ND67, ND68
       INTEGER :: ND69, ND70, ND71, ND72, ND73, ND74, ND75
+#elif defined( BPCH_DIAG ) || defined( BPCH_TIMESER ) || defined( MODEL_GEOS )
+      INTEGER :: LD21
 #endif
 
       !=================================================================
       ! Variables for printing out selected tracers in diagnostic output
       !=================================================================
-      INTEGER :: TINDEX(MAX_DIAG,MAX_TRACER)          
-      INTEGER :: TCOUNT(MAX_DIAG) 				  
-      INTEGER :: TMAX(MAX_DIAG)					
+      INTEGER :: TINDEX(MAX_DIAG,MAX_TRACER)
+      INTEGER :: TCOUNT(MAX_DIAG)
+      INTEGER :: TMAX(MAX_DIAG)
 
 #if defined( BPCH_DIAG ) || defined( BPCH_TIMESER )
       !=================================================================
@@ -176,8 +178,8 @@
 !        to allow header files to be included in F90 freeform files.
 !        Also converted PARAMETER statements to F90 syntax. (bmy, 6/25/02)
 !  (2 ) Add LD05 for sulfate prod/loss (rjp, bdf, bmy, 9/20/02)
-!  (3 )  Removed obsolete variables NTAU0, IDAY0, JDATE0, JYEAR0, KDACC, 
-!         KDADYN, KDACONV, KDASRCE, KDACHEM, KDA3FLDS, KDA6FLDS, KDI6FLDS, 
+!  (3 )  Removed obsolete variables NTAU0, IDAY0, JDATE0, JYEAR0, KDACC,
+!         KDADYN, KDACONV, KDASRCE, KDACHEM, KDA3FLDS, KDA6FLDS, KDI6FLDS,
 !         KDKZZFLDS (bmy, 2/11/03)
 !  (4 ) Fix for LINUX - remove & from column 73 (bmy, 6/27/03)
 !  (5 ) Added LD03 for Kr85 Prod/loss diagnostic (bmy, 8/20/03)
@@ -189,13 +191,13 @@
 !  (10) Added multi level LD10 to common CDIAG1. Set PD10 to 20.  Set
 !        PD66 to 6. (phs, 9/18/07)
 !  (11) Added LD52 to common CDIAG1 (jaegle, 02/26/09)
-!  (12) Add GLYX, MGLY, SOAG, SOAM, and a few other tracers to AD17, AD18 
+!  (12) Add GLYX, MGLY, SOAG, SOAM, and a few other tracers to AD17, AD18
 !        for archiving rainout and washout fraction. (tmf, 1/7/09)
 !  (13) Add GLYX, MGLY J value archive. (tmf, 1/7/09)
-!  (14) Add GLYX, MGLY, SOAG, SOAM, and a few other tracers to AD37, AD38, 
-!        AD39 
+!  (14) Add GLYX, MGLY, SOAG, SOAM, and a few other tracers to AD37, AD38,
+!        AD39
 !        for archiving rainout and washout flux. (tmf, 1/7/09)
-!  (15) Add GLYX, MGLY, GLYC, 6 PANs, SOAG, SOAM dry dep, 
+!  (15) Add GLYX, MGLY, GLYC, 6 PANs, SOAG, SOAM dry dep,
 !        PD44 = 41.(tmf, 1/7/09)
 !  (16) Add biogenic C2H4 emission, PD46 = 6. (tmf, 1/20/09)
 !  (17) Add one met field to ND67 (EFLUX). (ccc, 5/14/09)
@@ -205,7 +207,7 @@
 !        (win, bmy, 1/22/10)
 !  (20) Add LD57 and PD57 (potential temperature) (hotp, 3/15/10)
 !  03 Aug 2010 - R. Yantosca - Added ProTeX headers
-!  03 Aug 2010 - P. Kasibhatla & R. Yantosca - Now set MAX_TRACER to NNPAR+6 
+!  03 Aug 2010 - P. Kasibhatla & R. Yantosca - Now set MAX_TRACER to NNPAR+6
 !                                              to match ND09 diagnostic
 !  09 Mar 2011 - R. Yantosca - Updated MAX_TRACER for APM (G. Luo)
 !  03 Aug 2011 - M. Long     - Converted from Header file to Module
@@ -237,31 +239,33 @@
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE Init_CMN_DIAG( am_I_Root, RC )
+      SUBROUTINE Init_CMN_DIAG( am_I_Root, State_Grid, RC )
 !
 ! !USES:
 !
       USE ErrCode_Mod
+      USE State_Grid_Mod, ONLY : GrdState
 !
 ! !INPUT PARAMETERS:
 !
-      LOGICAL, INTENT(IN)  :: am_I_Root   ! Are we on the root CPU?
+      LOGICAL,        INTENT(IN)  :: am_I_Root   ! Are we on the root CPU?
+      TYPE(GrdState), INTENT(IN)  :: State_Grid  ! Grid State object
 !
 ! !OUTPUT PARAMETERS:
 !
-      INTEGER, INTENT(OUT) :: RC          ! Success or failure?
-! 
-! !REVISION HISTORY: 
+      INTEGER,        INTENT(OUT) :: RC          ! Success or failure?
+!
+! !REVISION HISTORY:
 !  19 Nov 2012 - R. Yantosca - Added ProTeX headers
 !EOP
 !------------------------------------------------------------------------------
 !BOC
       ! Assume success
       RC   = GC_SUCCESS
-      
+
 #if defined( BPCH_DIAG ) || defined( BPCH_TIMESER )
       ! Set PD65 (for backwards compatibility, for now)
-      PD65 = LLPAR*MAXFAM 
+      PD65 = State_Grid%NZ * MAXFAM
       PD64 = W_
 #endif
 

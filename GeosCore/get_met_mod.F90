@@ -6,7 +6,7 @@
 !
 ! !IROUTINE: get_met_mod.F90
 !
-! !DESCRIPTION: Module GET\_MET\_MOD contains variables and routines for 
+! !DESCRIPTION: Module GET\_MET\_MOD contains variables and routines for
 !  reading the meteorological data, from the HEMCO data structure.
 !\\
 !\\
@@ -48,25 +48,27 @@ CONTAINS
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE Get_Met_2D( Q, v_name, t_index )
+  SUBROUTINE Get_Met_2D( State_Grid, Q, v_name, t_index )
 !
 ! !USES:
 !
     USE ErrCode_Mod
     USE Error_Mod,          ONLY : Error_Stop
     USE HCO_INTERFACE_MOD,  ONLY : HcoState
-    USE HCO_EmisList_Mod,   ONLY : HCO_GetPtr 
+    USE HCO_EmisList_Mod,   ONLY : HCO_GetPtr
+    USE State_Grid_Mod,     ONLY : GrdState
 !
 !
 ! !INPUT PARAMETERS:
 !
-    CHARACTER(LEN=*),INTENT(IN)            :: v_name    ! netCDF variable name
-    INTEGER,         INTENT(IN), OPTIONAL  :: t_index   ! Time index (default=1)
+    TYPE(GrdState),  INTENT(IN)            :: State_Grid ! Grid State object
+    CHARACTER(LEN=*),INTENT(IN)            :: v_name     ! netCDF variable name
+    INTEGER,         INTENT(IN), OPTIONAL  :: t_index    ! Time index(default=1)
 !
 ! !OUTPUT PARAMETERS:
 !
-    REAL*4,          INTENT(OUT)           :: Q(IIPAR,JJPAR) ! Temporary
-                                                             ! data array
+    REAL*4,          INTENT(OUT)           :: Q(State_Grid%NX, & ! Temporary
+                                                State_Grid%NY)   !  data array
 !
 ! !REVISION HISTORY:
 !  04 Mar 2016 - J.W.Zhuang  - Initial version
@@ -76,7 +78,7 @@ CONTAINS
 !BOC
 !
 ! !LOCAL VARIABLES:
-!   
+!
     ! Scalars
     INTEGER :: T
     LOGICAL :: FND
@@ -109,12 +111,12 @@ CONTAINS
 
       ! Stop with error message
     IF ( RC /= GC_SUCCESS .or. ( .not. FND ) ) THEN
-       CALL ERROR_STOP (trim('Could not find '//v_name//' in HEMCO data list!'), & 
+       CALL ERROR_STOP (trim('Could not find '//v_name//' in HEMCO data list!'), &
                          'GET_MET_2D (get_met_mod.F90)' )
     ENDIF
 
     ! transfer to output array
-    Q = Ptr2D(:,:) 
+    Q = Ptr2D(:,:)
 
     ! Free the pointer
     Ptr2D => NULL()
@@ -133,25 +135,28 @@ CONTAINS
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE Get_Met_3D( Q, v_name, t_index )
+  SUBROUTINE Get_Met_3D( State_Grid, Q, v_name, t_index )
 !
 ! !USES:
 !
     USE ErrCode_Mod
     USE Error_Mod,          ONLY : Error_Stop
     USE HCO_INTERFACE_MOD,  ONLY : HcoState
-    USE HCO_EmisList_Mod,   ONLY : HCO_GetPtr 
+    USE HCO_EmisList_Mod,   ONLY : HCO_GetPtr
+    USE State_Grid_Mod,     ONLY : GrdState
 !
 !
 ! !INPUT PARAMETERS:
 !
-    CHARACTER(LEN=*),INTENT(IN)            :: v_name    ! netCDF variable name
-    INTEGER,         INTENT(IN), OPTIONAL  :: t_index   ! Time index (default=1)
+    TYPE(GrdState),  INTENT(IN)            :: State_Grid ! Grid State object
+    CHARACTER(LEN=*),INTENT(IN)            :: v_name     ! netCDF variable name
+    INTEGER,         INTENT(IN), OPTIONAL  :: t_index    ! Time index(default=1)
 !
 ! !OUTPUT PARAMETERS:
 !
-    REAL*4,          INTENT(OUT)           :: Q(IIPAR,JJPAR,LLPAR) ! Temporary
-                                                                   ! data array
+    REAL*4,          INTENT(OUT)           :: Q(State_Grid%NX, & ! Temporary
+                                                State_Grid%NY, & !  data array
+                                                State_Grid%NZ)
 !
 ! !REVISION HISTORY:
 !  04 Mar 2016 - J.W.Zhuang  - Initial version
@@ -161,7 +166,7 @@ CONTAINS
 !BOC
 !
 ! !LOCAL VARIABLES:
-!   
+!
     ! Scalars
     INTEGER :: T
     LOGICAL :: FND
@@ -187,19 +192,19 @@ CONTAINS
     ELSE
        T = 1
     ENDIF
-    
+
     ! Get the pointer to the data in the HEMCO data structure
     CALL HCO_GetPtr( am_I_Root, HcoState, v_name, Ptr3D, RC, TIDX=T, &
                      FOUND=FND )
 
       ! Stop with error message
     IF ( RC /= GC_SUCCESS .or. ( .not. FND ) ) THEN
-       CALL ERROR_STOP (trim('Could not find '//v_name//' in HEMCO data list!'), & 
+       CALL ERROR_STOP (trim('Could not find '//v_name//' in HEMCO data list!'), &
                          'GET_MET_3D(get_met_mod.F90)' )
     ENDIF
 
     ! transfer to output array
-    Q = Ptr3D(:,:,:) 
+    Q = Ptr3D(:,:,:)
 
     ! Free the pointer
     Ptr3D => NULL()
@@ -218,25 +223,28 @@ CONTAINS
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE Get_Met_3De( Q, v_name, t_index )
+  SUBROUTINE Get_Met_3De( State_Grid, Q, v_name, t_index )
 !
 ! !USES:
 !
     USE ErrCode_Mod
     USE Error_Mod,          ONLY : Error_Stop
     USE HCO_INTERFACE_MOD,  ONLY : HcoState
-    USE HCO_EmisList_Mod,   ONLY : HCO_GetPtr 
+    USE HCO_EmisList_Mod,   ONLY : HCO_GetPtr
+    USE State_Grid_Mod,     ONLY : GrdState
 !
 !
 ! !INPUT PARAMETERS:
 !
-    CHARACTER(LEN=*),INTENT(IN)            :: v_name    ! netCDF variable name
-    INTEGER,         INTENT(IN), OPTIONAL  :: t_index   ! Time index (default=1)
+    TYPE(GrdState),  INTENT(IN)            :: State_Grid ! Grid State object
+    CHARACTER(LEN=*),INTENT(IN)            :: v_name     ! netCDF variable name
+    INTEGER,         INTENT(IN), OPTIONAL  :: t_index    ! Time index(default=1)
 !
 ! !OUTPUT PARAMETERS:
 !
-    REAL*4,          INTENT(OUT)           :: Q(IIPAR,JJPAR,LLPAR+1)! Temporary
-                                                                    ! data array
+    REAL*4,          INTENT(OUT)           :: Q(State_Grid%NX, & ! Temporary
+                                                State_Grid%NY, & ! data array
+                                                State_Grid%NZ+1)
 !
 ! !REVISION HISTORY:
 !  04 Mar 2016 - J.W.Zhuang  - Initial version
@@ -246,7 +254,7 @@ CONTAINS
 !BOC
 !
 ! !LOCAL VARIABLES:
-!   
+!
     ! Scalars
     INTEGER :: T
     LOGICAL :: FND
@@ -279,12 +287,12 @@ CONTAINS
 
       ! Stop with error message
     IF ( RC /= GC_SUCCESS .or. ( .not. FND ) ) THEN
-       CALL ERROR_STOP (trim('Could not find '//v_name//' in HEMCO data list!'), & 
+       CALL ERROR_STOP (trim('Could not find '//v_name//' in HEMCO data list!'), &
                          'GET_MET_3De(get_met_mod.F90)' )
     ENDIF
 
     ! transfer to output array
-    Q = Ptr3D(:,:,:) 
+    Q = Ptr3D(:,:,:)
 
     ! Free the pointer
     Ptr3D => NULL()

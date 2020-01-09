@@ -5,7 +5,7 @@
 #
 # !MODULE: Makefile (in doc subdirectory)
 #
-# !DESCRIPTION: Makefile for building the documentation (in PDF and 
+# !DESCRIPTION: Makefile for building the documentation (in PDF and
 #  PostScript formats) for the GEOS-Chem model source code, makefiles,
 #  and related scripts.
 #\\
@@ -20,7 +20,7 @@
 # You must have the LaTeX utilities (latex, dvips, dvipdf) installed
 # on your system in order to build the documentation.
 #
-# !REVISION HISTORY: 
+# !REVISION HISTORY:
 #  16 Sep 2009 - R. Yantosca - Initial version
 #  21 Sep 2009 - R. Yantosca - Now call Makefile in help directory to
 #                              display the help screen options
@@ -28,7 +28,7 @@
 #                              GeosUtil and GeosCore subdirectories
 #  11 Dec 2009 - R. Yantosca - Now get SHELL from Makefile_header.mk
 #  28 Jan 2010 - R. Yantosca - Now add the Makefiles in the GeosTomas and
-#                              ISOROPIA subdirs to the documentation
+#                              ISORROPIA subdirs to the documentation
 #  27 Aug 2010 - R. Yantosca - Brought up to date for newly documented code
 #  31 Aug 2010 - R. Yantosca - Add documentation for GTMM routines
 #  14 Sep 2010 - R. Yantosca - Now split make commands into include files
@@ -50,17 +50,15 @@
 # Define variables
 ROOT  :=..
 BIN   :=$(ROOT)/bin
-BPCH  :=$(ROOT)/GeosBpch
 CORE  :=$(ROOT)/GeosCore
 DOC   :=$(ROOT)/doc
 ESMF  :=$(ROOT)/ESMF
-GCRT  :=$(ROOT)/GCRT
 GTMM  :=$(ROOT)/GTMM
 HCO   :=$(ROOT)/HEMCO/
 HDR   :=$(ROOT)/Headers
 HELP  :=$(ROOT)/help
 HIST  :=$(ROOT)/History
-ISO   :=$(ROOT)/ISOROPIA
+ISO   :=$(ROOT)/ISORROPIA
 NC    :=$(ROOT)/NcdfUtil
 KPP   :=$(ROOT)/KPP
 UTIL  :=$(ROOT)/GeosUtil

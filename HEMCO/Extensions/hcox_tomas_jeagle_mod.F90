@@ -6,30 +6,30 @@
 !
 ! !MODULE: hcox_tomas_jeagle_mod.F90
 !
-! !DESCRIPTION: Module HCOX\_TOMAS\_JEAGLE\_Mod contains routines to 
+! !DESCRIPTION: Module HCOX\_TOMAS\_JEAGLE\_Mod contains routines to
 !  calculate sea salt aerosol emissions for the TOMAS aerosol microphysics
 !  package. JKODROS - This is an update of hcox\_tomas\_seasalt\_mod.F90 to
 !  use Jeagle emissions. Should bring TOMAS emissions in line with bulk sea
-!  salt. 
+!  salt.
 !\\
-!\\ 
+!\\
 !  This is a HEMCO extension module that uses many of the HEMCO core
 !  utilities.
 !\\
 !\\
 !  References:
 !  \begin{itemize}
-!  \item Clarke, A.D., Owens, S., Zhou, J. \emph{An ultrafine sea-salt flux 
-!        from breaking waves: Implications for CCN in the remote marine 
+!  \item Clarke, A.D., Owens, S., Zhou, J. \emph{An ultrafine sea-salt flux
+!        from breaking waves: Implications for CCN in the remote marine
 !        atmosphere}, \underline{J. Geophys. Res.}, 2006.
 !  \end{itemize}
 !
-! !INTERFACE: 
+! !INTERFACE:
 !
 MODULE HCOX_TOMAS_Jeagle_Mod
 !
 ! !USES:
-! 
+!
   USE HCO_Error_Mod
   USE HCO_Diagn_Mod
   USE HCO_State_Mod,  ONLY : HCO_State
@@ -58,13 +58,13 @@ MODULE HCOX_TOMAS_Jeagle_Mod
 
    ! Scalars
    INTEGER               :: Instance
-   INTEGER               :: ExtNr                  ! HEMCO extension #   
+   INTEGER               :: ExtNr                  ! HEMCO extension #
    REAL(dp)              :: TOMAS_COEF             ! Seasalt emiss coeff.
 
    ! Arrays
    INTEGER,  ALLOCATABLE :: HcoIDs    (:      )    ! HEMCO species ID's
    REAL(dp), POINTER     :: TOMAS_DBIN(:      )    ! TOMAS bin width
-   REAL(dp), POINTER     :: DRFAC     (:      )    ! TOMAS area? 
+   REAL(dp), POINTER     :: DRFAC     (:      )    ! TOMAS area?
    REAL(dp), POINTER     :: TC1       (:,:,:,:)    ! Aerosol mass
    REAL(dp), POINTER     :: TC2       (:,:,:,:)    ! Aerosol number
 
@@ -72,8 +72,8 @@ MODULE HCOX_TOMAS_Jeagle_Mod
   END TYPE MyInst
 
   ! Pointer to instances
-  TYPE(MyInst), POINTER  :: AllInst => NULL()   
-   
+  TYPE(MyInst), POINTER  :: AllInst => NULL()
+
 CONTAINS
 !EOC
 !------------------------------------------------------------------------------
@@ -83,8 +83,8 @@ CONTAINS
 !
 ! !IROUTINE: HCOX_TOMAS_Jeagle_Run
 !
-! !DESCRIPTION: Subroutine HCOX\_TOMAS\_Jeagle\_Run emits sea-salt into the 
-!  TOMAS sectional sea-salt mass and aerosol number arrays.  Sea-salt emission 
+! !DESCRIPTION: Subroutine HCOX\_TOMAS\_Jeagle\_Run emits sea-salt into the
+!  TOMAS sectional sea-salt mass and aerosol number arrays.  Sea-salt emission
 !  parameterization of Jeagle et al. (2011).
 !\\
 !\\
@@ -102,15 +102,15 @@ CONTAINS
 !
     LOGICAL,          INTENT(IN)    :: am_I_Root   ! root CPU?
     TYPE(Ext_State),  POINTER       :: ExtState    ! Extension Options object
-    TYPE(HCO_State),  POINTER       :: HcoState    ! HEMCO state object 
+    TYPE(HCO_State),  POINTER       :: HcoState    ! HEMCO state object
 !
 ! !INPUT/OUTPUT PARAMETERS:
 !
     INTEGER,          INTENT(INOUT) :: RC          ! Success or failure?
-! 
+!
 ! !REMARKS:
-!  
-! 
+!
+!
 ! !REVISION HISTORY:
 !  01 Oct 2014 - R. Yantosca - Initial version, based on TOMAS SRCSALT30 code
 !  20 May 2015 - J. Kodros   - Add seasalt number & mass to HEMCO state
@@ -135,14 +135,15 @@ CONTAINS
 
     ! Strings
     CHARACTER(LEN=31) :: SpcName
-       
+
     ! Pointers
+    TYPE(MyInst), POINTER :: Inst
     REAL(dp), POINTER :: ptr3D(:,:,:)
 
     ! For debugging
     !INTEGER            :: ii=50, jj=10
 
-    ! Error handling    
+    ! Error handling
     LOGICAL                :: ERR
 
     !=================================================================
@@ -155,11 +156,11 @@ CONTAINS
     ! Enter
     CALL HCO_ENTER ( HcoState%Config%Err, 'HCOX_TOMAS_Jeagle_Run (hcox_TOMAS_Jeagle_mod.F90)', RC )
     IF ( RC /= HCO_SUCCESS ) RETURN
-    
+
     ! Get instance
     Inst   => NULL()
     CALL InstGet ( ExtState%TOMAS_Jeagle, Inst, RC )
-    IF ( RC /= HCO_SUCCESS ) THEN 
+    IF ( RC /= HCO_SUCCESS ) THEN
        WRITE(MSG,*) 'Cannot find TOMAS_Jeagle instance Nr. ', ExtState%TOMAS_Jeagle
        CALL HCO_ERROR(HcoState%Config%Err,MSG,RC)
        RETURN
@@ -169,7 +170,7 @@ CONTAINS
     Inst%TC1 = 0.0_hp
     Inst%TC2 = 0.0_hp
 
-    ! Depending on the grid resolution. 4x5 (default) doesn't need 
+    ! Depending on the grid resolution. 4x5 (default) doesn't need
     ! adjusting coeff
 
     !### Debug
@@ -187,7 +188,7 @@ CONTAINS
 
        ! Grid box surface area [m2]
        A_M2  = HcoState%Grid%AREA_M2%Val(I,J)
-         
+
        ! Get the fraction of the box that is over water
        IF ( HCO_LandType( ExtState%WLI%Arr%Val(I,J),              &
                           ExtState%ALBD%Arr%Val(I,J) ) == 0 ) THEN
@@ -197,13 +198,13 @@ CONTAINS
        ENDIF
 
        ! Skip boxes that are not at least 50% water
-       IF ( FOCEAN > 0.5d0 ) THEN 
+       IF ( FOCEAN > 0.5d0 ) THEN
 
           ! Wind speed at 10 m altitude [m/s]
           W10M = SQRT( ExtState%U10M%Arr%Val(I,J)**2  &
                +       ExtState%V10M%Arr%Val(I,J)**2 )
 
-      ! Sea surface temperature in Celcius 
+      ! Sea surface temperature in Celcius
       SST = ExtState%TSKIN%Arr%Val(I,J) - 273.15d0
 
       ! Limit SST to 0-30C range
@@ -213,12 +214,12 @@ CONTAINS
           ! Empirical SST scaling factor (jaegle 5/11/11)
           SCALE = 0.329d0 + 0.0904d0*SST -  &
                   0.00717d0*SST**2d0 + 0.000207d0*SST**3d0
-                
+
           !---------------------------------------------------------------
           ! Partition TOMAS_Jeagle emissions w/in the boundary layer
           !---------------------------------------------------------------
           DO K = 1, HcoState%MicroPhys%nBins
-             rwet=TOMAS_DBIN(k)*1.0E6*BETHA/2. ! convert from dry diameter [m] to wet (80% RH) radius [um]  
+             rwet=Inst%TOMAS_DBIN(k)*1.0E6*BETHA/2. ! convert from dry diameter [m] to wet (80% RH) radius [um]
          ! jkodros - testing out BETHA 7/29/15
              if (rwet > 0.d0) then
                   A=4.7*(1.+30.*rwet)**(-0.017*rwet**(-1.44))
@@ -232,7 +233,7 @@ CONTAINS
         dfo=0.d0
          endif
 
-             dfo=dfo*DRFAC(k)*BETHA  !hemco units???? jkodros
+             dfo=dfo*Inst%DRFAC(k)*BETHA  !hemco units???? jkodros
          dfo=dfo*focean*SCALE
 
              ! Loop thru the boundary layer
@@ -251,7 +252,7 @@ CONTAINS
                    MASS   = NUMBER                                      &
                           * SQRT( HcoState%MicroPhys%BinBound(K  ) *    &
                                   HcoState%MicroPhys%BinBound(K+1)   )
-                   
+
                    ! Store number & mass
                    Inst%TC1(I,J,L,K) = NUMBER
                    Inst%TC2(I,J,L,K) = MASS
@@ -289,15 +290,15 @@ CONTAINS
        ENDIF
 
        ! HEMCO species ID
-       HcoID = HCO_GetHcoID( TRIM(SpcName), HcoState ) 
-        
+       HcoID = HCO_GetHcoID( TRIM(SpcName), HcoState )
+
        !### Debug
        !print*, 'JACK SEASALT EMISSIONS AT 50, 10,: ', TC1(ii,jj,1,k)
        !print*, 'JACK HCO ID: ', HcoID
-    
+
        ! Add number to the HEMCO data structure
        CALL HCO_EmisAdd( am_I_Root, HcoState, Inst%TC1(:,:,:,K), &
-                         Inst%HcoID, RC)
+                         HcoID, RC)
        IF ( RC /= HCO_SUCCESS ) THEN
           CALL HCO_ERROR( HcoState%Config%Err, 'HCO_EmisAdd error: FLUXSALT', RC )
           RETURN
@@ -310,10 +311,10 @@ CONTAINS
 
     ! Nullify pointers
     Inst    => NULL()
-    
+
     ! Leave w/ success
     CALL HCO_LEAVE ( HcoState%Config%Err, RC )
-                
+
   END SUBROUTINE HCOX_TOMAS_Jeagle_Run
 !EOC
 !------------------------------------------------------------------------------
@@ -330,7 +331,7 @@ CONTAINS
 ! !INTERFACE:
 !
   SUBROUTINE HCOX_TOMAS_Jeagle_Init( am_I_Root, HcoState,     &
-                                      ExtName,   ExtState, RC ) 
+                                      ExtName,   ExtState, RC )
 !
 ! !USES:
 !
@@ -341,7 +342,7 @@ CONTAINS
 ! !INPUT PARAMETERS:
 !
     LOGICAL,          INTENT(IN   )  :: am_I_Root   ! root CPU?
-    TYPE(HCO_State),  POINTER        :: HcoState    ! HEMCO state object 
+    TYPE(HCO_State),  POINTER        :: HcoState    ! HEMCO state object
     CHARACTER(LEN=*), INTENT(IN   )  :: ExtName     ! Extension name
     TYPE(Ext_State),  POINTER        :: ExtState    ! Extension options object
 !
@@ -372,7 +373,7 @@ CONTAINS
 
     ! Pointers
     TYPE(MyInst), POINTER          :: Inst
-    
+
     !=================================================================
     ! HCOX_TOMAS_Jeagle_Init begins here!
     !=================================================================
@@ -380,8 +381,8 @@ CONTAINS
     ! Extension Nr.
     ExtNr = GetExtNr( HcoState%Config%ExtList, TRIM(ExtName) )
     IF ( ExtNr <= 0 ) RETURN
- 
-    ! Enter 
+
+    ! Enter
     CALL HCO_ENTER( HcoState%Config%Err, 'HCOX_TOMAS_Jeagle_Init (hcox_tomas_jeagle_mod.F90)', RC )
     IF ( RC /= HCO_SUCCESS ) RETURN
 
@@ -394,18 +395,18 @@ CONTAINS
     ENDIF
     ! Also fill Inst%ExtNr
     Inst%ExtNr = ExtNr
-    
-    ! ---------------------------------------------------------------------- 
-    ! Get species IDs and settings 
-    ! ---------------------------------------------------------------------- 
-  
+
+    ! ----------------------------------------------------------------------
+    ! Get species IDs and settings
+    ! ----------------------------------------------------------------------
+
     ! Get HEMCO species IDs
     CALL HCO_GetExtHcoID( HcoState, Inst%ExtNr, Inst%HcoIDs, SpcNames, &
                           nSpc, RC )
     IF ( RC /= HCO_SUCCESS ) RETURN
     IF ( nSpc < HcoState%MicroPhys%nBins ) THEN
-       MSG = 'Not enough sea salt emission species set' 
-       CALL HCO_ERROR(HcoState%Config%Err,MSG, RC ) 
+       MSG = 'Not enough sea salt emission species set'
+       CALL HCO_ERROR(HcoState%Config%Err,MSG, RC )
        RETURN
     ENDIF
 
@@ -413,7 +414,7 @@ CONTAINS
     ALLOCATE ( Inst%TOMAS_DBIN( HcoState%MicroPhys%nBins ), STAT=RC )
     IF ( RC /= HCO_SUCCESS ) THEN
        MSG = 'Cannot allocate TOMAS_DBIN array (hcox_tomas_jeagle_mod.F90)'
-       CALL HCO_ERROR(HcoState%Config%Err,MSG, RC )      
+       CALL HCO_ERROR(HcoState%Config%Err,MSG, RC )
        RETURN
     ENDIF
 
@@ -426,7 +427,7 @@ CONTAINS
     ENDIF
 
     ! JKODROS - ALLOCATE TC1 and TC2
-    ALLOCATE ( Inst%TC1( HcoState%NX, HcoState%NY,& 
+    ALLOCATE ( Inst%TC1( HcoState%NX, HcoState%NY,&
                HcoState%NZ, HcoState%MicroPhys%nBins ), STAT=RC )
     IF ( RC /= HCO_SUCCESS ) THEN
        MSG = 'Cannot allocate TC1 array (hcox_tomas_jeagle_mod.F90)'
@@ -437,7 +438,7 @@ CONTAINS
     ENDIF
 
     ! JKODROS - ALLOCATE TC1 and TC2
-    ALLOCATE ( Inst%TC2( HcoState%NX, HcoState%NY,& 
+    ALLOCATE ( Inst%TC2( HcoState%NX, HcoState%NY,&
                HcoState%NZ, HcoState%MicroPhys%nBins ), STAT=RC )
     IF ( RC /= HCO_SUCCESS ) THEN
        MSG = 'Cannot allocate TC2 array (hcox_tomas_jeagle_mod.F90)'
@@ -450,7 +451,7 @@ CONTAINS
 ! ----- IMPORTANT BINS ONLY CORRECTLY SET UP FOR TOMAS 15 PLEASE ADJUST OTHERS -jkodros (7/21/15)
 ! ----  6/24/16 - JKodros - I have updated the DRFAC. They should (hopefully) be
 ! ----  correct now. DRFAC is the bin width (radius not diameter) for DRY SS
-#if defined( TOMAS12 ) 
+#if defined( TOMAS12 )
 
     !-----------------------------------------------------------------------
     ! TOMAS simulation w/ 12 size-resolved bins
@@ -476,7 +477,7 @@ CONTAINS
           7.75087d-08,   1.23037d-07,    1.95310d-07,     3.10035d-07,   &
           4.92150d-07,   7.81239d-07,    1.74054d-06,     5.52588d-06 /)
 
-    Inst%DRFAC      = (/         0d0,            0d0,             0d0,   & 
+    Inst%DRFAC      = (/         0d0,            0d0,             0d0,   &
           2.84132d-03,   4.51031d-03,    7.15968d-03,     1.13653d-02,   &
           1.80413d-02,   2.86387d-02,    4.54612d-02,     7.21651d-02,   &
           1.14555d-01,   1.81845d-01,    1.06874d+00,     3.39304d+00 /)
@@ -532,24 +533,26 @@ CONTAINS
     !=======================================================================
     ! Allocate quantities depending on horizontal resolution
     !=======================================================================
-#if defined( GRID4x5  )
+    IF ( TRIM( HcoState%Config%GridRes) == '4.0x5.0' ) THEN
 
-    !-----------------------------------------------------------------------
-    ! TOMAS simulations at 4 x 5 global resolution
-    !-----------------------------------------------------------------------
-    Inst%TOMAS_COEF = 1.d0
+       !-----------------------------------------------------------------------
+       ! TOMAS simulations at 4 x 5 global resolution
+       !-----------------------------------------------------------------------
+       Inst%TOMAS_COEF = 1.d0
 
-#elif defined( GRID2x25 )
+    ELSE IF ( TRIM( HcoState%Config%GridRes) == '2.0x2.5' ) THEN
 
-    !-----------------------------------------------------------------------
-    ! TOMAS simulations at 2 x 2.5 global resolution
-    !-----------------------------------------------------------------------
-    Inst%TOMAS_COEF = 1.d0
+       !-----------------------------------------------------------------------
+       ! TOMAS simulations at 2 x 2.5 global resolution
+       !-----------------------------------------------------------------------
+       Inst%TOMAS_COEF = 1.d0
 
-#else
-    MSG = 'Adjust TOMAS_Jeagle emiss coeff (TOMAS_COEF) for your model res: SRCSALT30: hcox_TOMAS_jeagle_mod.F90'
-      call HCO_ERROR(HcoState%Config%Err,MSG, RC )
-#endif
+    ELSE
+
+       MSG = 'Adjust TOMAS_Jeagle emiss coeff (TOMAS_COEF) for your model res: SRCSALT30: hcox_TOMAS_jeagle_mod.F90'
+       CALL HCO_ERROR(HcoState%Config%Err,MSG, RC )
+
+    ENDIF
 
     !=======================================================================
     ! Activate this module and the fields of ExtState that it uses
@@ -562,7 +565,7 @@ CONTAINS
     ExtState%U10M%DoUse        = .TRUE.
     ExtState%V10M%DoUse        = .TRUE.
     ExtState%FRAC_OF_PBL%DoUse = .TRUE.
-    ExtState%FRCLND%DoUse      = .TRUE.    
+    ExtState%FRCLND%DoUse      = .TRUE.
 
     !=======================================================================
     ! Leave w/ success
@@ -571,9 +574,9 @@ CONTAINS
 
     ! Nullify pointers
     Inst    => NULL()
-    
-    CALL HCO_LEAVE( HcoState%Config%Err, RC ) 
- 
+
+    CALL HCO_LEAVE( HcoState%Config%Err, RC )
+
   END SUBROUTINE HCOX_TOMAS_Jeagle_Init
 !EOC
 !------------------------------------------------------------------------------
@@ -581,9 +584,9 @@ CONTAINS
 !------------------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: HCOX_TOMAS_Jeagle_Final 
+! !IROUTINE: HCOX_TOMAS_Jeagle_Final
 !
-! !DESCRIPTION: Subroutine HcoX\_TOMAS\_Jeagle\_Final deallocates 
+! !DESCRIPTION: Subroutine HcoX\_TOMAS\_Jeagle\_Final deallocates
 !  all module arrays.
 !\\
 !\\
@@ -611,14 +614,14 @@ CONTAINS
 !------------------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: InstGet 
+! !IROUTINE: InstGet
 !
-! !DESCRIPTION: Subroutine InstGet returns a poiner to the desired instance. 
+! !DESCRIPTION: Subroutine InstGet returns a poiner to the desired instance.
 !\\
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE InstGet ( Instance, Inst, RC, PrevInst ) 
+  SUBROUTINE InstGet ( Instance, Inst, RC, PrevInst )
 !
 ! !INPUT PARAMETERS:
 !
@@ -628,7 +631,7 @@ CONTAINS
     TYPE(MyInst),     POINTER, OPTIONAL :: PrevInst
 !
 ! !REVISION HISTORY:
-!  18 Feb 2016 - C. Keller   - Initial version 
+!  18 Feb 2016 - C. Keller   - Initial version
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -637,11 +640,11 @@ CONTAINS
     !=================================================================
     ! InstGet begins here!
     !=================================================================
- 
+
     ! Get instance. Also archive previous instance.
-    PrvInst => NULL() 
+    PrvInst => NULL()
     Inst    => AllInst
-    DO WHILE ( ASSOCIATED(Inst) ) 
+    DO WHILE ( ASSOCIATED(Inst) )
        IF ( Inst%Instance == Instance ) EXIT
        PrvInst => Inst
        Inst    => Inst%NextInst
@@ -658,21 +661,21 @@ CONTAINS
     PrvInst => NULL()
     RC = HCO_SUCCESS
 
-  END SUBROUTINE InstGet 
+  END SUBROUTINE InstGet
 !EOC
 !------------------------------------------------------------------------------
 !                  Harvard-NASA Emissions Component (HEMCO)                   !
 !------------------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: InstCreate 
+! !IROUTINE: InstCreate
 !
-! !DESCRIPTION: Subroutine InstCreate creates a new instance. 
+! !DESCRIPTION: Subroutine InstCreate creates a new instance.
 !\\
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE InstCreate ( ExtNr, Instance, Inst, RC ) 
+  SUBROUTINE InstCreate ( ExtNr, Instance, Inst, RC )
 !
 ! !INPUT PARAMETERS:
 !
@@ -685,7 +688,7 @@ CONTAINS
 !
 ! !INPUT/OUTPUT PARAMETERS:
 !
-    INTEGER,       INTENT(INOUT)    :: RC 
+    INTEGER,       INTENT(INOUT)    :: RC
 !
 ! !REVISION HISTORY:
 !  18 Feb 2016 - C. Keller   - Initial version
@@ -701,7 +704,7 @@ CONTAINS
     !=================================================================
 
     ! ----------------------------------------------------------------
-    ! Generic instance initialization 
+    ! Generic instance initialization
     ! ----------------------------------------------------------------
 
     ! Initialize
@@ -718,7 +721,7 @@ CONTAINS
     ! Create new instance
     ALLOCATE(Inst)
     Inst%Instance = nnInst + 1
-    Inst%ExtNr    = ExtNr 
+    Inst%ExtNr    = ExtNr
 
     ! Attach to instance list
     Inst%NextInst => AllInst
@@ -742,18 +745,18 @@ CONTAINS
 !BOP
 !BOP
 !
-! !IROUTINE: InstRemove 
+! !IROUTINE: InstRemove
 !
-! !DESCRIPTION: Subroutine InstRemove creates a new instance. 
+! !DESCRIPTION: Subroutine InstRemove creates a new instance.
 !\\
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE InstRemove ( Instance ) 
+  SUBROUTINE InstRemove ( Instance )
 !
 ! !INPUT PARAMETERS:
 !
-    INTEGER                         :: Instance 
+    INTEGER                         :: Instance
 !
 ! !REVISION HISTORY:
 !  18 Feb 2016 - C. Keller   - Initial version
@@ -769,33 +772,33 @@ CONTAINS
     ! InstRemove begins here!
     !=================================================================
 
-    ! Init 
+    ! Init
     PrevInst => NULL()
     Inst     => NULL()
-    
+
     ! Get instance. Also archive previous instance.
     CALL InstGet ( Instance, Inst, RC, PrevInst=PrevInst )
 
     ! Instance-specific deallocation
-    IF ( ASSOCIATED(Inst) ) THEN 
-   
+    IF ( ASSOCIATED(Inst) ) THEN
+
        ! Pop off instance from list
        IF ( ASSOCIATED(PrevInst) ) THEN
 
-          IF ( ASSOCIATED( TOMAS_DBIN ) ) DEALLOCATE( TOMAS_DBIN )
-          IF ( ASSOCIATED( DRFAC      ) ) DEALLOCATE( DRFAC      )
-          IF ( ASSOCIATED( TC1        ) ) DEALLOCATE( TC1        )
-          IF ( ASSOCIATED( TC2        ) ) DEALLOCATE( TC2        )
-          IF ( ALLOCATED ( HcoIDs     ) ) DEALLOCATE( HcoIDs     )
+          IF ( ASSOCIATED( Inst%TOMAS_DBIN ) ) DEALLOCATE( Inst%TOMAS_DBIN )
+          IF ( ASSOCIATED( Inst%DRFAC      ) ) DEALLOCATE( Inst%DRFAC      )
+          IF ( ASSOCIATED( Inst%TC1        ) ) DEALLOCATE( Inst%TC1        )
+          IF ( ASSOCIATED( Inst%TC2        ) ) DEALLOCATE( Inst%TC2        )
+          IF ( ALLOCATED ( Inst%HcoIDs     ) ) DEALLOCATE( Inst%HcoIDs     )
 
           PrevInst%NextInst => Inst%NextInst
        ELSE
           AllInst => Inst%NextInst
        ENDIF
        DEALLOCATE(Inst)
-       Inst => NULL() 
+       Inst => NULL()
     ENDIF
-   
+
    END SUBROUTINE InstRemove
 !EOC
 END MODULE HCOX_TOMAS_Jeagle_Mod

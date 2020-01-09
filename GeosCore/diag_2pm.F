@@ -14,16 +14,16 @@
 ! \item LTOTH: used for tracers (ND45)
 ! \end{itemize}
 !
-!  These arrays are either 1 (if it is within a certain time interval)   
+!  These arrays are either 1 (if it is within a certain time interval)
 !  or 0 (if it is not within a certain time interval).  The limits of
 !  the time intervals for CTOTH and CTJV are now defined in input.geos
-!  The arrays CTOTH, CTOH, CTJV count the number of times the 
+!  The arrays CTOTH, CTOH, CTJV count the number of times the
 !  diagnostics are accumulated for each grid box (i.e LTOTH is 1)
 !\\
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE DIAG_2PM( State_Met )
+      SUBROUTINE DIAG_2PM( State_Grid, State_Met )
 !
 ! !USES:
 !
@@ -36,6 +36,7 @@
       USE DIAG_MOD,      ONLY : CTO3_24h
 #endif
       USE PRECISION_MOD       ! For GEOS-Chem Precision (fp)
+      USE State_Grid_Mod,ONLY : GrdState
       USE State_Met_Mod, ONLY : MetState
       USE TIME_MOD,      ONLY : GET_LOCALTIME
       USE TIME_MOD,      ONLY : ITS_TIME_FOR_DIAG
@@ -45,8 +46,9 @@
 
       IMPLICIT NONE
 !
-! !INPUT PARAMETERS: 
+! !INPUT PARAMETERS:
 !
+      TYPE(GrdState), INTENT(IN)  :: State_Grid  ! Grid State object
       TYPE(MetState), INTENT(IN)  :: State_Met   ! Meteorology State object
 !
 ! !REMARKS:
@@ -57,7 +59,7 @@
 ! !REVISION HISTORY:
 !  26 Mar 1999 - R. Yantosca - Initial version
 !  (1 ) Now use F90 syntax (bmy, 3/26/99)
-!  (2 ) Now reference LTNO2, CTNO2, LTHO2, CTHO2 arrays from "diag_mod.f".  
+!  (2 ) Now reference LTNO2, CTNO2, LTHO2, CTHO2 arrays from "diag_mod.f".
 !        Updated comments, cosmetic changes.  (rvm, bmy, 2/27/02)
 !  (3 ) Now removed NMIN from the arg list.  Now use functions GET_LOCALTIME,
 !        ITS_TIME_FOR_CHEM, ITS_TIME_FOR_DYN from "time_mod.f" (bmy, 2/11/03)
@@ -66,7 +68,7 @@
 !        pure O3.  Now only accumulate counter for 3D pure O3 in ND45 if
 !        it's a chemistry timestep. (phs, 1/24/07)
 !  (6 ) Added 3D counter for ND65 and 03 in ND47 (phs, 11/17/08)
-!  (7 ) Change re-initialization of ND45: only at the timestep after the 
+!  (7 ) Change re-initialization of ND45: only at the timestep after the
 !       diagnostics are accumulated. Add ITS_AFTER_DIAG and PREV_TS variables.
 !       (ccc, 6/12/09)
 !  (8 ) Add LTO3 to accumulate O3 in ND45 at the same place as the
@@ -93,7 +95,7 @@
       LOGICAL  :: IS_CHEM
       INTEGER  :: I,       J,       L
       INTEGER  :: PREV_TS
-      REAL(fp) :: LT(IIPAR)
+      REAL(fp) :: LT(State_Grid%NX)
 
       !=================================================================
       ! DIAG_2PM begins here!
@@ -104,7 +106,7 @@
       IS_ND22    = ( ND22 > 0 .and. ITS_TIME_FOR_CHEM() )
       IS_ND45    = ( ND45 > 0                           )
       IS_ND43    = ( ND43 > 0 .and. ITS_TIME_FOR_CHEM() )
-      IS_ND47    = ( ND47 > 0                           ) 
+      IS_ND47    = ( ND47 > 0                           )
       IS_ND65    = ( ND65 > 0                           )
       IS_CHEM    = ( ITS_TIME_FOR_CHEM() )
 
@@ -115,16 +117,16 @@
       ! (ccc, 6/12/09)
       ITS_AFTER_DIAG = ( MOD(PREV_TS, GET_TS_DIAG() ) == 0 )
 
-      ! Pre-compute local time 
-      DO I = 1, IIPAR
-         LT(I) = GET_LOCALTIME( I, 1, 1 )
+      ! Pre-compute local time
+      DO I = 1, State_Grid%NX
+         LT(I) = GET_LOCALTIME( I, 1, 1, State_Grid )
       ENDDO
 
 !$OMP PARALLEL DO
 !$OMP+DEFAULT( SHARED )
 !$OMP+PRIVATE( I, J, L )
-      DO J = 1, JJPAR
-      DO I = 1, IIPAR
+      DO J = 1, State_Grid%NY
+      DO I = 1, State_Grid%NX
 
          !-----------------------------
          ! ND45 -- mixing ratios
@@ -140,7 +142,7 @@
             ! Archive if we fall w/in the local time limits
             IF ( LT(I) >= HR1_OTH .and. LT(I) <= HR2_OTH ) THEN
 
-               ! We only count the cells that are for the first time 
+               ! We only count the cells that are for the first time
                ! between the time limits since the last accumulation of
                ! the diagnostics. (ccc, 7/17/09)
 	       IF ( LTOTH(I, J) == 0 ) THEN
@@ -150,7 +152,7 @@
 
             ENDIF
          ENDIF
-         
+
          !-----------------------------
          ! ND47_O3 / ND65 -- "chemistry all day long" counter
          !-----------------------------
@@ -187,14 +189,14 @@
             ! LTOH denotes where LT is between HR1_OH and HR2_OH
             ! CTOH counts the times when LT was between HR1_OH and HR2_OH
             ! Now set LTHO2, CTHO2 based on the OH times (rvm, bmy, 2/27/02)
-            IF ( LT(I) >= HR1_OH .and. LT(I) <= HR2_OH ) THEN  
+            IF ( LT(I) >= HR1_OH .and. LT(I) <= HR2_OH ) THEN
                LTOH(I,J)  = 1
                LTHO2(I,J) = 1
                LTO1D(I,J) = 1
                LTO3P(I,J) = 1
 
                ! Counters for # of OH, HO2 boxes in the chemgrid (phs, 1/24/07)
-               DO L = 1, LD43 
+               DO L = 1, LD43
                   IF ( State_Met%InChemGrid(I,J,L) ) THEN
                      CTOH(I,J,L)  = CTOH(I,J,L)  + 1
                      CTHO2(I,J,L) = CTHO2(I,J,L) + 1

@@ -5,8 +5,8 @@
 !
 ! !MODULE: diag56_mod.F
 !
-! !DESCRIPTION: Module DIAG56\_MOD contains arrays and routines for archiving 
-!  the ND56 diagnostic -- lightning flash rates. 
+! !DESCRIPTION: Module DIAG56\_MOD contains arrays and routines for archiving
+!  the ND56 diagnostic -- lightning flash rates.
 !\\
 !\\
 ! !INTERFACE:
@@ -51,7 +51,7 @@
 !------------------------------------------------------------------------------
 !BOC
       CONTAINS
-!EOC    
+!EOC
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
 !------------------------------------------------------------------------------
@@ -59,14 +59,14 @@
 !
 ! !IROUTINE: zero_diag56
 !
-! !DESCRIPTION: Subroutine ZERO\_DIAG03 zeroes the ND03 diagnostic arrays. 
+! !DESCRIPTION: Subroutine ZERO\_DIAG03 zeroes the ND03 diagnostic arrays.
 !\\
 !\\
 ! !INTERFACE:
 !
       SUBROUTINE ZERO_DIAG56
-! 
-! !REVISION HISTORY: 
+!
+! !REVISION HISTORY:
 !  11 May 2006 - R. Yantosca - Initial version
 !  15 Sep 2010 - R. Yantosca - Added ProTeX headers
 !EOP
@@ -85,7 +85,7 @@
 #endif
 
       END SUBROUTINE ZERO_DIAG56
-!EOC    
+!EOC
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
 !------------------------------------------------------------------------------
@@ -93,24 +93,30 @@
 !
 ! !IROUTINE: write_diag56
 !
-! !DESCRIPTION: Subroutine WRITE\_DIAG56 writes the ND03 diagnostic arrays 
-!  to the binary punch file at the proper time. 
+! !DESCRIPTION: Subroutine WRITE\_DIAG56 writes the ND03 diagnostic arrays
+!  to the binary punch file at the proper time.
 !\\
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE WRITE_DIAG56
+      SUBROUTINE WRITE_DIAG56( Input_Opt, State_Grid )
 !
 ! !USES:
 !
-      USE BPCH2_MOD,    ONLY : BPCH2, GET_MODELNAME, GET_HALFPOLAR
-      USE FILE_MOD,     ONLY : IU_BPCH
-      USE GC_GRID_MOD,  ONLY : GET_XOFFSET, GET_YOFFSET
-      USE TIME_MOD,     ONLY : GET_CT_A3, GET_CT_I3
-      USE TIME_MOD,     ONLY : GET_DIAGb,  GET_DIAGe
+      USE BPCH2_MOD,       ONLY : BPCH2, GET_MODELNAME, GET_HALFPOLAR
+      USE FILE_MOD,        ONLY : IU_BPCH
+      USE Input_Opt_Mod,   ONLY : OptInput
+      USE State_Grid_Mod,  ONLY : GrdState
+      USE TIME_MOD,        ONLY : GET_CT_A3, GET_CT_I3
+      USE TIME_MOD,        ONLY : GET_DIAGb,  GET_DIAGe
 
       USE CMN_SIZE_MOD     ! Size parameters
       USE CMN_DIAG_MOD     ! TINDEX
+!
+! !INPUT PARAMETERS:
+!
+      TYPE(OptInput), INTENT(IN) :: Input_Opt    ! Input Options object
+      TYPE(GrdState), INTENT(IN) :: State_Grid   ! Grid State object
 !
 ! !REMARKS:
 !   # : Field    : Description              : Units          : Scale factor
@@ -118,8 +124,8 @@
 !  (1 ) LFLASH-$ : Lightning flash rate     : flashes/min/km2 : SCALE_I3
 !  (2 ) LFLASH-$ : Intra-cloud flash rate   : flashes/min/km2 : SCALE_I3
 !  (3 ) LFLASH-$ : Cloud-ground flash rate  : flashes/min/km2 : SCALE_I3
-! 
-! !REVISION HISTORY: 
+!
+! !REVISION HISTORY:
 !  11 May 2006 - R. Yantosca - Initial version
 !  (1 ) Replace TINY(1d0) with 1d-32 to avoid problems on SUN 4100 platform
 !        (bmy, 9/5/06)
@@ -136,12 +142,12 @@
 #if defined( BPCH_DIAG )
 
       INTEGER               :: CENTER180, HALFPOLAR,   IFIRST
-      INTEGER               :: JFIRST,    LFIRST,      M,      N         
-      REAL(f4)              :: ARRAY(IIPAR,JJPAR,1)
+      INTEGER               :: JFIRST,    LFIRST,      M,      N
+      REAL(f4)              :: ARRAY(State_Grid%NX,State_Grid%NY,1)
       REAL(f4)              :: LONRES,    LATRES
       REAL(fp)              :: SCALE
       REAL(f8)              :: DIAGb,     DIAGe
-      CHARACTER(LEN=20)     :: MODELNAME 
+      CHARACTER(LEN=20)     :: MODELNAME
       CHARACTER(LEN=40)     :: CATEGORY,  RESERVED,    UNIT
 
       !=================================================================
@@ -156,15 +162,15 @@
       DIAGb     = GET_DIAGb()
       DIAGe     = GET_DIAGe()
       HALFPOLAR = GET_HALFPOLAR()
-      IFIRST    = GET_XOFFSET( GLOBAL=.TRUE. ) + 1
-      JFIRST    = GET_YOFFSET( GLOBAL=.TRUE. ) + 1
-      LATRES    = DJSIZE
+      IFIRST    = State_Grid%XMinOffset + 1
+      JFIRST    = State_Grid%YMinOffset + 1
+      LATRES    = State_Grid%DY
       LFIRST    = 1
-      LONRES    = DISIZE
-      MODELNAME = GET_MODELNAME()
+      LONRES    = State_Grid%DX
+      MODELNAME = GET_MODELNAME( Input_Opt, State_Grid )
       RESERVED  = ''
       SCALE     = DBLE( GET_CT_I3() ) + 1e-32_fp
-  
+
       !=================================================================
       ! Write data to the bpch file
       !=================================================================
@@ -181,14 +187,14 @@
          ! Write data to disk
          CALL BPCH2( IU_BPCH,   MODELNAME, LONRES,   LATRES,
      &               HALFPOLAR, CENTER180, CATEGORY, N,
-     &               UNIT,      DIAGb,     DIAGe,    RESERVED,   
-     &               IIPAR,     JJPAR,     1,        IFIRST,     
+     &               UNIT,      DIAGb,     DIAGe,    RESERVED,
+     &               State_Grid%NX, State_Grid%NY, 1, IFIRST,
      &               JFIRST,    LFIRST,    ARRAY(:,:,1) )
       ENDDO
 #endif
 
       END SUBROUTINE WRITE_DIAG56
-!EOC    
+!EOC
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
 !------------------------------------------------------------------------------
@@ -201,15 +207,18 @@
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE INIT_DIAG56
+      SUBROUTINE INIT_DIAG56( State_Grid )
 !
 ! !USES:
 !
-      USE ERROR_MOD,    ONLY : ALLOC_ERR
-   
-      USE CMN_SIZE_MOD 
-! 
-! !REVISION HISTORY: 
+      USE ERROR_MOD,      ONLY : ALLOC_ERR
+      USE State_Grid_Mod, ONLY : GrdState
+!
+! !INPUT PARAMETERS:
+!
+      TYPE(GrdState), INTENT(IN) :: State_Grid  ! Grid State object
+!
+! !REVISION HISTORY:
 !  11 May 2006 - R. Yantosca - Initial version
 !  15 Sep 2010 - R. Yantosca - Added ProTeX headers
 !EOP
@@ -220,7 +229,7 @@
 !
 #if defined( BPCH_DIAG )
       INTEGER :: AS
-      
+
       !=================================================================
       ! INIT_DIAG03 begins here!
       !=================================================================
@@ -229,7 +238,7 @@
       IF ( ND56 == 0 ) RETURN
 
       ! 2-D array ("LFLASH-$")
-      ALLOCATE( AD56( IIPAR, JJPAR, PD56 ), STAT=AS )
+      ALLOCATE( AD56( State_Grid%NX, State_Grid%NY, PD56 ), STAT=AS )
       IF ( AS /= 0 ) CALL ALLOC_ERR( 'AD56' )
 
       ! Zero arrays
@@ -237,13 +246,13 @@
 #endif
 
       END SUBROUTINE INIT_DIAG56
-!EOC    
+!EOC
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
 !------------------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: cleanup_diag56 
+! !IROUTINE: cleanup_diag56
 !
 ! !DESCRIPTION: Subroutine CLEANUP\_DIAG56 deallocates all module arrays
 !\\
@@ -251,7 +260,7 @@
 ! !INTERFACE:
 !
       SUBROUTINE CLEANUP_DIAG56
-! 
+!
 ! !REVISION HISTORY:
 !  11 May 2006 - R. Yantosca - Initial version
 !  15 Sep 2010 - R. Yantosca - Added ProTeX headers
@@ -262,7 +271,7 @@
       ! CLEANUP_DIAG56 begins here!
       !=================================================================
 #if defined( BPCH_DIAG )
-      IF ( ALLOCATED( AD56 ) ) DEALLOCATE( AD56 ) 
+      IF ( ALLOCATED( AD56 ) ) DEALLOCATE( AD56 )
 #endif
 
       END SUBROUTINE CLEANUP_DIAG56

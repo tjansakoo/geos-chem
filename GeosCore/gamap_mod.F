@@ -5,7 +5,7 @@
 !
 ! !MODULE: gamap_mod.F
 !
-! !DESCRIPTION: Module GAMAP\_MOD contains routines to create GAMAP 
+! !DESCRIPTION: Module GAMAP\_MOD contains routines to create GAMAP
 !  "tracerinfo.dat" and "diaginfo.dat" files which are customized to each
 !   particular GEOS-Chem simulation.
 !\\
@@ -30,7 +30,7 @@
       PUBLIC  :: DO_GAMAP
 !
 ! !PRIVATE MEMBER FUNCTIONS:
-! 
+!
       PRIVATE :: CREATE_DINFO
       PRIVATE :: CREATE_TINFO
       PRIVATE :: WRITE_TINFO
@@ -44,7 +44,7 @@
 !  For more information, please see the GAMAP Online Users' Manual:
 !   http://acmg.seas.harvard.edu/gamap/doc/index.html
 !
-! !REVISION HISTORY: 
+! !REVISION HISTORY:
 !  03 May 2005 - R. Yantosca - Initial version
 !  (1 ) Minor bug fix for Rn/Pb/Be simulations (bmy, 5/11/05)
 !  (2 ) Added ND09 diagnostic for HCN/CH3CN simulation. (bmy, 6/30/05)
@@ -70,24 +70,24 @@
 !  (19) Add EFLUX to ND67 (lin, ccc, 5/29/09)
 !  (20) Minor bug fixes (bmy, phs, 10/9/09)
 !  (20) Minor bug fixes (dkh, bmy, 11/19/09)
-!  (21) Include second satellite overpass diagnostic.  Adjust AOD name to 550 
-!        nm from 400 nm.  Add additional dust AOD bins.  Output values to 
+!  (21) Include second satellite overpass diagnostic.  Adjust AOD name to 550
+!        nm from 400 nm.  Add additional dust AOD bins.  Output values to
 !        hdf_mod. (amv, bmy, 12/1/09)
-!  (22) Increase MAXTRACER from 120 to 325 (win, 6/25/09) 
+!  (22) Increase MAXTRACER from 120 to 325 (win, 6/25/09)
 !  03 Aug 2010 - R. Yantosca - Added ProTeX headers
 !  03 Aug 2010 - R. Yantosca - Now move the #include "CMN_SIZE" and
 !                              #include "CMN_DIAG" to the top of module
 !  13 Aug 2010 - R. Yantosca - Added modifications for MERRA
 !  21 Sep 2010 - R. Yantosca - Removed duplicates in INIT_DIAGINFO
 !  21 Oct 2010 - R. Yantosca - Bug fix in INIT_DIAGINFO
-!  09 Dec 2010 - C. Carouge  - Modify MAXTRACER definition to account for 
+!  09 Dec 2010 - C. Carouge  - Modify MAXTRACER definition to account for
 !  07 Feb 2012 - E. Corbitt  - Added diagnostic info for tagged Hg simulation.
 !  08 Feb 2012 - R. Yantosca - Add modifications for GEOS-5.7.x
 !  01 Aug 2012 - R. Yantosca - Add reference to findFreeLUN from inqure_mod.F90
 !  13 Aug 2013 - M. Sulprizio- Add modifications for updated SOA and SOA +
 !                              semivolatile POA simulations (H. Pye)
 !  20 Aug 2013 - R. Yantosca - Removed "define.h", this is now obsolete
-!  09 Apr 2014 - R. Yantosca - Increase MAXCAT to 160 
+!  09 Apr 2014 - R. Yantosca - Increase MAXCAT to 160
 !  13 Nov 2014 - M. Yannetti - Added PRECISION_MOD
 !  06 Aug 2015 - J. Fisher   - Add non-reducible snowpack Hg reservoir
 !                              (orig. 29/11/11)
@@ -122,7 +122,7 @@
       CHARACTER(LEN=40), ALLOCATABLE :: FNAME(:,:)
       CHARACTER(LEN=40), ALLOCATABLE :: UNIT(:,:)
       CHARACTER(LEN=255)             :: TFILE
-      
+
       ! Other variables
       CHARACTER(LEN=16)              :: STAMP
       CHARACTER(LEN=40)              :: SIM_NAME
@@ -132,16 +132,16 @@
       CHARACTER(LEN=40)              :: FNAME0
 
       ! Species ID flags (formerly in tracerid_mod.F
-      INTEGER :: id_ACET,  id_ALD2,  id_ALK4,  id_ASOA1 
-      INTEGER :: id_BCPI,  id_BCPO,  id_BENZ,  id_C2H2  
-      INTEGER :: id_C2H4,  id_C2H6,  id_C3H8,  id_CH2O  
+      INTEGER :: id_ACET,  id_ALD2,  id_ALK4,  id_ASOA1
+      INTEGER :: id_BCPI,  id_BCPO,  id_BENZ,  id_C2H2
+      INTEGER :: id_C2H4,  id_C2H6,  id_C3H8,  id_CH2O
       INTEGER :: id_CH4,   id_CO,    id_EOH,   id_GLYC
-      INTEGER :: id_GLYX,  id_HAC,   id_ISOA1, id_LIMO
+      INTEGER :: id_GLYX,  id_HAC,   id_LIMO
       INTEGER :: id_MEK,   id_MGLY,  id_MTPA,  id_MTPO
       INTEGER :: id_NAP,   id_NH3,   id_NK1,   id_NO
       INTEGER :: id_OCPI,  id_OCPO,  id_OPOA1, id_OPOG1
-      INTEGER :: id_PAN,   id_POA1,  id_PRPE  
-      INTEGER :: id_SO2,   id_TSOA1, id_POG1,  id_POG2  
+      INTEGER :: id_PAN,   id_POA1,  id_PRPE
+      INTEGER :: id_SO2,   id_TSOA1, id_POG1,  id_POG2
       INTEGER :: id_TOLU,  id_XYLE,  id_HNO3
 
       CONTAINS
@@ -153,8 +153,8 @@
 !
 ! !IROUTINE: do_gamap
 !
-! !DESCRIPTION: Subroutine DO\_GAMAP is the driver program for creating 
-!  the customized GAMAP files "diaginfo.dat" and "tracerinfo.dat". 
+! !DESCRIPTION: Subroutine DO\_GAMAP is the driver program for creating
+!  the customized GAMAP files "diaginfo.dat" and "tracerinfo.dat".
 !\\
 !\\
 ! !INTERFACE:
@@ -177,8 +177,8 @@
 ! !OUTPUT PARAMETERS:
 !
       INTEGER,        INTENT(OUT) :: RC          ! Success or failure?
-! 
-! !REVISION HISTORY: 
+!
+! !REVISION HISTORY:
 !  03 May 2005 - R. Yantosca - Initial version
 !  03 Aug 2010 - R. Yantosca - Added ProTeX headers
 !  25 Mar 2013 - R. Yantosca - Now accept am_I_Root, Input_Opt, RC
@@ -202,7 +202,7 @@
       STAMP    = SYSTEM_TIMESTAMP()
 
       ! Get simulation name
-      SIM_NAME = Input_Opt%SIM_NAME
+      SIM_NAME = Input_Opt%SimulationName
 
       ! Write "diaginfo.dat" file
       CALL CREATE_DINFO()
@@ -222,7 +222,7 @@
 !
 ! !IROUTINE: create_dinfo
 !
-! !DESCRIPTION: Subroutine CREATE\_DINFO writes information about diagnostic 
+! !DESCRIPTION: Subroutine CREATE\_DINFO writes information about diagnostic
 !  categories to a customized "diaginfo.dat" file. (bmy, 5/3/05)
 !\\
 !\\
@@ -233,8 +233,8 @@
 ! !USES:
 !
       USE FILE_MOD, ONLY : IOERROR
-! 
-! !REVISION HISTORY: 
+!
+! !REVISION HISTORY:
 !  03 May 2005 - R. Yantosca - Initial version
 !  03 Aug 2010 - R. Yantosca - Added ProTeX headers
 !  01 Aug 2012 - R. Yantosca - Add reference to findFreeLUN from inqure_mod.F90
@@ -280,7 +280,7 @@
       DO N = 1, NCATS
 
          ! Write one line to "diaginfo.dat" file
-         WRITE( IU_FILE, 145, IOSTAT=IOS ) 
+         WRITE( IU_FILE, 145, IOSTAT=IOS )
      &        OFFSET(N), ADJUSTL( CATEGORY(N) ), ADJUSTL( DESCRIPT(N) )
 
          ! Error check
@@ -291,18 +291,18 @@
  100  FORMAT( '# diaginfo.dat: Created by GEOS-CHEM at ', a,     /,'#' )
  105  FORMAT( '# ****** CUSTOMIZED FOR ', a, ' SIMULATION *****',/,'#' )
  110  FORMAT( '# This file contains category names and the offsets',
-     &        ' which they are stored'                                 ) 
+     &        ' which they are stored'                                 )
  115  FORMAT( '# in file "tracerinfo.dat".  This file is read into',
      &        ' GAMAP by routine', /, '# "ctm_diaginfo.pro".',   /,'#' )
- 120  FORMAT( '# OFFSET    (I8 )  Constant to add to tracer numbers', 
+ 120  FORMAT( '# OFFSET    (I8 )  Constant to add to tracer numbers',
      &        ' in order to distinguish', /, '#', 18x, 'for the given',
-     &        ' diagnostic category, as stored in file', /, '#', 18x, 
+     &        ' diagnostic category, as stored in file', /, '#', 18x,
      &        '"tracerinfo.dat".  OFFSET may be up to 8 digits long.'  )
- 125  FORMAT( '#  --       (1X )  1-character spacer'                  )    
- 130  FORMAT( '# CATEGORY  (A40)  Category name for CTM diagnostics.', 
-     &        ' NOTE: The category name', /, '#', 18x, 
-     &        'can be up to 40 chars long, but historically the', 
-     &        ' GEOS-CHEM', /,'#', 18x, 'and GISS models have used an', 
+ 125  FORMAT( '#  --       (1X )  1-character spacer'                  )
+ 130  FORMAT( '# CATEGORY  (A40)  Category name for CTM diagnostics.',
+     &        ' NOTE: The category name', /, '#', 18x,
+     &        'can be up to 40 chars long, but historically the',
+     &        ' GEOS-CHEM', /,'#', 18x, 'and GISS models have used an',
      &        ' 8-character category name.'                            )
  135  FORMAT( '# COMMENT   (A  )  Descriptive comment string',   /,'#' )
  140  FORMAT('##### SPACING BETWEEN DIAGNOSTIC CATEGORY OFFSETS = ',i8 )
@@ -320,7 +320,7 @@
 !
 ! !IROUTINE: create_tinfo
 !
-! !DESCRIPTION: Subroutine CREATE\_TINFO writes information about tracers to 
+! !DESCRIPTION: Subroutine CREATE\_TINFO writes information about tracers to
 !  a customized tracerinfo.dat" file.
 !\\
 !\\
@@ -344,8 +344,8 @@
 ! !OUTPUT PARAMETERS:
 !
       INTEGER,        INTENT(OUT) :: RC          ! Success or failure?
-! 
-! !REVISION HISTORY: 
+!
+! !REVISION HISTORY:
 !  21 Apr 2005 - R. Yantosca - Initial version
 !  (1 ) Now write out tracers in ug/m3 (dkh, bmy, 5/22/06)
 !  (2 ) Now write out GPROD & APROD info (tmf, havala, bmy, 2/6/07)
@@ -384,14 +384,14 @@
       WRITE( IU_FILE, '(a)' ) '#' // REPEAT( '=', 78 )
       WRITE( IU_FILE,  100  ) STAMP
       WRITE( IU_FILE,  105  ) TRIM( SIM_NAME )
-      WRITE( IU_FILE,  110  ) 
+      WRITE( IU_FILE,  110  )
       WRITE( IU_FILE,  115  )
-      WRITE( IU_FILE, '(a)' ) '# File Format:' 
-      WRITE( IU_FILE, '(a)' ) '# ' // REPEAT( '-', 77 )    
+      WRITE( IU_FILE, '(a)' ) '# File Format:'
+      WRITE( IU_FILE, '(a)' ) '# ' // REPEAT( '-', 77 )
       WRITE( IU_FILE,  120  )
       WRITE( IU_FILE,  125  )
       WRITE( IU_FILE,  130  )
-      WRITE( IU_FILE,  135  ) 
+      WRITE( IU_FILE,  135  )
       WRITE( IU_FILE,  140  )
       WRITE( IU_FILE,  145  )
       WRITE( IU_FILE,  150  )
@@ -401,7 +401,7 @@
       ! FORMAT strings
  100  FORMAT( '# tracerinfo.dat: Created by GEOS-CHEM at ', a,   /,'#' )
  105  FORMAT( '# ****** CUSTOMIZED FOR ', a, ' SIMULATION *****',/,'#' )
- 110  FORMAT( '# This file contains name weight and index', 
+ 110  FORMAT( '# This file contains name weight and index',
      &        ' information about GEOS-CHEM'                           )
  115  FORMAT( '# tracers.  It is read by routine ',
      &        '"ctm_tracerinfo.pro" of the GAMAP package.',      /,'#' )
@@ -412,7 +412,7 @@
  140  FORMAT( '# C        (I3   )  For HC''s: # moles C/moles tracer;',
      &        ' otherwise set=1'                                       )
  145  FORMAT( '# TRACER   (I9   )  Tracer number (up to 9 digits)'     )
- 150  FORMAT( '# SCALE    (E10.3)  Standard scale factor to convert', 
+ 150  FORMAT( '# SCALE    (E10.3)  Standard scale factor to convert',
      &        ' to unit given below'                                   )
  155  FORMAT( '# UNIT     (A40  )  Unit string',                 /,'#' )
 
@@ -430,7 +430,7 @@
          N = ( SPACING * 0 ) + T
 
          ! Write tracers [ppbv] to "tracerinfo.dat" file
-         CALL WRITE_TINFO( IU_FILE, NAME(T,45), FNAME(T,45), MWT(T,45), 
+         CALL WRITE_TINFO( IU_FILE, NAME(T,45), FNAME(T,45), MWT(T,45),
      &                     MOLC(T,45), SCALE(T,45), UNIT(T,45), N )
       ENDDO
 
@@ -443,13 +443,13 @@
 
       ! Loop over tracers
       DO T = 1, NTRAC(45)
-         
+
          ! GAMAP tracer number
          N = ( SPACING * 1 ) + T
 
          ! New scale
          SCALE_NEW = 1.0e0
-         
+
          ! New unit
          IF ( TRIM( UNIT(T,45) ) == 'ppbC' ) THEN
             UNIT_NEW = 'atoms C/cm2/s'
@@ -458,7 +458,7 @@
          ENDIF
 
          ! Write tracers [molec/cm2/s] to "tracerinfo.dat"
-         CALL WRITE_TINFO( IU_FILE, NAME(T,45), FNAME(T,45), MWT(T,45), 
+         CALL WRITE_TINFO( IU_FILE, NAME(T,45), FNAME(T,45), MWT(T,45),
      &                     MOLC(T,45), SCALE_NEW,   UNIT_NEW, N )
       ENDDO
 
@@ -471,13 +471,13 @@
 
       ! Loop over tracers
       DO T = 1, NTRAC(45)
-         
+
          ! GAMAP tracer number
          N = ( SPACING * 2 ) + T
 
          ! New scale
          SCALE_NEW = 1.0e0
-         
+
          ! New unit
          IF ( TRIM( UNIT(T,45) ) == 'ppbC' ) THEN
             UNIT_NEW = 'atoms C/cm2'
@@ -486,7 +486,7 @@
          ENDIF
 
          ! Write tracers [molec/cm2] to "tracerinfo.dat"
-         CALL WRITE_TINFO( IU_FILE, NAME(T,45), FNAME(T,45), MWT(T,45), 
+         CALL WRITE_TINFO( IU_FILE, NAME(T,45), FNAME(T,45), MWT(T,45),
      &                     MOLC(T,45), SCALE_NEW,   UNIT_NEW, N )
       ENDDO
 
@@ -514,7 +514,7 @@
          ENDIF
 
          ! Write tracers [kg/s] to "tracerinfo.dat"
-         CALL WRITE_TINFO( IU_FILE, NAME(T,45), FNAME(T,45), MWT(T,45), 
+         CALL WRITE_TINFO( IU_FILE, NAME(T,45), FNAME(T,45), MWT(T,45),
      &                     MOLC(T,45), SCALE_NEW,   UNIT_NEW, N )
       ENDDO
 
@@ -542,7 +542,7 @@
          ENDIF
 
          ! Write tracers [kg] to "tracerinfo.dat"
-         CALL WRITE_TINFO( IU_FILE, NAME(T,45), FNAME(T,45), MWT(T,45), 
+         CALL WRITE_TINFO( IU_FILE, NAME(T,45), FNAME(T,45), MWT(T,45),
      &                     MOLC(T,45), SCALE_NEW,   UNIT_NEW, N )
       ENDDO
 
@@ -571,7 +571,7 @@
 !         ENDIF
 !
 !         ! Write tracers [kg] to "tracerinfo.dat"
-!         CALL WRITE_TINFO( IU_FILE, NAME(T,45), FNAME(T,45), MWT(T,45), 
+!         CALL WRITE_TINFO( IU_FILE, NAME(T,45), FNAME(T,45), MWT(T,45),
 !     &                     MOLC(T,45), SCALE_NEW,   UNIT_NEW, N )
 !      ENDDO
 
@@ -588,16 +588,16 @@
 !--- Previous (ccc, 3/17/10)
 !         DO T = 1, 18
 !        DO T = 1, 28
-!           
+!
 !           ! GAMAP tracer number
 !           N = ( SPACING * 6 ) + T
-!           
-!           ! Make a character 
+!
+!           ! Make a character
 !           WRITE( C, '(i2.2)' ) T
 !
 !           ! Tracer name
 !           NAME_NEW = 'PROD' // C
-!           
+!
 !           ! Write tracers [kg] to "tracerinfo.dat"
 !           CALL WRITE_TINFO( IU_FILE, NAME_NEW, NAME_NEW,
 !    &           REAL(1e0,4), 1, REAL(1e0,4), 'kg/kg', N )
@@ -605,11 +605,11 @@
 !
 !     ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! SPACING*60: Soil NOx restart file
-      !-------------------------------------   
+      !-------------------------------------
       IF ( Input_Opt%ITS_A_FULLCHEM_SIM ) THEN
-         
+
          ! Write separator line
          CALL WRITE_SEPARATOR( IU_FILE, 999 )
 
@@ -617,42 +617,42 @@
          NAME_NEW  = 'P_DRY'
          FNAME_NEW = 'Dry period'
          UNIT_NEW  = 'hours'
-         CALL WRITE_TINFO(  IU_FILE,     NAME_NEW, 
-     &                      FNAME_NEW,   REAL(1e0,4), 1,            
+         CALL WRITE_TINFO(  IU_FILE,     NAME_NEW,
+     &                      FNAME_NEW,   REAL(1e0,4), 1,
      &                      REAL(1e0,4), UNIT_NEW,    60001  )
 
          ! Pulse factor [unitless]
          NAME_NEW  = 'PFACTOR'
          FNAME_NEW = 'Pulsing factor'
          UNIT_NEW  = 'unitless'
-         CALL WRITE_TINFO(  IU_FILE,     NAME_NEW, 
-     &                      FNAME_NEW,   REAL(1e0,4), 1,            
+         CALL WRITE_TINFO(  IU_FILE,     NAME_NEW,
+     &                      FNAME_NEW,   REAL(1e0,4), 1,
      &                      REAL(1e0,4), UNIT_NEW,    60002  )
 
          ! GWET from previous timestep [unitless]
          NAME_NEW  = 'GWET_PRV'
          FNAME_NEW = 'Soil moisture'
          UNIT_NEW  = 'unitless'
-         CALL WRITE_TINFO(  IU_FILE,     NAME_NEW, 
-     &                      FNAME_NEW,   REAL(1e0,4), 1,            
+         CALL WRITE_TINFO(  IU_FILE,     NAME_NEW,
+     &                      FNAME_NEW,   REAL(1e0,4), 1,
      &                      REAL(1e0,4), UNIT_NEW,    60003  )
 
          ! Reservoir of deposited N [ng N/m2]
          NAME_NEW  = 'N_RESVR'
          FNAME_NEW = 'N reservoir'
          UNIT_NEW  = 'ng N/m2'
-         CALL WRITE_TINFO(  IU_FILE,     NAME_NEW, 
-     &                      FNAME_NEW,   REAL(1e0,4), 1,            
+         CALL WRITE_TINFO(  IU_FILE,     NAME_NEW,
+     &                      FNAME_NEW,   REAL(1e0,4), 1,
      &                      REAL(1e0,4), UNIT_NEW,    60004  )
 
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! SPACING*55: PSC restart file
-      !-------------------------------------   
-      IF ( Input_Opt%ITS_A_FULLCHEM_SIM .and. 
+      !-------------------------------------
+      IF ( Input_Opt%ITS_A_FULLCHEM_SIM .and.
      &     Input_Opt%LUCX ) THEN
-         
+
          ! Write separator line
          CALL WRITE_SEPARATOR( IU_FILE, 999 )
 
@@ -660,14 +660,14 @@
          NAME_NEW  = 'STATEPSC'
          FNAME_NEW = 'Instantaneous PSC state'
          UNIT_NEW  = 'unitless'
-         CALL WRITE_TINFO(  IU_FILE,     NAME_NEW, 
-     &                      FNAME_NEW,   REAL(1e0,4), 1,            
+         CALL WRITE_TINFO(  IU_FILE,     NAME_NEW,
+     &                      FNAME_NEW,   REAL(1e0,4), 1,
      &                      REAL(1e0,4), UNIT_NEW,    55001  )
 
       ENDIF
 
       !-------------------------------------
-      ! All other diagnostics 
+      ! All other diagnostics
       !-------------------------------------
       DO D = 1, MAXDIAG
 
@@ -682,7 +682,7 @@
 
             ! Write tracers to file
             DO T = 1, NTRAC(D)
-            CALL WRITE_TINFO( IU_FILE, NAME(T,D), FNAME(T,D), MWT(T,D), 
+            CALL WRITE_TINFO( IU_FILE, NAME(T,D), FNAME(T,D), MWT(T,D),
      &                           MOLC(T,D), SCALE(T,D), UNIT(T,D),
      &                           INDEX(T,D) )
             ENDDO
@@ -698,20 +698,20 @@
 !
 ! !IROUTINE: write_tinfo
 !
-! !DESCRIPTION: Subroutine WRITE\_TINFO writes one line to the customized 
+! !DESCRIPTION: Subroutine WRITE\_TINFO writes one line to the customized
 !  "tracerinfo.dat" file.
 !\\
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE WRITE_TINFO( IU_FILE, NAME, FNAME, 
+      SUBROUTINE WRITE_TINFO( IU_FILE, NAME, FNAME,
      &                        MWT, MOLC, SCALE, UNIT, N )
 !
 ! !USES:
 !
       USE FILE_MOD, ONLY : IOERROR
 !
-! !INPUT PARAMETERS: 
+! !INPUT PARAMETERS:
 !
       INTEGER,          INTENT(IN) :: IU_FILE ! Logical unit number
       CHARACTER(LEN=*), INTENT(IN) :: NAME    ! GAMAP short tracer name
@@ -721,8 +721,8 @@
       INTEGER,          INTENT(IN) :: N       ! Tracer number
       REAL*4,           INTENT(IN) :: SCALE   ! GAMAP scale factor
       CHARACTER(LEN=*), INTENT(IN) :: UNIT    ! Unit string
-! 
-! !REVISION HISTORY: 
+!
+! !REVISION HISTORY:
 !  03 May 2005 - R. Yantosca - Initial version
 !  03 Aug 2010 - R. Yantosca - Added ProTeX headers
 !EOP
@@ -738,8 +738,8 @@
       !=================================================================
 
       ! Write one line to "tracerinfo.dat" file
-      WRITE( IU_FILE, 100, IOSTAT=IOS ) 
-     &     ADJUSTL( NAME ), ADJUSTL( FNAME ), MWT, 
+      WRITE( IU_FILE, 100, IOSTAT=IOS )
+     &     ADJUSTL( NAME ), ADJUSTL( FNAME ), MWT,
      &     MOLC,            N,                SCALE, TRIM( UNIT )
 
       ! Error check
@@ -758,8 +758,8 @@
 ! !IROUTINE: write_separator
 
 !
-! !DESCRIPTION: Subroutine WRITE\_SEPARATOR writes a separator block to the 
-!  customized "tracerinfo.dat" file. 
+! !DESCRIPTION: Subroutine WRITE\_SEPARATOR writes a separator block to the
+!  customized "tracerinfo.dat" file.
 !\\
 !\\
 ! !INTERFACE:
@@ -770,12 +770,12 @@
 !
       USE FILE_MOD, ONLY : IOERROR
 !
-! !INPUT PARAMETERS: 
+! !INPUT PARAMETERS:
 !
       INTEGER, INTENT(IN) :: IU_FILE
       INTEGER, INTENT(IN) :: DIAG   ! GEOS-Chem diagnostic number
-! 
-! !REVISION HISTORY: 
+!
+! !REVISION HISTORY:
 !  03 May 2005 - R. Yantosca - Initial version
 !  06 Feb 2007 - R. Yantosca - Added new header for GPROD & APROD info
 !  03 Aug 2010 - R. Yantosca - Added ProTeX headers
@@ -790,7 +790,7 @@
       CHARACTER(LEN=79) :: SEPARATOR
 
       !=================================================================
-      ! WRITE_SEPARATOR begins here! 
+      ! WRITE_SEPARATOR begins here!
       !=================================================================
 
       ! Create separator string
@@ -802,23 +802,23 @@
 
       ! Write the appropriate message
       SELECT CASE( DIAG )
-         CASE( 0 ) 
+         CASE( 0 )
             WRITE( IU_FILE, 100, IOSTAT=IOS )
-         CASE( 100 ) 
+         CASE( 100 )
             WRITE( IU_FILE, 110, IOSTAT=IOS )
-         CASE( 200 ) 
+         CASE( 200 )
             WRITE( IU_FILE, 120, IOSTAT=IOS )
-         CASE( 300 ) 
+         CASE( 300 )
             WRITE( IU_FILE, 130, IOSTAT=IOS )
-         CASE( 400 ) 
+         CASE( 400 )
             WRITE( IU_FILE, 140, IOSTAT=IOS )
-         CASE( 500 ) 
+         CASE( 500 )
             WRITE( IU_FILE, 150, IOSTAT=IOS )
-         CASE( 600 ) 
+         CASE( 600 )
             WRITE( IU_FILE, 160, IOSTAT=IOS )
          CASE( 700 )          !(win, 7/9/09)
             WRITE( IU_FILE, 190, IOSTAT=IOS ) !sfarina - this can stay
-         CASE( 999 ) 
+         CASE( 999 )
             WRITE( IU_FILE, 170, IOSTAT=IOS )
          CASE DEFAULT
             WRITE( IU_FILE, 180, IOSTAT=IOS ) DIAG
@@ -852,25 +852,25 @@
 !
 ! !IROUTINE: init_diaginfo
 !
-! !DESCRIPTION: Subroutine INIT\_DIAGINFO initializes the CATEGORY, DESCRIPT, 
-!  and OFFSET variables, which are used to define the "diaginfo.dat" file 
+! !DESCRIPTION: Subroutine INIT\_DIAGINFO initializes the CATEGORY, DESCRIPT,
+!  and OFFSET variables, which are used to define the "diaginfo.dat" file
 !  for GAMAP.
 !\\
 !\\
 ! !INTERFACE:
 !
       SUBROUTINE INIT_DIAGINFO
-! 
-! !REVISION HISTORY: 
+!
+! !REVISION HISTORY:
 !  17 Oct 1996 - R. Yantosca - Initial version
 !  (1 ) Split this code off from INIT_GAMAP, for clarity.  Now declare biomass
-!        burning emissions w/ offset of 45000.  Now declare time in the 
+!        burning emissions w/ offset of 45000.  Now declare time in the
 !        troposphere diagnostic with offset of 46000. (phs, bmy, 10/17/06)
 !  (2 ) Now add IJ-GPROD & IJ-APROD w/ offset of SPACING*6, for the SOA
 !        GPROD & APROD restart file. (tmf, havala, bmy, 2/6/07)
 !  (3 ) Now declare H2-HD sources w/ offset of 48000. Now declare H2-HD
 !        production/loss w/ offset of 47000. (phs, 9/18/07)
-!  (4 ) Change diagnostic category for ND31 diagnostic from "PS-PTOP" 
+!  (4 ) Change diagnostic category for ND31 diagnostic from "PS-PTOP"
 !        to "PEDGE-$" (bmy, 11/16/07)
 !  (5 ) Add categories CH4-LOSS, CH4-EMISS and WET-FRAC (kjw, 8/18/09)
 !  (6 ) Add potential temperature category. (fp, 2/26/10)
@@ -878,7 +878,7 @@
 !  03 Aug 2010 - R. Yantosca - Added ProTeX headers
 !  21 Sep 2010 - R. Yantosca - Remove duplicate definitions of CV-FLX-$,
 !                              TURBMC-$, EW-FLX-$, NS-FLX-$, UP-FLX-$
-!  21 Oct 2010 - R. Yantosca - Bug fix: MC-FRC-$ should have an offset of 
+!  21 Oct 2010 - R. Yantosca - Bug fix: MC-FRC-$ should have an offset of
 !                              SPACING*3 since it has units of kg/s.
 !  31 Oct 2012 - R. Yantosca - Save soil NOx restart quantities as SPACING*60
 !  14 Mar 2013 - M. Payer    - Replace NOx emissions with NO emissions as part
@@ -895,7 +895,7 @@
 !BOC
 !
 ! !LOCAL VARIABLES:
-! 
+!
       INTEGER :: N
 
       !=================================================================
@@ -911,7 +911,7 @@
       CATEGORY(N) = 'IJ-24H-$'
       DESCRIPT(N) = '24-hr avg tracer conc.'
       OFFSET(N)   = SPACING * 0
-         
+
       N           = N + 1
       CATEGORY(N) = 'INST-MAP'
       DESCRIPT(N) = 'Instantaneous tracer'
@@ -954,7 +954,7 @@
 
       N           = N + 1
       CATEGORY(N) = 'NO-LI-$'
-      DESCRIPT(N) = 'Lightning NO'      
+      DESCRIPT(N) = 'Lightning NO'
       OFFSET(N)   = SPACING * 1
 
       N           = N + 1
@@ -970,7 +970,7 @@
       N           = N + 1
       CATEGORY(N) = 'NO-STRT'
       DESCRIPT(N) = 'Stratopsheric NO'
-      OFFSET(N)   = SPACING * 1 
+      OFFSET(N)   = SPACING * 1
 
       N           = N + 1
       CATEGORY(N) = 'INST_COL'
@@ -1070,7 +1070,7 @@
       N           = N + 1
       CATEGORY(N) = 'SO2-BIOF'
       DESCRIPT(N) = 'Biofuel SO2 emissions'
-      OFFSET(N)   = SPACING * 4 
+      OFFSET(N)   = SPACING * 4
 
       N           = N + 1
       CATEGORY(N) = 'SO2-EV-$'
@@ -1178,7 +1178,7 @@
       DESCRIPT(N) = 'Tracer mass (kg)'
       OFFSET(N)   = SPACING * 4
 
-#if   defined( TOMAS ) 
+#if   defined( TOMAS )
 
       N           = N + 1
       CATEGORY(N) = 'TMS-COND'
@@ -1219,12 +1219,12 @@
       N           = N + 1
       CATEGORY(N) = 'PEDGE-$'
       DESCRIPT(N) = 'Pressure at level edges'
-      OFFSET(N)   = SPACING * 10 
+      OFFSET(N)   = SPACING * 10
 
       N           = N + 1
       CATEGORY(N) = 'PS-PTOP'
       DESCRIPT(N) = 'Pressure level edges'
-      OFFSET(N)   = SPACING * 10 
+      OFFSET(N)   = SPACING * 10
 
       N           = N + 1
       CATEGORY(N) = 'DAO-FLDS'
@@ -1572,16 +1572,6 @@
       OFFSET(N)   = SPACING * 37
 
       N           = N + 1
-      CATEGORY(N) = 'HCN-PL-$'
-      DESCRIPT(N) = 'HCN & CH3CN sinks'
-      OFFSET(N)   = SPACING * 38
-
-      N           = N + 1
-      CATEGORY(N) = 'HCN-SRCE'
-      DESCRIPT(N) = 'HCN & CH3CN sources'
-      OFFSET(N)   = SPACING * 39
-
-      N           = N + 1
       CATEGORY(N) = 'CO2-SRCE'
       DESCRIPT(N) = 'CO2 fluxes'
       OFFSET(N)   = SPACING * 40
@@ -1616,16 +1606,6 @@
       DESCRIPT(N) = 'Fraction of time in troposphere'
       OFFSET(N)   = SPACING * 46
 
-      N           = N + 1
-      CATEGORY(N) = 'PL-H2HD-'
-      DESCRIPT(N) = 'Prod / loss of H2-HD'
-      OFFSET(N)   = SPACING * 47
-
-      N           = N + 1
-      CATEGORY(N) = 'H2HD-SRC'
-      DESCRIPT(N) = 'H2 HD emissions'
-      OFFSET(N)   = SPACING * 48
-
       ! New ND52 diagnostic for gamma(HO2). (jaegle, 2/29/09)
       ! Now save out all variable gamma values (eam, 2014):
       N           = N + 1
@@ -1643,7 +1623,7 @@
       N           = N + 1
       CATEGORY(N) = 'SNOW-HGN'
       DESCRIPT(N) = 'Non-reducible Hg mass in ocean snow and ice'
-      OFFSET(N)   = SPACING * 50 
+      OFFSET(N)   = SPACING * 50
 
       N           = N + 1
       CATEGORY(N) = 'SNHG-LN'
@@ -1721,8 +1701,8 @@
 !
 ! !IROUTINE: init_tracerinfo
 !
-! !DESCRIPTION: Subroutine INIT\_TRACERINFO initializes the NAME, FNAME, 
-!  MWT, MOLC, INDEX, MOLC, UNIT arrays which are used to define the 
+! !DESCRIPTION: Subroutine INIT\_TRACERINFO initializes the NAME, FNAME,
+!  MWT, MOLC, INDEX, MOLC, UNIT arrays which are used to define the
 !  "tracerinfo.dat" file.
 !\\
 !\\
@@ -1760,15 +1740,15 @@
 ! !OUTPUT PARAMETERS:
 !
       INTEGER,        INTENT(OUT)   :: RC          ! Success or failure?
-! 
-! !REVISION HISTORY: 
+!
+! !REVISION HISTORY:
 !  17 Oct 1996 - R. Yantosca & P. Le Sager - Initial version
 !  (1 ) Split this code off from INIT_GAMAP, for clarity.  Also now declare
 !        biomass burning emissions w/ offset of 45000.  Bug fix: write out
 !        26 tracers for ND48, ND49, ND50, ND51 timeseries.  Also define
 !        ND54 diagnostic with offset of 46000. (bmy, 10/17/06)
 !  (2 ) Modifications for H2/HD in ND10, ND44 diagnostics (phs, 9/18/07)
-!  (3 ) Now write out PBLDEPTH diagnostic information to "tracerinfo.dat" if 
+!  (3 ) Now write out PBLDEPTH diagnostic information to "tracerinfo.dat" if
 !        any of ND41, ND48, ND49, ND50, ND51 are turned on.  Also set the
 !        unit to "kg/s" for the Rn-Pb-Be ND44 drydep diag. (cdh, bmy, 2/22/08)
 !  (4 ) Added C2H4 in ND46 (ccc, 2/2/09)
@@ -1776,12 +1756,12 @@
 !  (6 ) Bug fix in ND28: ALD2 should have 2 carbons, not 3.  Also bug fix
 !        in ND66 to print out the name of ZMMU correctly. (dbm, bmy, 10/9/09)
 !  (7 ) Previous bug fix was erroneous; now corrected (dkh, bmy, 11/19/09)
-!  (8 ) Include second satellite overpass diagnostic.  Adjust AOD name to 550 
+!  (8 ) Include second satellite overpass diagnostic.  Adjust AOD name to 550
 !        nm from 400 nm.  Add additional dust AOD bins (amv, bmy, 12/18/09)
 !  (9 ) Add iniformation for ND61 (win, 7/9/09)
 !  (10) Manually add info for ND44 when TOMAS aerosols dry deposition because
-!        only numbers are real drydep species while the mass species just 
-!        tag along but we need them to show up in diagnostic too.  Reference  
+!        only numbers are real drydep species while the mass species just
+!        tag along but we need them to show up in diagnostic too.  Reference
 !        to TOMAS_MOD and use IDTNK1 from TRACERID_MOD (win, 7/14/09)
 !  20 Jul 2010 - C. Carouge  - Modifications to ND03 for mercury.
 !  03 Aug 2010 - R. Yantosca - Added ProTeX headers
@@ -1790,7 +1770,7 @@
 !  09-Dec-2010 - H. Amos     - Added RGM and PBM  tracers for the
 !                              mercury simulation
 !  09-Dec-2010 - H. Amos     - fix spacing and #s for PL-HG2-$ diagnostics
-!  12 Nov 2010 - R. Yantosca - Need to save out surface pressure line to 
+!  12 Nov 2010 - R. Yantosca - Need to save out surface pressure line to
 !                              tracerinfo.dat for the timeseries diagnostics
 !  22 Mar 2011 - C. Friedman - Added POPs
 !  24 Jan 2012 - M. Payer    - Change scale factors for Rn-Pb-Be simulation so
@@ -1905,11 +1885,11 @@
 
          ! Special handling for Rn-Pb-Be simulation (bmy, 5/11/05)
          IF ( Input_Opt%ITS_A_RnPbBe_SIM ) THEN
-            SELECT CASE( T ) 
+            SELECT CASE( T )
                CASE( 1 )
                   UNIT (T,45) = 'mBq/SCM'
                   SCALE(T,45) = 5.6397E+22
-               CASE( 2, 3 ) 
+               CASE( 2, 3 )
                   UNIT (T,45) = 'mBq/SCM'
                   SCALE(T,45) = 2.6141E+19
                CASE( 4, 5, 6, 7 )
@@ -1945,7 +1925,7 @@
       ! Standard Hg simulation
       !=====================================
       IF ( (ND03 > 0) .AND. .NOT. (Input_Opt%LSPLIT) ) THEN !eds 9/7/10
-         
+
          ! Number of tracers:
          ! PD03     = max # of tracers for HG-SRCE
          ! PD03_PL  = max # of tracers for PL-HG2-$
@@ -2054,15 +2034,15 @@
                   NAME (T,03) = 'Hgdep_sn'
                   FNAME(T,03) = 'HgII/HgP dep to snow/ice'
                   INDEX(T,03) = T + ( SPACING * 34 )
-               CASE( 22 ) 
+               CASE( 22 )
                   NAME (T,03) = 'Hg2_riv'
                   FNAME(T,03) = 'Hg2 from rivers'
-                  INDEX(T,03) = T + ( SPACING * 34 ) 
+                  INDEX(T,03) = T + ( SPACING * 34 )
                CASE DEFAULT
                   ! Nothing
             END SELECT
          ENDDO
-         
+
          ! Loop over tracers for PL-HG2-$
          DO N = 1, PD03_PL
             T = N + PD03
@@ -2083,7 +2063,7 @@
                CASE( 2 )
                   NAME (T,03) = 'Hg2_OH'
                   FNAME(T,03) = 'Prod of Hg2 from OH'
-                  INDEX(T,03) = ( N ) + ( SPACING * 35 ) 
+                  INDEX(T,03) = ( N ) + ( SPACING * 35 )
                CASE( 3 )
                   NAME (T,03) = 'Hg2_O3'
                   FNAME(T,03) = 'Prod of Hg2 from O3'
@@ -2121,19 +2101,19 @@
                   NAME (T,03) = 'PBM'
                   FNAME(T,03) = 'Particle bound mercury'
                   UNIT (T,03) = 'pptv'
-                  INDEX(T,03) = ( N ) + ( SPACING * 35 )      
+                  INDEX(T,03) = ( N ) + ( SPACING * 35 )
                CASE( 12 )
                   NAME (T,03) = 'RGM'
                   FNAME(T,03) = 'Reactive gaseous mercury'
                   UNIT (T,03) = 'pptv'
-                  INDEX(T,03) = ( N ) + ( SPACING * 35 ) 
+                  INDEX(T,03) = ( N ) + ( SPACING * 35 )
                CASE( 13 )
                   NAME (T,03) = 'Br_pol'
                   FNAME(T,03) = 'Polar Br concentration'
                   UNIT (T,03) = 'pptv'
                   INDEX(T,03) = ( N ) + ( SPACING * 35 )
                CASE( 14 )
-                  NAME (T,03) = 'BrO_pol' 
+                  NAME (T,03) = 'BrO_pol'
                   FNAME(T,03) = 'Polar BrO concentration'
                   UNIT (T,03) = 'pptv'
                   INDEX(T,03) = ( N ) + ( SPACING * 35 )
@@ -2177,7 +2157,7 @@
             ! Set pointer to this species information
             ! NOTE: requires 1:1 tracer index to species index mapping
             SpcInfo => State_Chm%SpcData(N)%Info
-         
+
             T = N + PD03 + PD03_PL
 
             ! Define quantities
@@ -2185,7 +2165,7 @@
             MOLC (T,03) = 1
             MWT  (T,03) = 201e-3 ! hard-coded MW
             SCALE(T,03) = 1e0
-            NAME (T,03) = SpcInfo%Name 
+            NAME (T,03) = SpcInfo%Name
 
 !--- Keep HgP for tracer 3 in the ocean now on. (ccc, 7/20/10)
 !                  ! Tracer 3 should be "HgC" instead of "HgP"
@@ -2199,7 +2179,7 @@
 
          ! Loop over tracers for SNOW-HG
          DO N = 1, 1
-         
+
             T = N + PD03 + PD03_PL + nAdvect
 
             ! Define quantities
@@ -2228,7 +2208,7 @@
             FNAME(T,03) = 'Tot. non-reducible Hg in snow on ocean'
             INDEX(T,03) = ( N ) + ( SPACING * 50 )
          ENDDO
-         
+
          ! Loop over tracers for SNOW-HG-LN
          DO N = 1, 1
 
@@ -2260,10 +2240,10 @@
             FNAME(T,03) = 'Tot. non-reducible Hg in snow on land'
             INDEX(T,03) = ( N ) + ( SPACING * 52 )
          ENDDO
-         
+
          ! Total max number of tracers for DIAG 03.
          NTRAC(03) = T
-         
+
       ENDIF
 
       !=====================================
@@ -2277,9 +2257,9 @@
          MWT  (T,03) = 201e-3  ! hard-coded MW
          SCALE(T,03) = 1e0
 
-       	 !-------------! 
+       	 !-------------!
          ! HG0-ANTH    !
-       	 !-------------! 
+       	 !-------------!
 
          T = 1
          SELECT CASE( T )
@@ -2287,16 +2267,16 @@
                NAME (T,03) = 'Hg0'
                FNAME(T,03) = 'Hg0'
                INDEX(T,03) = T + ( SPACING * 61 )  !eds 9/4/10
-         END SELECT  
+         END SELECT
 
 
          ! Number of tracers
 !         NTRAC(03) = N_Hg_CATS
          NTRAC(03) =  480
 
-       	 !-------------! 
+       	 !-------------!
          ! HG0-AQUA    !
-       	 !-------------! 
+       	 !-------------!
 
          ! Loop over tracers
 !         DO N = 1, NTRAC(03)
@@ -2309,19 +2289,19 @@
               CASE( 2 )
                   NAME (T,03) = 'Hg0'
                   FNAME(T,03) = 'Hg0'
-                  INDEX(T,03) = N + ( SPACING * 62 )  !eds 9/3/10 
+                  INDEX(T,03) = N + ( SPACING * 62 )  !eds 9/3/10
               CASE( 3 )
                   NAME (T,03) = 'Hg_can'
                   FNAME(T,03) = 'Hg Canada'
-       	       	  INDEX(T,03) =	N + ( SPACING *	62 )  
+       	       	  INDEX(T,03) =	N + ( SPACING *	62 )
               CASE( 4 )
                   NAME (T,03) = 'Hg_usa'
                   FNAME(T,03) = 'Hg USA'
-                  INDEX(T,03) = N + ( SPACING * 62 ) 
+                  INDEX(T,03) = N + ( SPACING * 62 )
               CASE( 5 )
                   NAME (T,03) = 'Hg_cam'
                   FNAME(T,03) = 'Hg Central America'
-                  INDEX(T,03) = N + ( SPACING * 62 )  
+                  INDEX(T,03) = N + ( SPACING * 62 )
               CASE( 6 )
                   NAME (T,03) = 'Hg_sam'
                   FNAME(T,03) = 'Hg South American'
@@ -2441,7 +2421,7 @@
               CASE( 31 )
                   NAME (T,03) = 'Hg0'
                   FNAME(T,03) = 'Hg0'
-                  INDEX(T,03) = N + ( SPACING * 63 ) 
+                  INDEX(T,03) = N + ( SPACING * 63 )
               CASE( 32 )
                   NAME (T,03) = 'Hg_can'
                   FNAME(T,03) = 'Hg Canada'
@@ -2449,11 +2429,11 @@
               CASE( 33 )
                   NAME (T,03) = 'Hg_usa'
                   FNAME(T,03) = 'Hg USA'
-                  INDEX(T,03) = N + ( SPACING * 63 ) 
+                  INDEX(T,03) = N + ( SPACING * 63 )
               CASE( 34 )
                   NAME (T,03) = 'Hg_cam'
                   FNAME(T,03) = 'Hg Central America'
-                  INDEX(T,03) = N + ( SPACING * 63 )  
+                  INDEX(T,03) = N + ( SPACING * 63 )
               CASE( 35 )
                   NAME (T,03) = 'Hg_sam'
                   FNAME(T,03) = 'Hg South American'
@@ -2572,7 +2552,7 @@
               CASE( 60 )
                   NAME (T,03) = 'Hg0'
                   FNAME(T,03) = 'Hg0'
-                  INDEX(T,03) = N + ( SPACING * 64 ) 
+                  INDEX(T,03) = N + ( SPACING * 64 )
               CASE( 61 )
                   NAME (T,03) = 'Hg_can'
                   FNAME(T,03) = 'Hg Canada'
@@ -2580,11 +2560,11 @@
               CASE( 62 )
                   NAME (T,03) = 'Hg_usa'
                   FNAME(T,03) = 'Hg USA'
-                  INDEX(T,03) = N + ( SPACING * 64 ) 
+                  INDEX(T,03) = N + ( SPACING * 64 )
               CASE( 63 )
                   NAME (T,03) = 'Hg_cam'
                   FNAME(T,03) = 'Hg Central America'
-                  INDEX(T,03) = N + ( SPACING * 64 )  
+                  INDEX(T,03) = N + ( SPACING * 64 )
               CASE( 64 )
                   NAME (T,03) = 'Hg_sam'
                   FNAME(T,03) = 'Hg South American'
@@ -2689,7 +2669,7 @@
             END SELECT
          ENDDO
 
-        
+
 
          !-------------!
          ! HG0-GEOG    !
@@ -2700,7 +2680,7 @@
            CASE( 89 )
                NAME (T,03) = 'Hg0'
                FNAME(T,03) = 'Hg0'
-               INDEX(T,03) = 1 + ( SPACING * 65 )          
+               INDEX(T,03) = 1 + ( SPACING * 65 )
          END SELECT
 
 
@@ -2714,7 +2694,7 @@
            CASE( 90 )
                NAME (T,03) = 'Hg2'
                FNAME(T,03) = 'Hg2'
-               INDEX(T,03) = N + ( SPACING * 66 )    
+               INDEX(T,03) = N + ( SPACING * 66 )
          END SELECT
 
 
@@ -2732,7 +2712,7 @@
               CASE( 91 )
                   NAME (T,03) = 'Hg2'
                   FNAME(T,03) = 'Hg2'
-                  INDEX(T,03) = N + ( SPACING * 67 ) 
+                  INDEX(T,03) = N + ( SPACING * 67 )
               CASE( 92 )
                   NAME (T,03) = 'Hg_can'
                   FNAME(T,03) = 'Hg Canada'
@@ -2740,11 +2720,11 @@
               CASE( 93 )
                   NAME (T,03) = 'Hg_usa'
                   FNAME(T,03) = 'Hg USA'
-                  INDEX(T,03) = N + ( SPACING * 67 ) 
+                  INDEX(T,03) = N + ( SPACING * 67 )
               CASE( 94 )
                   NAME (T,03) = 'Hg_cam'
                   FNAME(T,03) = 'Hg Central America'
-                  INDEX(T,03) = N + ( SPACING * 67 )  
+                  INDEX(T,03) = N + ( SPACING * 67 )
               CASE( 95 )
                   NAME (T,03) = 'Hg_sam'
                   FNAME(T,03) = 'Hg South American'
@@ -2860,7 +2840,7 @@
            CASE( 120 )
                NAME (T,03) = 'Hg2'
                FNAME(T,03) = 'Hg2'
-               INDEX(T,03) = N + ( SPACING * 68 )          
+               INDEX(T,03) = N + ( SPACING * 68 )
          END SELECT
 
 
@@ -2874,7 +2854,7 @@
            CASE( 121 )
                NAME (T,03) = 'HgP'
                FNAME(T,03) = 'HgP'
-               INDEX(T,03) = N + ( SPACING * 69 )          
+               INDEX(T,03) = N + ( SPACING * 69 )
          END SELECT
 
 
@@ -2888,7 +2868,7 @@
            CASE( 122 )
                NAME (T,03) = 'HgTOT'
                FNAME(T,03) = 'Hg Total'
-               INDEX(T,03) = N + ( SPACING * 70 )          
+               INDEX(T,03) = N + ( SPACING * 70 )
          END SELECT
 
 
@@ -2907,7 +2887,7 @@
               CASE( 123 )
                   NAME (T,03) = 'HgP'
                   FNAME(T,03) = 'HgP'
-                  INDEX(T,03) = N + ( SPACING * 71 ) 
+                  INDEX(T,03) = N + ( SPACING * 71 )
               CASE( 124 )
                   NAME (T,03) = 'Hg_can'
                   FNAME(T,03) = 'Hg Canada'
@@ -2915,11 +2895,11 @@
               CASE( 125 )
                   NAME (T,03) = 'Hg_usa'
                   FNAME(T,03) = 'Hg USA'
-                  INDEX(T,03) = N + ( SPACING * 71 ) 
+                  INDEX(T,03) = N + ( SPACING * 71 )
               CASE( 126 )
                   NAME (T,03) = 'Hg_cam'
                   FNAME(T,03) = 'Hg Central America'
-                  INDEX(T,03) = N + ( SPACING * 71 )  
+                  INDEX(T,03) = N + ( SPACING * 71 )
               CASE( 127 )
                   NAME (T,03) = 'Hg_sam'
                   FNAME(T,03) = 'Hg South American'
@@ -3035,7 +3015,7 @@
            CASE( 152 )
                NAME (T,03) = 'HgP'
                FNAME(T,03) = 'HgP'
-               INDEX(T,03) = N + ( SPACING * 72 )          
+               INDEX(T,03) = N + ( SPACING * 72 )
          END SELECT
 
 
@@ -3049,7 +3029,7 @@
            CASE( 153 )
                NAME (T,03) = 'Hg0'
                FNAME(T,03) = 'Hg0'
-               INDEX(T,03) = N + ( SPACING * 73 )          
+               INDEX(T,03) = N + ( SPACING * 73 )
          END SELECT
 
 
@@ -3063,7 +3043,7 @@
            CASE( 154 )
                NAME (T,03) = 'Hg0'
                FNAME(T,03) = 'Hg0'
-               INDEX(T,03) = N + ( SPACING * 74 )          
+               INDEX(T,03) = N + ( SPACING * 74 )
          END SELECT
 
 
@@ -3077,7 +3057,7 @@
            CASE( 155 )
                NAME (T,03) = 'Hg0'
                FNAME(T,03) = 'Hg0'
-               INDEX(T,03) = N + ( SPACING * 75 )          
+               INDEX(T,03) = N + ( SPACING * 75 )
          END SELECT
 
 
@@ -3095,7 +3075,7 @@
               CASE( 156 )
                   NAME (T,03) = 'Hg0'
                   FNAME(T,03) = 'Hg0'
-                  INDEX(T,03) = N + ( SPACING * 76 ) 
+                  INDEX(T,03) = N + ( SPACING * 76 )
               CASE( 157 )
                   NAME (T,03) = 'Hg_can'
                   FNAME(T,03) = 'Hg Canada'
@@ -3103,11 +3083,11 @@
               CASE( 158 )
                   NAME (T,03) = 'Hg_usa'
                   FNAME(T,03) = 'Hg USA'
-                  INDEX(T,03) = N + ( SPACING * 76 ) 
+                  INDEX(T,03) = N + ( SPACING * 76 )
               CASE( 159 )
                   NAME (T,03) = 'Hg_cam'
                   FNAME(T,03) = 'Hg Central America'
-                  INDEX(T,03) = N + ( SPACING * 76 )  
+                  INDEX(T,03) = N + ( SPACING * 76 )
               CASE( 160 )
                   NAME (T,03) = 'Hg_sam'
                   FNAME(T,03) = 'Hg South American'
@@ -3227,7 +3207,7 @@
               CASE( 185 )
                   NAME (T,03) = 'Hg0'
                   FNAME(T,03) = 'Hg0'
-                  INDEX(T,03) = N + ( SPACING * 77 ) 
+                  INDEX(T,03) = N + ( SPACING * 77 )
               CASE( 186 )
                   NAME (T,03) = 'Hg_can'
                   FNAME(T,03) = 'Hg Canada'
@@ -3235,11 +3215,11 @@
               CASE( 187 )
                   NAME (T,03) = 'Hg_usa'
                   FNAME(T,03) = 'Hg USA'
-                  INDEX(T,03) = N + ( SPACING * 77 ) 
+                  INDEX(T,03) = N + ( SPACING * 77 )
               CASE( 188 )
                   NAME (T,03) = 'Hg_cam'
                   FNAME(T,03) = 'Hg Central America'
-                  INDEX(T,03) = N + ( SPACING * 77 )  
+                  INDEX(T,03) = N + ( SPACING * 77 )
               CASE( 189 )
                   NAME (T,03) = 'Hg_sam'
                   FNAME(T,03) = 'Hg South American'
@@ -3359,7 +3339,7 @@
               CASE( 214 )
                   NAME (T,03) = 'Hg0'
                   FNAME(T,03) = 'Hg0'
-                  INDEX(T,03) = N + ( SPACING * 78 ) 
+                  INDEX(T,03) = N + ( SPACING * 78 )
               CASE( 215 )
                   NAME (T,03) = 'Hg_can'
                   FNAME(T,03) = 'Hg Canada'
@@ -3367,11 +3347,11 @@
               CASE( 216 )
                   NAME (T,03) = 'Hg_usa'
                   FNAME(T,03) = 'Hg USA'
-                  INDEX(T,03) = N + ( SPACING * 78 ) 
+                  INDEX(T,03) = N + ( SPACING * 78 )
               CASE( 217 )
                   NAME (T,03) = 'Hg_cam'
                   FNAME(T,03) = 'Hg Central America'
-                  INDEX(T,03) = N + ( SPACING * 78 )  
+                  INDEX(T,03) = N + ( SPACING * 78 )
               CASE( 218 )
                   NAME (T,03) = 'Hg_sam'
                   FNAME(T,03) = 'Hg South American'
@@ -3491,7 +3471,7 @@
               CASE( 243 )
                   NAME (T,03) = 'Hg0'
                   FNAME(T,03) = 'Hg0'
-                  INDEX(T,03) = N + ( SPACING * 79 ) 
+                  INDEX(T,03) = N + ( SPACING * 79 )
               CASE( 244 )
                   NAME (T,03) = 'Hg_can'
                   FNAME(T,03) = 'Hg Canada'
@@ -3499,11 +3479,11 @@
               CASE( 245 )
                   NAME (T,03) = 'Hg_usa'
                   FNAME(T,03) = 'Hg USA'
-                  INDEX(T,03) = N + ( SPACING * 79 ) 
+                  INDEX(T,03) = N + ( SPACING * 79 )
               CASE( 246 )
                   NAME (T,03) = 'Hg_cam'
                   FNAME(T,03) = 'Hg Central America'
-                  INDEX(T,03) = N + ( SPACING * 79 )  
+                  INDEX(T,03) = N + ( SPACING * 79 )
               CASE( 247 )
                   NAME (T,03) = 'Hg_sam'
                   FNAME(T,03) = 'Hg South American'
@@ -3619,7 +3599,7 @@
            CASE( 272 )
                NAME (T,03) = 'Hg2'
                FNAME(T,03) = 'Hg2'
-               INDEX(T,03) = N + ( SPACING * 80 )          
+               INDEX(T,03) = N + ( SPACING * 80 )
          END SELECT
 
 
@@ -3634,7 +3614,7 @@
            CASE( 273 )
                NAME (T,03) = 'Hg2'
                FNAME(T,03) = 'Hg2'
-               INDEX(T,03) = N + ( SPACING * 81 )          
+               INDEX(T,03) = N + ( SPACING * 81 )
          END SELECT
 
 
@@ -3653,7 +3633,7 @@
               CASE( 274 )
                   NAME (T,03) = 'Hg2'
                   FNAME(T,03) = 'Hg2'
-                  INDEX(T,03) = N + ( SPACING * 82 ) 
+                  INDEX(T,03) = N + ( SPACING * 82 )
               CASE( 275 )
                   NAME (T,03) = 'Hg_can'
                   FNAME(T,03) = 'Hg Canada'
@@ -3661,11 +3641,11 @@
               CASE( 276 )
                   NAME (T,03) = 'Hg_usa'
                   FNAME(T,03) = 'Hg USA'
-                  INDEX(T,03) = N + ( SPACING * 82 ) 
+                  INDEX(T,03) = N + ( SPACING * 82 )
               CASE( 277 )
                   NAME (T,03) = 'Hg_cam'
                   FNAME(T,03) = 'Hg Central America'
-                  INDEX(T,03) = N + ( SPACING * 82 )  
+                  INDEX(T,03) = N + ( SPACING * 82 )
               CASE( 278 )
                   NAME (T,03) = 'Hg_sam'
                   FNAME(T,03) = 'Hg South American'
@@ -3785,7 +3765,7 @@
               CASE( 303 )
                   NAME (T,03) = 'Hg2'
                   FNAME(T,03) = 'Hg2'
-                  INDEX(T,03) = N + ( SPACING * 83 ) 
+                  INDEX(T,03) = N + ( SPACING * 83 )
               CASE( 304 )
                   NAME (T,03) = 'Hg_can'
                   FNAME(T,03) = 'Hg Canada'
@@ -3793,11 +3773,11 @@
               CASE( 305 )
                   NAME (T,03) = 'Hg_usa'
                   FNAME(T,03) = 'Hg USA'
-                  INDEX(T,03) = N + ( SPACING * 83 ) 
+                  INDEX(T,03) = N + ( SPACING * 83 )
               CASE( 306 )
                   NAME (T,03) = 'Hg_cam'
                   FNAME(T,03) = 'Hg Central America'
-                  INDEX(T,03) = N + ( SPACING * 83 )  
+                  INDEX(T,03) = N + ( SPACING * 83 )
               CASE( 307 )
                   NAME (T,03) = 'Hg_sam'
                   FNAME(T,03) = 'Hg South American'
@@ -3917,7 +3897,7 @@
               CASE( 332 )
                   NAME (T,03) = 'Hg2'
                   FNAME(T,03) = 'Hg2'
-                  INDEX(T,03) = N + ( SPACING * 84 ) 
+                  INDEX(T,03) = N + ( SPACING * 84 )
               CASE( 333 )
                   NAME (T,03) = 'Hg_can'
                   FNAME(T,03) = 'Hg Canada'
@@ -3925,11 +3905,11 @@
               CASE( 334 )
                   NAME (T,03) = 'Hg_usa'
                   FNAME(T,03) = 'Hg USA'
-                  INDEX(T,03) = N + ( SPACING * 84 ) 
+                  INDEX(T,03) = N + ( SPACING * 84 )
               CASE( 335 )
                   NAME (T,03) = 'Hg_cam'
                   FNAME(T,03) = 'Hg Central America'
-                  INDEX(T,03) = N + ( SPACING * 84 )  
+                  INDEX(T,03) = N + ( SPACING * 84 )
               CASE( 336 )
                   NAME (T,03) = 'Hg_sam'
                   FNAME(T,03) = 'Hg South American'
@@ -4063,9 +4043,9 @@
          END SELECT
 
 
-       	 !-------------! 
+       	 !-------------!
          ! OCEAN-HG    !
-       	 !-------------! 
+       	 !-------------!
 
          ! Loop over tracers
          DO N = 1, 87
@@ -4077,7 +4057,7 @@
               CASE( 363 )
                   NAME (T,03) = 'Hg0'
                   FNAME(T,03) = 'Hg0'
-                  INDEX(T,03) = N + ( SPACING * 41 )  !eds 9/9/10 
+                  INDEX(T,03) = N + ( SPACING * 41 )  !eds 9/9/10
               CASE( 364 )
                   NAME (T,03) = 'Hg2'
                   FNAME(T,03) = 'Hg2'
@@ -4089,15 +4069,15 @@
               CASE( 366 )
                   NAME (T,03) = 'Hg0_can'
                   FNAME(T,03) = 'Hg0 Canada'
-       	       	  INDEX(T,03) =	N + ( SPACING *	41 )  
+       	       	  INDEX(T,03) =	N + ( SPACING *	41 )
               CASE( 367 )
                   NAME (T,03) = 'Hg0_usa'
                   FNAME(T,03) = 'Hg0 USA'
-                  INDEX(T,03) = N + ( SPACING * 41 ) 
+                  INDEX(T,03) = N + ( SPACING * 41 )
               CASE( 368 )
                   NAME (T,03) = 'Hg0_cam'
                   FNAME(T,03) = 'Hg0 Central America'
-                  INDEX(T,03) = N + ( SPACING * 41 )  
+                  INDEX(T,03) = N + ( SPACING * 41 )
               CASE( 369 )
                   NAME (T,03) = 'Hg0_sam'
                   FNAME(T,03) = 'Hg0 South American'
@@ -4201,15 +4181,15 @@
               CASE( 394 )
                   NAME (T,03) = 'Hg2_can'
                   FNAME(T,03) = 'Hg2 Canada'
-       	       	  INDEX(T,03) =	N + ( SPACING *	41 )  
+       	       	  INDEX(T,03) =	N + ( SPACING *	41 )
               CASE( 395 )
                   NAME (T,03) = 'Hg2_usa'
                   FNAME(T,03) = 'Hg2 USA'
-                  INDEX(T,03) = N + ( SPACING * 41 ) 
+                  INDEX(T,03) = N + ( SPACING * 41 )
               CASE( 396 )
                   NAME (T,03) = 'Hg2_cam'
                   FNAME(T,03) = 'Hg2 Central America'
-                  INDEX(T,03) = N + ( SPACING * 41 )  
+                  INDEX(T,03) = N + ( SPACING * 41 )
               CASE( 397 )
                   NAME (T,03) = 'Hg2_sam'
                   FNAME(T,03) = 'Hg2 South American'
@@ -4313,15 +4293,15 @@
               CASE( 422 )
                   NAME (T,03) = 'HgP_can'
                   FNAME(T,03) = 'HgP Canada'
-       	       	  INDEX(T,03) =	N + ( SPACING *	41 )  
+       	       	  INDEX(T,03) =	N + ( SPACING *	41 )
               CASE( 423 )
                   NAME (T,03) = 'HgP_usa'
                   FNAME(T,03) = 'HgP USA'
-                  INDEX(T,03) = N + ( SPACING * 41 ) 
+                  INDEX(T,03) = N + ( SPACING * 41 )
               CASE( 424 )
                   NAME (T,03) = 'HgP_cam'
                   FNAME(T,03) = 'HgP Central America'
-                  INDEX(T,03) = N + ( SPACING * 41 )  
+                  INDEX(T,03) = N + ( SPACING * 41 )
               CASE( 425 )
                   NAME (T,03) = 'HgP_sam'
                   FNAME(T,03) = 'HgP South American'
@@ -4427,9 +4407,9 @@
          ENDDO
 
 
-       	 !-------------! 
+       	 !-------------!
          ! SNOW-HG     !
-       	 !-------------! 
+       	 !-------------!
 
          ! Loop over tracers
          DO N = 1, 31
@@ -4441,7 +4421,7 @@
               CASE( 450 )
                   NAME (T,03) = 'Hg0'
                   FNAME(T,03) = 'Hg0'
-                  INDEX(T,03) = N + ( SPACING * 49 )  !eds 9/9/10 
+                  INDEX(T,03) = N + ( SPACING * 49 )  !eds 9/9/10
               CASE( 451 )
                   NAME (T,03) = 'Hg2'
                   FNAME(T,03) = 'Hg2'
@@ -4453,15 +4433,15 @@
               CASE( 453 )
                   NAME (T,03) = 'Hg_can'
                   FNAME(T,03) = 'Hg Canada'
-       	       	  INDEX(T,03) =	N + ( SPACING *	49 )  
+       	       	  INDEX(T,03) =	N + ( SPACING *	49 )
               CASE( 454 )
                   NAME (T,03) = 'Hg_usa'
                   FNAME(T,03) = 'Hg USA'
-                  INDEX(T,03) = N + ( SPACING * 49 ) 
+                  INDEX(T,03) = N + ( SPACING * 49 )
               CASE( 455 )
                   NAME (T,03) = 'Hg_cam'
                   FNAME(T,03) = 'Hg Central America'
-                  INDEX(T,03) = N + ( SPACING * 49 )  
+                  INDEX(T,03) = N + ( SPACING * 49 )
               CASE( 456 )
                   NAME (T,03) = 'Hg_sam'
                   FNAME(T,03) = 'Hg South American'
@@ -4572,7 +4552,7 @@
       ! CO2 sources & fluxes
       !-------------------------------------
       IF ( ND04 > 0 ) THEN
-         
+
          ! NOTE: Most CO2 emissions are now tracked
          ! via HEMCO diagnostics (bmy, 10/18/18)
          NTRAC(04) = 1
@@ -4732,7 +4712,7 @@
          ! Number of tracers
          IF ( Input_Opt%LSOA ) THEN
             ! hotp updated for SOA (7/31/08)
-            NTRAC(07) = 11
+            NTRAC(07) = 10
          ELSE
             NTRAC(07) = 2
          ENDIF
@@ -4787,14 +4767,10 @@
                   FNAME(T,07) = 'mono+sesq aerosol'
                   INDEX(T,07) = id_TSOA1 + ( SPACING * 33 )
                CASE( 8 ) ! SOAupdate hotp
-                  NAME (T,07) = 'ISOA'
-                  FNAME(T,07) = 'isoprene aerosol'
-                  INDEX(T,07) = id_ISOA1 + ( SPACING * 33 )
-               CASE( 9 ) ! SOAupdate hotp
                   NAME (T,07) = 'ASOA'
                   FNAME(T,07) = 'BTX + IVOC aerosol'
                   INDEX(T,07) = id_ASOA1 + ( SPACING * 33 )
-               CASE( 10 ) ! SOAupdate update 5/27/10 hotp
+               CASE( 9 ) ! SOAupdate update 5/27/10 hotp
                   NAME (T,07) = 'OPOA'
                   FNAME(T,07) = 'OPOA production'
                   IF ( id_OPOA1 > 0 ) THEN ! hotp 6/8/10
@@ -4803,7 +4779,7 @@
                      INDEX(T,07) = 80 + (SPACING * 33 )
                   ENDIF
                   UNIT (T,07) = 'kgC'
-               CASE( 11 ) ! SOAupdate update 5/27/10 hotp
+               CASE( 10 ) ! SOAupdate update 5/27/10 hotp
                   NAME (T,07) = 'OPOG'
                   FNAME(T,07) = 'POG + OH reaction'
                   UNIT (T,07) = 'kgC'
@@ -4817,198 +4793,6 @@
                   ! Nothing
             END SELECT
 
-         ENDDO
-      ENDIF
-
-      !-------------------------------------
-      ! HCN & CH3CN sources & sinks (ND09)
-      !-------------------------------------
-      IF ( ND09 > 0 ) THEN
-         
-         ! Number of tracers
-         NTRAC(09) = nAdvect + 6
-
-         ! Loop over tracers: HCN-PL-$
-         DO T = 1, NTRAC(09)-6
-            SpcInfo     => State_Chm%SpcData(T)%Info
-            NAME (T,09) = SpcInfo%Name
-            FNAME(T,09) = TRIM( SpcInfo%Name ) 
-     &                    // ' lost via OH rxn'
-            UNIT (T,09) = 'kg'
-            INDEX(T,09) = T + ( SPACING * 38 )
-            MOLC (T,09) = 1
-            MWT  (T,09) = SpcInfo%emMW_g * 1.e-3_fp
-            SCALE(T,09) = 1e0
-         ENDDO
-
-         ! Loop over tracers: HCN-SRCE
-         DO T = NTRAC(09)-6+1, NTRAC(09)
-
-            ! Get tracer number, C number, scale factor, unit
-            INDEX(T,09) = ( T - nAdvect ) + ( SPACING * 39 )
-            MOLC (T,09) = 1
-            SCALE(T,09) = 1e0
-            UNIT (T,09) = 'molec/cm2/s'
-              
-            ! Get name, longname, unit, mwt
-            IF ( T == nAdvect+1 ) THEN
-               NAME (T,09) = 'HCNbb'
-               FNAME(T,09) = 'HCN biomass emissions'
-               MWT  (T,09) = 27d-3  ! hard-coded MW
-            ELSE IF ( T == nAdvect+2 ) THEN
-               NAME (T,09) = 'CH3CNbb'
-               FNAME(T,09) = 'CH3CN biomass emissions'
-               MWT  (T,09) = 41d-3  ! hard-coded MW
-            ELSE IF ( T == nAdvect+3 ) THEN
-               NAME (T,09) = 'HCNdf'
-               FNAME(T,09) = 'HCN domestic FF emiss'
-               MWT  (T,09) = 27d-3  ! hard-coded MW
-            ELSE IF ( T == nAdvect+4 ) THEN
-               NAME (T,09) = 'CH3CNdf'
-               FNAME(T,09) = 'CH3CN domestic FF emiss'
-               MWT  (T,09) = 41d-3  ! hard-coded MW
-            ELSE IF ( T == nAdvect+5 ) THEN
-               NAME (T,09) = 'HCNoc'
-               FNAME(T,09) = 'HCN ocean uptake'
-               MWT  (T,09) = 27d-3  ! hard-coded MW
-            ELSE IF ( T == nAdvect+6 ) THEN
-               NAME (T,09) = 'CH3CNoc'
-               FNAME(T,09) = 'CH3CN ocean uptake'
-               MWT  (T,09) = 41d-3  ! hard-coded MW
-            ENDIF
-         ENDDO
-      ENDIF
-    
-      !-------------------------------------      
-      ! H2-HD source, production & loss (ND10)
-      !-------------------------------------      
-      IF ( ND10 > 0 ) THEN
-         
-         ! Number of tracers
-         NTRAC(10) = 20
-
-         ! Loop over tracers 
-         DO T = 1, NTRAC(10)
-
-            ! Define quantities
-            UNIT (T,10) = 'molec/cm3/s' ! overwrite below when needed
-            MOLC (T,10) = 1   
-            SCALE(T,10) = 1e0
-
-            ! Get name, long-name, index, and new units
-            SELECT CASE( T )
-               CASE( 1  )
-                  NAME (T,10) = 'H2oh'
-                  FNAME(T,10) = 'Loss of H2 by OH'
-                  MWT  (T,10) = 2e-3  ! hard-coded MW
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 2  )
-                  NAME (T,10) = 'H2iso'
-                  FNAME(T,10) = 'Prod of H2 from Isoprene'
-                  MWT  (T,10) = 2e-3  ! hard-coded MW
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 3  )
-                  NAME (T,10) = 'H2ch4'
-                  FNAME(T,10) = 'Prod of H2 from CH4'
-                  MWT  (T,10) = 2e-3  ! hard-coded MW
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 4  )
-                  NAME (T,10) = 'H2ch3oh'
-                  FNAME(T,10) = 'Prod of H2 from CH3OH'
-                  MWT  (T,10) = 2e-3  ! hard-coded MW
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 5  )
-                  NAME (T,10) = 'H2mono'
-                  FNAME(T,10) = 'Prod of H2 from MONO'
-                  MWT  (T,10) = 2e-3  ! hard-coded MW
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 6  )
-                  NAME (T,10) = 'H2acet'
-                  FNAME(T,10) = 'Prod of H2 from ACET'
-                  MWT  (T,10) = 2e-3  ! hard-coded MW
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 7  )
-                  NAME (T,10) = 'H2o1d'
-                  FNAME(T,10) = 'Loss of H2 by strat O1D'
-                  MWT  (T,10) = 2e-3  ! hard-coded MW
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 8  )
-                  NAME (T,10) = 'HDoh'
-                  FNAME(T,10) = 'Loss of HD by OH'
-                  UNIT (T,10) = 's-1'
-                  MWT  (T,10) = 3e-3  ! hard-coded MW
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 9  )
-                  NAME (T,10) = 'HDiso'
-                  FNAME(T,10) = 'Prod of HD from Isoprene'
-                  MWT  (T,10) = 3e-3  ! hard-coded MW
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 10 )
-                  NAME (T,10) = 'HDch4'
-                  FNAME(T,10) = 'Prod of HD from CH4'
-                  MWT  (T,10) = 3e-3  ! hard-coded MW
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 11 )
-                  NAME (T,10) = 'HDch3oh'
-                  FNAME(T,10) = 'Prod of HD from CH3OH'
-                  MWT  (T,10) = 3e-3  ! hard-coded MW
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 12 )
-                  NAME (T,10) = 'HDmono'
-                  FNAME(T,10) = 'Prod of HD from MONO'
-                  MWT  (T,10) = 3e-3  ! hard-coded MW
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 13 )
-                  NAME (T,10) = 'HDacet'
-                  FNAME(T,10) = 'Prod of HD from ACET'
-                  MWT  (T,10) = 3e-3  ! hard-coded MW
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 14 )
-                  NAME (T,10) = 'HDo1d'
-                  FNAME(T,10) = 'Loss of HD by strat O1D'
-                  MWT  (T,10) = 3e-3  ! hard-coded MW
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 15 )
-                  NAME (T,10) = 'Alpha'
-                  FNAME(T,10) = 'Ratio of OH k rates kHD/kH2'
-                  UNIT (T,10) = 'unitless'
-                  INDEX(T,10) = T + ( SPACING * 47 )
-               CASE( 16 )
-                  NAME (T,10) = 'H2anth'
-                  FNAME(T,10) = 'Fossil Fuel H2 (anthropogenic)'
-                  UNIT (T,10) = 'molec/cm2/s'
-                  MWT  (T,10) = 2e-3  ! hard-coded MW
-                  INDEX(T,10) = ( T - 15 ) + ( SPACING * 48 )
-               CASE( 17 )
-                  NAME (T,10) = 'H2bb'
-                  FNAME(T,10) = 'Biomass Burning of H2'
-                  UNIT (T,10) = 'molec/cm2/s'
-                  MWT  (T,10) = 2e-3  ! hard-coded MW
-                  INDEX(T,10) = ( T - 15 ) + ( SPACING * 48 )
-
-               CASE( 18 )
-                  NAME (T,10) = 'H2bf'
-                  FNAME(T,10) = 'Biofuel Burning of H2'
-                  UNIT (T,10) = 'molec/cm2/s'
-                  MWT  (T,10) = 2e-3  ! hard-coded MW
-                  INDEX(T,10) = ( T - 15 ) + ( SPACING * 48 )
-
-               CASE( 19 )
-                  NAME (T,10) = 'H2ocean'
-                  FNAME(T,10) = 'Ocean emissions of H2'
-                  UNIT (T,10) = 'molec/cm2/s'
-                  MWT  (T,10) = 2e-3  ! hard-coded MW
-                  INDEX(T,10) = ( T - 15 ) + ( SPACING * 48 )
-               CASE( 20 )
-                  NAME (T,10) = 'HDocean'
-                  FNAME(T,10) = 'Ocean emissions of HD'
-                  UNIT (T,10) = 'molec/cm2/s'
-                  MWT  (T,10) = 3e-3  ! hard-coded MW
-                  INDEX(T,10) = ( T - 15 ) + ( SPACING * 48 )
-
-               CASE DEFAULT
-                  ! Nothing
-            END SELECT
          ENDDO
       ENDIF
 
@@ -5053,9 +4837,9 @@
          ENDDO
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! Distrib of emissions in PBL (ND12)
-      !-------------------------------------      
+      !-------------------------------------
       IF ( ND12 > 0 ) THEN
          T           = 1
          NTRAC(12)   = T
@@ -5068,10 +4852,10 @@
          SCALE(T,12) = 1e0
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! Fraction of grid box experiencing
       ! LS or conv precipitation (ND16)
-      !-------------------------------------   
+      !-------------------------------------
       IF ( ND16 > 0 ) THEN
          NTRAC(16)   = 1
          NAME (T,16) = 'LS-f'
@@ -5083,12 +4867,12 @@
          SCALE(T,16) = 1e0
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! F/f ratios for LS & convective
       ! rainout (ND17) & washout (ND18)
       !-------------------------------------
       IF ( ND17 + ND18 > 0 ) THEN
-         
+
          ! Number of tracers
          NTRAC(17) = State_Chm%nWetDep
 
@@ -5112,11 +4896,11 @@
          ENDDO
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! CH4 Loss due to reaction w/ OH
       !-------------------------------------
       IF ( ND19 > 0 ) THEN
-         
+
          ! Number of tracers
          NTRAC(19) = 3
 
@@ -5129,7 +4913,7 @@
             MWT  (T,19) = 1.6e-3
             MOLC (T,19) = 1
             SCALE(T,19) = 1e0
-            
+
             ! Get name long-name (and sometimes, unit)
             SELECT CASE( T )
                CASE( 1 )
@@ -5149,7 +4933,7 @@
 
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! Optical depths (ND21)
       !-------------------------------------
       IF ( ND21 > 0 .or. DO_TIMESERIES ) THEN
@@ -5223,7 +5007,7 @@
                   NAME (T,21) = 'OPSSa'//Input_Opt%STRWVSELECT(1)
                   FNAME(T,21) = 'Seasalt (accum) opt depth ('
      &                          // Input_Opt%STRWVSELECT(1) //'nm)'
-               CASE( 16 ) 
+               CASE( 16 )
                   NAME (T,21) = 'HGSSa'
                   FNAME(T,21) = 'Hygr growth of seasalt (accum)'
                CASE( 17 )
@@ -5234,7 +5018,7 @@
                   NAME (T,21) = 'OPSSc'//Input_Opt%STRWVSELECT(1)
                   FNAME(T,21) = 'Seasalt (coarse) opt depth ('
      &                          // Input_Opt%STRWVSELECT(1) //'nm)'
-               CASE( 19 ) 
+               CASE( 19 )
                   NAME (T,21) = 'HGSSc'
                   FNAME(T,21) = 'Hygr growth of seasalt (coarse)'
                CASE( 20 )
@@ -5302,7 +5086,7 @@
                   FNAME(T,21) = 'Dust bin 3 AOD ('
      &                           // Input_Opt%STRWVSELECT(2) // 'nm)'
                CASE( 36 )
-                  NAME (T,21) = 'OPD4' // Input_Opt%STRWVSELECT(2) 
+                  NAME (T,21) = 'OPD4' // Input_Opt%STRWVSELECT(2)
                   FNAME(T,21) = 'Dust bin 4 AOD ('
      &                           // Input_Opt%STRWVSELECT(2) // 'nm)'
                CASE( 37 )
@@ -5404,12 +5188,12 @@
          ENDDO
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! J-Values (ND22)
       !-------------------------------------
       IF ( ND22 > 0 ) THEN
 
-         IF ( Input_Opt%ITS_A_FULLCHEM_SIM ) THEN 
+         IF ( Input_Opt%ITS_A_FULLCHEM_SIM ) THEN
 
             !------------------
             ! Full-chem run
@@ -5494,7 +5278,7 @@
                   CASE( 31 )
                      NAME(T,22) = 'JETHLN'
                   CASE( 32 )
-                     NAME(T,22) = 'JDHDN'
+                     NAME(T,22) = 'JDHDC'
                   CASE( 33 )
                      NAME(T,22) = 'JHPALD'
                   CASE( 34 )
@@ -5505,7 +5289,7 @@
                      NAME(T,22) = 'JMONITU'
                   CASE( 37 )
                      NAME(T,22) = 'JHONIT'
-                  ! lei, 05/15/17 - added new halogen species below 
+                  ! lei, 05/15/17 - added new halogen species below
                   CASE( 38 )
                      NAME(T,22) = 'JCH3Br'
                   CASE( 39 )
@@ -5584,6 +5368,10 @@
                      NAME(T,22) = 'JH1301'
                   CASE( 76 )
                      NAME(T,22) = 'JH2402'
+                  CASE( 77 )
+                     NAME(T,22) = 'JNITs'
+                  CASE( 78 )
+                     NAME(T,22) = 'JNIT'
                  CASE DEFAULT
                   ! Nothing
                END SELECT
@@ -5596,39 +5384,11 @@
                MWT  (T,22) = 0e0
                SCALE(T,22) = 1e0
             ENDDO
-         
-         ELSE IF ( Input_Opt%ITS_A_CH3I_SIM ) THEN
-
-            !------------------
-            ! CH3I run
-            !------------------
-            NTRAC(22)   = 1 
-            NAME (T,22) = 'JCH3I'
-            FNAME(T,22) = TRIM( NAME(T,22) ) // ' photolysis rate'
-            UNIT (T,22) = 's-1'
-            INDEX(T,22) = T + ( SPACING * 13 )
-            MOLC (T,22) = 1
-            MWT  (T,22) = 0e0
-            SCALE(T,22) = 1e0            
-
-         ELSE IF ( Input_Opt%ITS_A_HCN_SIM ) THEN
-
-            !------------------
-            ! HCN run
-            !------------------
-            NTRAC(22)   = 1 
-            NAME (T,22) = 'JHCN'
-            FNAME(T,22) = TRIM( NAME(T,22) ) // ' photolysis rate'
-            UNIT (T,22) = 's-1'
-            INDEX(T,22) = T + ( SPACING * 13 )
-            MOLC (T,22) = 1
-            MWT  (T,22) = 0e0
-            SCALE(T,22) = 1e0    
 
          ENDIF
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! Biomass emissions (ND28)
       !-------------------------------------
       IF ( ND28 > 0 ) THEN
@@ -5636,11 +5396,11 @@
          ! Initialize
          T         = 0
          NTRAC(28) = 0
-         
+
          !-----------------------------------------------
          ! Biomass species for CO2 simulation
          !-----------------------------------------------
-         IF ( Input_Opt%ITS_A_CO2_SIM ) THEN 
+         IF ( Input_Opt%ITS_A_CO2_SIM ) THEN
             T           = T + 1
             NTRAC(28)   = NTRAC(28) + 1
             NAME (T,28) = 'CO2'
@@ -5847,13 +5607,13 @@
             NTRAC(  28) = NTRAC(28) + 1
             NAME (T,28) = 'POG2'
             FNAME(T,28) = TRIM( NAME(T,28) ) // ' biomass'
-            INDEX(T,28) = id_POG2 + ( SPACING * 45 )            
+            INDEX(T,28) = id_POG2 + ( SPACING * 45 )
             MWT  (T,28) = 12e-3
             MOLC (T,28) = 1
             UNIT (T,28) = 'atoms C/cm2/s'
             SCALE(T,28) = 1e0
          ENDIF
-         
+
          IF ( id_CH4 > 0 ) THEN
             T           = T         + 1
             NTRAC(  28) = NTRAC(28) + 1
@@ -5972,7 +5732,7 @@
             INDEX(T,28) = id_NAP + ( SPACING * 45 )
             MWT  (T,28) = 12e-3
             MOLC (T,28) = 10
-            UNIT (T,28) = 'atoms C/cm2/s' 
+            UNIT (T,28) = 'atoms C/cm2/s'
             SCALE(T,28) = 1e0
          ENDIF
          !evf, 1/13/2012, eoh
@@ -6001,7 +5761,7 @@
          ENDIF
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! CO emissions (ND29)
       !-------------------------------------
       IF ( ND29 > 0 ) THEN
@@ -6013,7 +5773,7 @@
             NTRAC(29) = 6
          ENDIF
 
-         ! Loop over all slots of ND29 
+         ! Loop over all slots of ND29
          ! 1-6  are for the fullchem simulation
          ! 7-24 are for the tagged CO simulation
          ! Also note: Tagged CO lumps biofuels with anthro emissions
@@ -6117,9 +5877,9 @@
          ENDDO
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! Land map (ND30)
-      !-------------------------------------      
+      !-------------------------------------
       IF ( ND30 > 0 ) THEN
          T           = 1
          NTRAC(30)   = T
@@ -6132,11 +5892,11 @@
          SCALE(T,30) = 1e0
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! Surface pressure (ND31)
-      !-------------------------------------   
-      IF ( ND31 > 0          .or. Input_Opt%DO_ND48 .or. 
-     &     Input_Opt%DO_ND49 .or. Input_OPt%DO_ND50 .or. 
+      !-------------------------------------
+      IF ( ND31 > 0          .or. Input_Opt%DO_ND48 .or.
+     &     Input_Opt%DO_ND49 .or. Input_OPt%DO_ND50 .or.
      &     Input_Opt%DO_ND51 .or. Input_Opt%DO_ND51b ) THEN
          T           = 1
          NTRAC(31)   = T
@@ -6149,10 +5909,10 @@
          SCALE(T,31) = 1e0
       ENDIF
 
-      !-------------------------------------      
-      ! Afternoon-average boundary 
+      !-------------------------------------
+      ! Afternoon-average boundary
       ! layer heights (ND41) + timeseries
-      !-------------------------------------      
+      !-------------------------------------
       IF ( ND41 > 0 .or. DO_TIMESERIES ) THEN
 
          ! Number of tracers
@@ -6182,9 +5942,9 @@
          ENDDO
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! SOA concentrations (ND42)
-      !-------------------------------------    
+      !-------------------------------------
       IF ( ND42 > 0 ) THEN
 
          ! Number of tracers
@@ -6202,8 +5962,8 @@
                   UNIT (T,42) = 'ug/m3'
                   MWT  (T,42) = 150e-3
                CASE( 2 )
-                  NAME (T,42) = 'ISOA'
-                  FNAME(T,42) = 'Aer prods of isoprene ox'
+                  NAME (T,42) = 'OBSOLETE3'
+                  FNAME(T,42) = 'This diagnostic is obsolete'
                   UNIT (T,42) = 'ug/m3'
                   MWT  (T,42) = 150e-3
                CASE( 3 )
@@ -6332,11 +6092,11 @@
             SCALE(T,42) = 1e0
          ENDDO
       ENDIF
-      
-      !-------------------------------------      
+
+      !-------------------------------------
       ! Chemically-produced OH, etc (ND43)
-      !-------------------------------------      
-      IF ( ND43 > 0 .or. DO_TIMESERIES ) THEN 
+      !-------------------------------------
+      IF ( ND43 > 0 .or. DO_TIMESERIES ) THEN
 
          ! Number of tracers
          NTRAC(43) = 4
@@ -6378,16 +6138,15 @@
          ENDDO
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! Dry deposition fluxes     (ND44)
       ! Dry deposition velocities (ND44)
-      !-------------------------------------      
+      !-------------------------------------
       IF ( ND44 > 0 ) THEN
 
          ! Special handling for tagged simulations
-         IF ( Input_Opt%ITS_A_TAGO3_SIM   .or. 
-     &        Input_Opt%ITS_A_MERCURY_SIM .or. 
-     &        Input_Opt%ITS_A_H2HD_SIM  ) THEN
+         IF ( Input_Opt%ITS_A_TAGO3_SIM   .or.
+     &        Input_Opt%ITS_A_MERCURY_SIM ) THEN
 
             !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             !%%%             FOR TAGGED SIMULATIONS ONLY             %%%
@@ -6399,7 +6158,7 @@
             ! Drydep flux (all tracers)
             DO T = 1, nAdvect
                SpcInfo     => State_Chm%SpcData(T)%Info
-               NAME (T,44)  = TRIM( SpcInfo%Name ) // 'df'        
+               NAME (T,44)  = TRIM( SpcInfo%Name ) // 'df'
                FNAME(T,44)  = TRIM( SpcInfo%Name ) //
      &                        ' drydep flux'
                UNIT (T,44)  = 'molec/cm2/s'
@@ -6415,7 +6174,7 @@
                T            = State_Chm%Map_DryDep(N)
                SpcInfo     => State_Chm%SpcData(T)%Info
                NN           = N + nAdvect
-               NAME (NN,44) = TRIM( SpcInfo%Name ) // 'dv'        
+               NAME (NN,44) = TRIM( SpcInfo%Name ) // 'dv'
                FNAME(NN,44) = TRIM( SpcInfo%Name ) //
      &                        ' drydep velocity'
                UNIT (NN,44) = 'cm/s'
@@ -6435,13 +6194,13 @@
 
             ! Loop over # of dry depositing species
             DO N = 1, nDryDep + (ICOMP-IDIAG)* IBINS
-               
-               IF ( N <= nDryDep ) THEN 
+
+               IF ( N <= nDryDep ) THEN
 
                   !-----------------------------------------------
                   ! Drydep flux
                   !-----------------------------------------------
-                  T             = State_Chm%Map_DryDep(N)         
+                  T             = State_Chm%Map_DryDep(N)
                   SpcInfo       => State_Chm%SpcData(T)%Info
                   NAME (N,44)   = TRIM( SpcInfo%Name ) // 'df'
                   FNAME(N,44)   = TRIM( SpcInfo%Name ) //
@@ -6463,12 +6222,12 @@
                   ! Drydep velocity
                   !-----------------------------------------------
                   NN            = N + nDryDep  +(ICOMP-IDIAG)*IBINS
-                  NAME (NN,44)  = TRIM( SpcInfo%Name ) // 'dv'        
-                  FNAME(NN,44)  = TRIM( SpcInfo%Name ) // 
+                  NAME (NN,44)  = TRIM( SpcInfo%Name ) // 'dv'
+                  FNAME(NN,44)  = TRIM( SpcInfo%Name ) //
      &                            ' drydep velocity'
                   MWT  (NN,44)  = SpcInfo%emMW_g * 1.e-3_fp
                   MOLC (NN,44)  = SpcInfo%MolecRatio
-                  UNIT (NN,44)  = 'cm/s'                     
+                  UNIT (NN,44)  = 'cm/s'
                   SCALE(NN,44)  = 1.0e0
                   INDEX(NN,44)  = T + ( SPACING * 37 )
                   NTRAC(44)     = NTRAC(44) + 1
@@ -6491,17 +6250,17 @@
                   SCALE(N,44)  = 1.0e0
                   INDEX(N,44)  = T + ( SPACING * 36 )
                   NTRAC(44)    = NTRAC(44) + 1
-                  
+
                   !-----------------------------------------------
                   ! Drydep velocity all other G-C tracers
                   !-----------------------------------------------
                   NN            = N + nDryDep + (ICOMP-IDIAG)* IBINS
-                  NAME (NN,44)  = TRIM( SpcInfo%Name ) // 'dv'        
-                  FNAME(NN,44)  = TRIM( SpcInfo%Name ) // 
+                  NAME (NN,44)  = TRIM( SpcInfo%Name ) // 'dv'
+                  FNAME(NN,44)  = TRIM( SpcInfo%Name ) //
      &                            ' drydep velocity'
                   MWT  (NN,44)  = SpcInfo%emMW_g * 1.e-3_fp
                   MOLC (NN,44)  = SpcInfo%MolecRatio
-                  UNIT (NN,44)  = 'cm/s'                     
+                  UNIT (NN,44)  = 'cm/s'
                   SCALE(NN,44)  = 1.0e0
                   INDEX(NN,44)  = T + ( SPACING * 37 )
                   NTRAC(44)     = NTRAC(44) + 1
@@ -6539,12 +6298,12 @@
                ! Drydep velocity
                !--------------------------------------------------
                NN            = N + nDryDep
-               NAME (NN,44)  = TRIM( SpcInfo%Name ) // 'dv'        
-               FNAME(NN,44)  = TRIM( SpcInfo%Name ) // 
+               NAME (NN,44)  = TRIM( SpcInfo%Name ) // 'dv'
+               FNAME(NN,44)  = TRIM( SpcInfo%Name ) //
      &                         ' drydep velocity'
                MWT  (NN,44)  = SpcInfo%emMW_g * 1.e-3_fp
                MOLC (NN,44)  = SpcInfo%MolecRatio
-               UNIT (NN,44)  = 'cm/s'                     
+               UNIT (NN,44)  = 'cm/s'
                SCALE(NN,44)  = 1.0e0
                INDEX(NN,44)  = T + ( SPACING * 37 )
                NTRAC(44)     = NTRAC(44) + 1
@@ -6554,10 +6313,10 @@
          ENDIF
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! Biogenic emissions (ND46)
-      !-------------------------------------      
-      IF ( ND46 > 0 .or. DO_TIMESERIES ) THEN 
+      !-------------------------------------
+      IF ( ND46 > 0 .or. DO_TIMESERIES ) THEN
 
          NTRAC(46) = 29
 
@@ -6646,10 +6405,10 @@
                CASE( 20)
                   NAME(T,46) = 'FARN'
                   MOLC(T,46) = 15 ! [C/molecule]
-               CASE( 21)              
+               CASE( 21)
                   NAME(T,46) = 'BCAR'
                   MOLC(T,46) = 15 ! [C/molecule]
-               CASE( 22)              
+               CASE( 22)
                   NAME(T,46) = 'OSQT'
                   MOLC(T,46) = 15 ! [C/molecule]
                !jpp, 9/6/07
@@ -6711,10 +6470,10 @@
       ENDIF
 
 #endif
-      !-------------------------------------      
+      !-------------------------------------
       ! Time series diags (ND{48,49,50,51})
-      !-------------------------------------      
-      IF ( DO_TIMESERIES ) THEN 
+      !-------------------------------------
+      IF ( DO_TIMESERIES ) THEN
 
          ! Number of tracers
          ! Increased from 26 to 32 (mpb,2009)
@@ -7020,9 +6779,9 @@
          ENDDO
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! Time in the troposphere (ND54)
-      !-------------------------------------      
+      !-------------------------------------
       IF ( ND54 > 0 ) THEN
          T           = 1
          NTRAC(54)   = T
@@ -7035,10 +6794,10 @@
          SCALE(T,54) = 1e0
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! Tropopause quantities (ND55)
-      !-------------------------------------      
-      IF ( ND55 > 0 ) THEN 
+      !-------------------------------------
+      IF ( ND55 > 0 ) THEN
 
          ! Number of tracers
          NTRAC(55) = 3
@@ -7072,10 +6831,10 @@
          ENDDO
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! Lightning flash rates (ND56)
-      !-------------------------------------      
-      IF ( ND56 > 0 ) THEN 
+      !-------------------------------------
+      IF ( ND56 > 0 ) THEN
 
          ! Number of tracers
          NTRAC(56) = 4
@@ -7113,9 +6872,9 @@
          ENDDO
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! THETA (ND57) (FP 6/2009)
-      !-------------------------------------      
+      !-------------------------------------
       IF ( ND57 > 0 ) THEN
          T           = 1
          NTRAC(57)   = T
@@ -7134,10 +6893,10 @@
       ! TOMAS 3-D rate (ND60)
       !-------------------------------------
       IF ( ND60 > 0 ) THEN
-         
-         ! # of tracers 
-         NTRAC(60) = TMAX(60) 
-         
+
+         ! # of tracers
+         NTRAC(60) = TMAX(60)
+
          ! Loop over tracers
          DO T = 1, NTRAC(60)
 
@@ -7145,7 +6904,7 @@
             ! NOTE: requires 1:1 tracer index to species index mapping
             SpcInfo => State_Chm%SpcData(T)%Info
 
-            IF ( ( T .ge. id_NK1 )       .and. 
+            IF ( ( T .ge. id_NK1 )       .and.
      &           ( T .lt. id_NK1+IBINS )      ) THEN
                UNIT(T,60) = 'no.'
             ELSE
@@ -7171,7 +6930,7 @@
 
          ! Loop over tracers
          DO T = 1, NTRAC(61)
-            
+
             ! Get name and long name for each tracer
             SELECT CASE( T )
                CASE( 1 )
@@ -7195,10 +6954,10 @@
 #endif
 #endif
 
-      !-------------------------------------      
+      !-------------------------------------
       ! SHIP DIAGNOSTICS (ND63)
-      !-------------------------------------      
-      IF ( Input_Opt%DO_ND63 ) THEN 
+      !-------------------------------------
+      IF ( Input_Opt%DO_ND63 ) THEN
 
          ! Number of tracers
          NTRAC(63) = 5
@@ -7241,7 +7000,7 @@
       ENDIF
 
 #if defined( BPCH_DIAG )
-      !-------------------------------------      
+      !-------------------------------------
       ! Radiative flux (ND63) (SDE 2013-10-25)
       !-------------------------------------
       IF ( ND64 > 0 ) THEN
@@ -7261,15 +7020,15 @@
             ! Define quantities
             IF (N .eq. 1) THEN
                 WRITE(NAME(T,64),'(a,I2.2)') 'NETWL', NN
-                WRITE(FNAME(T,64),'(a,I2)') 
+                WRITE(FNAME(T,64),'(a,I2)')
      &                'Net UV flux in bin ', NN
             ELSEIF (N .eq. 2) THEN
                 WRITE(NAME(T,64),'(a,I2.2)') 'DIRWL', NN
-                WRITE(FNAME(T,64),'(a,I2)') 
+                WRITE(FNAME(T,64),'(a,I2)')
      &                'Direct UV flux in bin ', NN
             ELSEIF (N .eq. 3) THEN
                 WRITE(NAME(T,64),'(a,I2.2)') 'DIFWL', NN
-                WRITE(FNAME(T,64),'(a,I2)') 
+                WRITE(FNAME(T,64),'(a,I2)')
      &                'Diffuse UV flux in bin ', NN
             ENDIF
             UNIT (T,64) = 'Wm-2'
@@ -7280,9 +7039,9 @@
          ENDDO
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! Family prod & loss (ND65)
-      !-------------------------------------      
+      !-------------------------------------
       IF ( Input_Opt%DO_SAVE_PL ) THEN
 
          ! Number of P/L families
@@ -7290,14 +7049,14 @@
 
          ! Loop over each P/L family
          DO T = 1, NTRAC(65)
-            NAME (T,65) = Input_Opt%FAM_NAME( T ) 
+            NAME (T,65) = Input_Opt%FAM_NAME( T )
             FNAME(T,65) = TRIM( NAME(T,65) ) // ' P/L family'
             INDEX(T,65) = T + ( SPACING * 17 )
-            MOLC (T,65) = 1 
+            MOLC (T,65) = 1
             MWT  (T,65) = 0e0
             SCALE(T,65) = 1e0
-            
-            ! Unit for Tag O3 is kg/s, otherwise molec/cm3/s 
+
+            ! Unit for Tag O3 is kg/s, otherwise molec/cm3/s
             IF ( Input_Opt%ITS_A_TAGO3_SIM ) THEN
                UNIT(T,65) = 'kg/s'
             ELSE
@@ -7336,7 +7095,7 @@
             NAME (T,65) = 'PCO_CH4'
             FNAME(T,65) = 'PCO from CH4 only'
             INDEX(T,65) = T + ( SPACING * 17 )
-            MOLC (T,65) = 1 
+            MOLC (T,65) = 1
             MWT  (T,65) = 0e0
             SCALE(T,65) = 1e0
             UNIT(T,65) = 'molec/cm3/s'
@@ -7347,7 +7106,7 @@
             NAME (T,65) = 'PCO_NMVOC'
             FNAME(T,65) = 'PCO from NMVOC only'
             INDEX(T,65) = T + ( SPACING * 17 )
-            MOLC (T,65) = 1 
+            MOLC (T,65) = 1
             MWT  (T,65) = 0e0
             SCALE(T,65) = 1e0
             UNIT(T,65) = 'molec/cm3/s'
@@ -7356,10 +7115,10 @@
 
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! 3-D GMAO met fields (ND66)
       ! also for timeseries diagnostics
-      !-------------------------------------      
+      !-------------------------------------
       IF ( ND66 > 0 .or. DO_TIMESERIES ) THEN
 
          ! Number of tracers
@@ -7404,10 +7163,10 @@
          ENDDO
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! 2-D GMAO met fields (ND67)
-      !-------------------------------------      
-      IF ( ND67 > 0 .or. DO_TIMESERIES ) THEN 
+      !-------------------------------------
+      IF ( ND67 > 0 .or. DO_TIMESERIES ) THEN
 
          ! Number of tracers
          NTRAC(67) = 23 ! (Lin, 03/31/09)
@@ -7500,10 +7259,10 @@
          ENDDO
       ENDIF
 
-      !-------------------------------------      
-      ! Grid box heights and related 
+      !-------------------------------------
+      ! Grid box heights and related
       ! quantities (ND68) + timeseries
-      !-------------------------------------      
+      !-------------------------------------
       IF ( ND68 > 0 .or. DO_TIMESERIES ) THEN
 
          ! Number of tracers
@@ -7558,10 +7317,10 @@
          ENDDO
       ENDIF
 
-      !-------------------------------------      
+      !-------------------------------------
       ! Grid box surface area (ND69)
-      !-------------------------------------      
-      IF ( ND69 > 0 ) THEN 
+      !-------------------------------------
+      IF ( ND69 > 0 ) THEN
          T           = 1
          NTRAC(69)   = T
          NAME (T,69) = 'DXYP'
@@ -7747,10 +7506,10 @@
       ENDIF
 #endif
 
-      !-------------------------------------      
+      !-------------------------------------
       ! ISORROPIA DIAGNOSTICS (ND73)
-      !-------------------------------------      
-      IF ( ND73 > 0 ) THEN 
+      !-------------------------------------
+      IF ( ND73 > 0 ) THEN
 
          ! Number of tracers
          NTRAC(73) = PD73
@@ -7798,8 +7557,8 @@
 !
 ! !IROUTINE: init_gamap
 !
-! !DESCRIPTION: Subroutine INIT\_GAMAP allocates and initializes all 
-!  module variables.  
+! !DESCRIPTION: Subroutine INIT\_GAMAP allocates and initializes all
+!  module variables.
 !\\
 !\\
 ! !INTERFACE:
@@ -7835,21 +7594,21 @@
       INTEGER,        INTENT(OUT) :: RC          ! Success or failure?
 !
 ! !REVISION HISTORY:
-!  22 Apr 2005 - R. Yantosca - Initial version 
+!  22 Apr 2005 - R. Yantosca - Initial version
 !  (1 ) Now add proper UNIT & SCALE for Rn/Pb/Be simulations (bmy, 5/11/05)
 !  (2 ) Added HCN & CH3CN source & sink info for ND09 (bmy, 6/27/05)
-!  (3 ) Bug fix: removed duplicate category names.  Updated for CO2-SRCE 
-!        diagnostic.  Now references ND04 from "diag04_mod.f. 
+!  (3 ) Bug fix: removed duplicate category names.  Updated for CO2-SRCE
+!        diagnostic.  Now references ND04 from "diag04_mod.f.
 !        (pns, bmy, 7/25/05)
 !  (4 ) Now make sure all USE statements are USE, ONLY (bmy, 10/3/05)
 !  (5 ) Now save MBO as tracer #5 for ND46 (tmf, bmy, 10/20/05)
 !  (6 ) Now add categories CV-FLX-$, TURBMC-$, EW-FLX-$, NS-FLX-$, UP-FLX-$
 !        which had been inadvertently omitted.  Also add OCEAN-HG category.
-!        Rewrote do loop and case statement to add new diagnostics to ND03. 
-!        Now make units of Hg tracers "pptv", not "ppbv".  Now remove 
-!        restriction on printing out cloud mass flux in GEOS-4 for the ND66 
+!        Rewrote do loop and case statement to add new diagnostics to ND03.
+!        Now make units of Hg tracers "pptv", not "ppbv".  Now remove
+!        restriction on printing out cloud mass flux in GEOS-4 for the ND66
 !        diagnostic.  Added new sea salt category. (cdh, eck, bmy, 4/6/06)
-!  (7 ) Now references ND56 from "diag56_mod.f" (ltm, bmy, 5/5/06) 
+!  (7 ) Now references ND56 from "diag56_mod.f" (ltm, bmy, 5/5/06)
 !  (8 ) Now references ND42 from "diag42_mod.f".  Also updated for extra SOA
 !        tracers in ND07 diagnostic. (dkh, bmy, 5/22/06)
 !  (9 ) Updated ND36 for CH3I simulation (bmy, 7/25/06)
@@ -7881,7 +7640,7 @@
       ! Get starting date & time
       NYMDb = GET_NYMDb()
       NHMSb = GET_NHMSb()
- 
+
       ! Replace any date/time tokens in the file names
       CALL EXPAND_DATE( DFILE, NYMDb, NHMSb )
       CALL EXPAND_DATE( TFILE, NYMDb, NHMSb )
@@ -7891,7 +7650,7 @@
       !=================================================================
       id_ACET  = Ind_('ACET' )
       id_ALD2  = Ind_('ALD2' )
-      id_ALK4  = Ind_('ALK4' ) 
+      id_ALK4  = Ind_('ALK4' )
       id_ASOA1 = Ind_('ASOA1')
       id_BCPI  = Ind_('BCPI' )
       id_BCPO  = Ind_('BCPO' )
@@ -7908,9 +7667,8 @@
       id_GLYX  = Ind_('GLYX' )
       id_HAC   = Ind_('HAC'  )
       id_HNO3  = Ind_('HNO3' )
-      id_ISOA1 = Ind_('ISOA1')
       id_LIMO  = Ind_('LIMO' )
-      id_MEK   = Ind_('MEK'  ) 
+      id_MEK   = Ind_('MEK'  )
       id_MGLY  = Ind_('MGLY' )
       id_MTPA  = Ind_('MTPA' )
       id_MTPO  = Ind_('MTPO' )
@@ -7957,61 +7715,61 @@
          MAXTRACER_HG = 480
 
          ALLOCATE( INDEX( MAXTRACER_HG, MAXDIAG ), STAT=AS )
-         IF ( AS /= 0 ) CALL ALLOC_ERR( 'INDEX' )      
+         IF ( AS /= 0 ) CALL ALLOC_ERR( 'INDEX' )
          INDEX = 0
 
          ALLOCATE( MOLC( MAXTRACER_HG, MAXDIAG ), STAT=AS )
-         IF ( AS /= 0 ) CALL ALLOC_ERR( 'MOLC' )      
+         IF ( AS /= 0 ) CALL ALLOC_ERR( 'MOLC' )
          MOLC = 0
 
          ALLOCATE( MWT( MAXTRACER_HG, MAXDIAG ), STAT=AS )
-         IF ( AS /= 0 ) CALL ALLOC_ERR( 'MWT' )      
+         IF ( AS /= 0 ) CALL ALLOC_ERR( 'MWT' )
          MWT = 0.0
 
          ALLOCATE( SCALE( MAXTRACER_HG, MAXDIAG ), STAT=AS )
-         IF ( AS /= 0 ) CALL ALLOC_ERR( 'SCALE' )      
+         IF ( AS /= 0 ) CALL ALLOC_ERR( 'SCALE' )
          SCALE = 0.0
 
          ALLOCATE( NAME( MAXTRACER_HG, MAXDIAG ), STAT=AS )
-         IF ( AS /= 0 ) CALL ALLOC_ERR( 'NAME' )      
+         IF ( AS /= 0 ) CALL ALLOC_ERR( 'NAME' )
          NAME = ''
 
          ALLOCATE( FNAME( MAXTRACER_HG, MAXDIAG ), STAT=AS )
-         IF ( AS /= 0 ) CALL ALLOC_ERR( 'FNAME' )      
+         IF ( AS /= 0 ) CALL ALLOC_ERR( 'FNAME' )
          FNAME = ''
 
          ALLOCATE( UNIT( MAXTRACER_HG, MAXDIAG ), STAT=AS )
-         IF ( AS /= 0 ) CALL ALLOC_ERR( 'UNIT' )      
+         IF ( AS /= 0 ) CALL ALLOC_ERR( 'UNIT' )
          UNIT = ''
 
       ELSE
 
          ALLOCATE( INDEX( MAXTRACER, MAXDIAG ), STAT=AS )
-         IF ( AS /= 0 ) CALL ALLOC_ERR( 'INDEX' )      
+         IF ( AS /= 0 ) CALL ALLOC_ERR( 'INDEX' )
          INDEX = 0
 
          ALLOCATE( MOLC( MAXTRACER, MAXDIAG ), STAT=AS )
-         IF ( AS /= 0 ) CALL ALLOC_ERR( 'MOLC' )      
+         IF ( AS /= 0 ) CALL ALLOC_ERR( 'MOLC' )
          MOLC = 0
 
          ALLOCATE( MWT( MAXTRACER, MAXDIAG ), STAT=AS )
-         IF ( AS /= 0 ) CALL ALLOC_ERR( 'MWT' )      
+         IF ( AS /= 0 ) CALL ALLOC_ERR( 'MWT' )
          MWT = 0.0
 
          ALLOCATE( SCALE( MAXTRACER, MAXDIAG ), STAT=AS )
-         IF ( AS /= 0 ) CALL ALLOC_ERR( 'SCALE' )      
+         IF ( AS /= 0 ) CALL ALLOC_ERR( 'SCALE' )
          SCALE = 0.0
 
          ALLOCATE( NAME( MAXTRACER, MAXDIAG ), STAT=AS )
-         IF ( AS /= 0 ) CALL ALLOC_ERR( 'NAME' )      
+         IF ( AS /= 0 ) CALL ALLOC_ERR( 'NAME' )
          NAME = ''
 
          ALLOCATE( FNAME( MAXTRACER, MAXDIAG ), STAT=AS )
-         IF ( AS /= 0 ) CALL ALLOC_ERR( 'FNAME' )      
+         IF ( AS /= 0 ) CALL ALLOC_ERR( 'FNAME' )
          FNAME = ''
 
          ALLOCATE( UNIT( MAXTRACER, MAXDIAG ), STAT=AS )
-         IF ( AS /= 0 ) CALL ALLOC_ERR( 'UNIT' )      
+         IF ( AS /= 0 ) CALL ALLOC_ERR( 'UNIT' )
          UNIT = ''
 
       ENDIF
@@ -8027,8 +7785,8 @@
       CALL INIT_TRACERINFO( am_I_Root, Input_Opt, State_Chm, RC )
 
       ! Store values for hdf output
-      IF ( Input_Opt%LND50_HDF    .or. 
-     &     Input_Opt%LND51_HDF    .or. 
+      IF ( Input_Opt%LND50_HDF    .or.
+     &     Input_Opt%LND51_HDF    .or.
      &     Input_Opt%LND51b_HDF ) THEN
 
          CALL INIT_HDF(MAXCAT, MAXTRACER, MAXDIAG)
@@ -8041,7 +7799,7 @@
          HDFMOLC(:,:)   = MOLC(:,:)
          HDFMWT(:,:)    = MWT(:,:)
          HDFSCALE(:,:)  = SCALE(:,:)
-         
+
       ENDIF
 
       END SUBROUTINE INIT_GAMAP
@@ -8059,8 +7817,8 @@
 ! !INTERFACE:
 !
       SUBROUTINE CLEANUP_GAMAP
-! 
-! !REVISION HISTORY: 
+!
+! !REVISION HISTORY:
 !  25 Apr 2005 - R. Yantosca - Initial version
 !  03 Aug 2010 - R. Yantosca - Added ProTeX headers
 !EOP

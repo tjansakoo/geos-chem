@@ -8,29 +8,29 @@
 ! !DESCRIPTION: Module hco\_timeshift\_mod.F90 contains routines to shift the
 ! file reference time by a given value. Time stamps shifts can be provided as
 ! optional fifth element to the time stamp attribute in the HEMCO configuration
-! file. 
+! file.
 !\\
 !\\
-! For instance, consider the case where 3-hourly averages are provided in 
-! individual files with centered time stamps, e.g.: file.yyyymmdd\_0130z.nc, 
+! For instance, consider the case where 3-hourly averages are provided in
+! individual files with centered time stamps, e.g.: file.yyyymmdd\_0130z.nc,
 ! file.yyyymmdd\_0430z.nc, ..., file.yyymmdd\_2230z.nc
 ! To read these files *at the beginning* of their time intervals, the time
 ! stamp can be shifted by 90 minutes, e.g. the file name, variable, and time
 ! attribute section reads:
-! ... file.\$yyyy$mm$dd\_\$hh\$mnz.nc VARNAME 2000-2016/1-12/1-31/0-23/+90minutes ... 
+! ... file.\$yyyy$mm$dd\_\$hh\$mnz.nc VARNAME 2000-2016/1-12/1-31/0-23/+90minutes ...
 !\\
 !\\
 ! At time 00z, HEMCO will then read file 0130z and keep using this file until
 ! 03z, when it switches to file 0430z. Similarly, it is possible to shift the
-! file reference time by any number of years, months, days, or hours. Time 
+! file reference time by any number of years, months, days, or hours. Time
 ! shifts can be forward or backward in time (use - sign to shift backwards).
 !\\
 !\\
 ! This module contains subroutines to determine the time to be shifted (stored
-! in filedata variable tshift) and shifts the desired reference time as needed. 
+! in filedata variable tshift) and shifts the desired reference time as needed.
 !\\
 !\\
-! !INTERFACE: 
+! !INTERFACE:
 !
 MODULE HCO_TIMESHIFT_MOD
 !
@@ -47,7 +47,7 @@ MODULE HCO_TIMESHIFT_MOD
   PUBLIC :: TimeShift_Set
   PUBLIC :: TimeShift_Apply
 !
-! !REMARKS: 
+! !REMARKS:
 !
 ! !REVISION HISTORY:
 !  29 Feb 2016 - C. Keller   - Initial version
@@ -69,7 +69,7 @@ CONTAINS
 ! !DESCRIPTION: Subroutine TimeShift\_Set sets the time shift values. The
 ! time shift attribute tshift contains two entries: the first entry denotes
 ! the number of months to be shifted (integer value), while the second entry
-! denotes then number of seconds to be shifted. 
+! denotes then number of seconds to be shifted.
 !\\
 !\\
 ! !INTERFACE:
@@ -79,13 +79,13 @@ CONTAINS
 ! !USES:
 !
     USE HCO_TYPES_MOD,    ONLY : ListCont
-    USE HCO_TYPES_MOD,    ONLY : FileData 
+    USE HCO_TYPES_MOD,    ONLY : FileData
     USE HCO_TYPES_MOD,    ONLY : ConfigObj
 !
 ! !INPUT/OUTPUT PARAMETERS:
 !
-    TYPE(ConfigObj),  POINTER        :: HcoConfig    ! HEMCO config 
-    TYPE(FileData),   POINTER        :: Dta       ! file container 
+    TYPE(ConfigObj),  POINTER        :: HcoConfig    ! HEMCO config
+    TYPE(FileData),   POINTER        :: Dta       ! file container
     CHARACTER(LEN=*), INTENT(IN   )  :: shift     ! time shift
     INTEGER,          INTENT(INOUT)  :: RC        ! Return code
 !
@@ -100,7 +100,7 @@ CONTAINS
 !
     INTEGER                        :: SHFT, IDX
     CHARACTER(LEN=255)             :: MSG
-    CHARACTER(LEN=255)             :: iShift 
+    CHARACTER(LEN=255)             :: iShift
     CHARACTER(LEN=255), PARAMETER  :: LOC = 'TimeShift_Set (hco_tShift_mod.F90)'
 
     !======================================================================
@@ -111,13 +111,13 @@ CONTAINS
     RC = HCO_SUCCESS
 
     ! Init
-    Dta%tShift(:) = 0.0_hp 
+    Dta%tShift(:) = 0.0_hp
 
     ! Mirror variable
     iShift = TRIM(ADJUSTL(Shift))
 
     ! Parse time iShift and write to desired slot:
-    ! Year and month are placed in slot 1. Years are 
+    ! Year and month are placed in slot 1. Years are
     ! converted to months.
     IDX = INDEX( TRIM(iShift), 'year' )
     IF( IDX < 0 ) IDX = INDEX( TRIM(iShift), 'yr' )
@@ -131,17 +131,17 @@ CONTAINS
     IF( IDX < 0 ) IDX = INDEX( TRIM(iShift), 'mt' )
     IF ( IDX > 1 ) THEN
        READ( iShift(1:(IDX-1)), * ) SHFT
-       Dta%tShift(1) = Dta%tShift(1) + SHFT 
+       Dta%tShift(1) = Dta%tShift(1) + SHFT
     ENDIF
 
     ! Days, Hours, and minutes are placed in slot 2.
-    ! All values are converted to seconds. 
+    ! All values are converted to seconds.
     IDX = INDEX( TRIM(iShift), 'day' )
     IF( IDX < 0 ) IDX = INDEX( TRIM(iShift), 'dy' )
     IF ( IDX > 1 ) THEN
        READ( iShift(1:(IDX-1)), * ) SHFT
        Dta%tShift(2) = Dta%tShift(2) + ( SHFT * 86400 )
-                             
+
     ENDIF
 
     IDX = INDEX( TRIM(iShift), 'hour' )
@@ -149,7 +149,7 @@ CONTAINS
     IF ( IDX > 1 ) THEN
        READ( iShift(1:(IDX-1)), * ) SHFT
        Dta%tShift(2) = Dta%tShift(2) + ( SHFT * 3600 )
-                             
+
     ENDIF
 
     IDX = INDEX( TRIM(iShift), 'min' )
@@ -157,7 +157,7 @@ CONTAINS
     IF ( IDX > 1 ) THEN
        READ( iShift(1:(IDX-1)), * ) SHFT
        Dta%tShift(2) = Dta%tShift(2) + ( SHFT * 60 )
-                             
+
     ENDIF
 
     ! Error: cannot shift data if we use weekday data
@@ -178,7 +178,7 @@ CONTAINS
        WRITE(MSG,*) 'Time shift (months, seconds): ', Dta%tShift(1), &
                                                       Dta%tShift(2)
        CALL HCO_MSG(HcoConfig%Err,MSG)
-    ENDIF 
+    ENDIF
 
     RC = HCO_SUCCESS
 
@@ -193,7 +193,7 @@ CONTAINS
 !
 ! !DESCRIPTION: Subroutine TimeShift\_Apply shifts the reference time
 ! (provided through arguments yr, mt, dy, hr, and mn, by the time shift
-! specified in the HEMCO configuration file (if specified at all). 
+! specified in the HEMCO configuration file (if specified at all).
 !\\
 !\\
 ! !INTERFACE:
@@ -209,17 +209,18 @@ CONTAINS
 ! !INPUT/OUTPUT PARAMETERS:
 !
     LOGICAL,          INTENT(IN   )  :: am_I_Root ! Root CPU
-    TYPE(HCO_State),  POINTER        :: HcoState  ! Hemco state 
+    TYPE(HCO_State),  POINTER        :: HcoState  ! Hemco state
     TYPE(ListCont),   POINTER        :: Lct       ! List container
     INTEGER,          INTENT(INOUT)  :: yr        ! year
     INTEGER,          INTENT(INOUT)  :: mt        ! month
     INTEGER,          INTENT(INOUT)  :: dy        ! day
     INTEGER,          INTENT(INOUT)  :: hr        ! hour
-    INTEGER,          INTENT(INOUT)  :: mn        ! minute 
+    INTEGER,          INTENT(INOUT)  :: mn        ! minute
     INTEGER,          INTENT(INOUT)  :: RC        ! Return code
 !
 ! !REVISION HISTORY:
 !  29 Feb 2016 - C. Keller - Initial version
+!  19 Nov 2018 - C. Keller - Add option TimeShiftCap
 !
 !EOP
 !------------------------------------------------------------------------------
@@ -228,6 +229,7 @@ CONTAINS
 ! !LOCAL VARIABLES:
 !
     INTEGER                        :: nYr, nMt, nDy, nHr, nMn
+    INTEGER                        :: oYr, oMt, oDy
     INTEGER                        :: SHFT, IDX
     INTEGER                        :: YYYYMMDD, HHMMSS
     REAL(dp)                       :: TimeShift, DAY, UTC, JD
@@ -242,8 +244,8 @@ CONTAINS
     ! Assume success until otherwise
     RC = HCO_SUCCESS
 
-    ! Nothing to do if time shift is zero 
-    IF ( Lct%Dct%Dta%tShift(1) == 0 .AND. & 
+    ! Nothing to do if time shift is zero
+    IF ( Lct%Dct%Dta%tShift(1) == 0 .AND. &
          Lct%Dct%Dta%tShift(2) == 0        ) RETURN
 
     ! Mirror values
@@ -253,21 +255,26 @@ CONTAINS
     nHr = MAX(Hr,0)
     nMn = MAX(Mn,0)
 
+    ! Archive original values
+    oYr = nYr
+    oMt = nMt
+    oDy = nDy
+
     ! Get time shift in days
     TimeShift = REAL(Lct%Dct%Dta%tShift(2),dp) / 86400.0_dp
 
     ! Add monthly time shift
     IF ( Lct%Dct%Dta%tShift(1) > 0 ) THEN
        nMt = nMt + Lct%Dct%Dta%tShift(1)
-       ! Make sure new value is within 1-12. Also 
+       ! Make sure new value is within 1-12. Also
        ! adjust year accordingly
        IF ( nMt > 12 ) THEN
-          DO WHILE ( nMt > 12 ) 
+          DO WHILE ( nMt > 12 )
              nMt = nMt - 12
              nYr = nYr + 1
           ENDDO
        ELSEIF( nMt <= 0 ) THEN
-          DO WHILE ( nMt < 1 ) 
+          DO WHILE ( nMt < 1 )
              nMt = nMt + 12
              nYr = nYr - 1
           ENDDO
@@ -293,6 +300,33 @@ CONTAINS
     nHr = FLOOR ( MOD(   HHMMSS, 1000000  ) / 1.0e4_dp )
     nMn = FLOOR ( MOD(   HHMMSS, 10000    ) / 1.0e2_dp )
 
+    ! Eventually cap time shift for the same day.
+    IF ( HcoState%Options%TimeShiftCap ) THEN
+       IF ( ( nYr < oYr                  ) .OR. &
+            ( nMt < oMt .AND. nYr == oYr ) .OR. &
+            ( nDy < oDy .AND. nMt == oMt )       ) THEN
+          nYr = oYr
+          nMt = oMt
+          nDy = oDy
+          nHr = 0
+          nMn = 0
+          IF ( HCO_IsVerb(HcoState%Config%Err,3) ) THEN
+             MSG = 'Options set to cap time shift - set to low bound'
+             CALL HCO_MSG(HcoState%Config%Err,MSG)
+          ENDIF
+       ELSEIF ( nYr > oYr .OR. nMt > oMt .OR. nDy > oDy ) THEN
+          nYr = oYr
+          nMt = oMt
+          nDy = oDy
+          nHr = 23
+          nMn = 59
+          IF ( HCO_IsVerb(HcoState%Config%Err,3) ) THEN
+             MSG = 'Options set to cap time shift - set to high bound'
+             CALL HCO_MSG(HcoState%Config%Err,MSG)
+          ENDIF
+       ENDIF
+    ENDIF
+
     ! verbose mode
     IF ( HCO_IsVerb(HcoState%Config%Err,3) ) THEN
        WRITE(MSG,*) 'Adjusted time stamp of field ', TRIM(Lct%Dct%cName), ': '
@@ -302,7 +336,7 @@ CONTAINS
        CALL HCO_MSG(HcoState%Config%Err,MSG)
        WRITE(MSG,'(a27,i4.4,a1,i2.2,a1,i2.2,a1,i2.2,a1,i2.2)') 'Original Yr/Mt/Dy-Hr:Mn = ',Yr,'/',Mt,'/',Dy,'-',Hr,':',Mn
        CALL HCO_MSG(HcoState%Config%Err,MSG)
-    ENDIF 
+    ENDIF
 
     ! Add back to output values
     IF ( Yr >  0 ) Yr = nYr
@@ -315,7 +349,7 @@ CONTAINS
     IF ( HCO_IsVerb(HcoState%Config%Err,3) ) THEN
        WRITE(MSG,'(a27,i4.4,a1,i2.2,a1,i2.2,a1,i2.2,a1,i2.2)') 'Adjusted Yr/Mt/Dy-Hr:Mn = ',Yr,'/',Mt,'/',Dy,'-',Hr,':',Mn
        CALL HCO_MSG(HcoState%Config%Err,MSG)
-    ENDIF 
+    ENDIF
 
     ! Return w/ success
     RC = HCO_SUCCESS
