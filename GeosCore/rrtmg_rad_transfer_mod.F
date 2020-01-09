@@ -1,4 +1,4 @@
-#if defined( RRTMG )
+#ifdef RRTMG
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
 !------------------------------------------------------------------------------
@@ -19,7 +19,7 @@
       USE CMN_FJX_MOD,  ONLY : RTODAER, RTSSAER, RTASYMAER,
      &                         WVAA,    SPECMASK
       USE CMN_SIZE_MOD, ONLY : NDUST, NAER
-#if defined( BPCH_DIAG )
+#ifdef BPCH_DIAG
       USE DIAG_MOD,     ONLY : AD72 !RAD OUTPUT DIAGNOSTIC ARRAY
 #endif
       USE OMP_LIB
@@ -178,7 +178,7 @@
       USE TIME_MOD,            ONLY : GET_DAY_OF_YEAR, GET_HOUR
       USE TOMS_MOD,            ONLY : GET_OVERHEAD_O3
       USE UnitConv_Mod,        ONLY : Convert_Spc_Units
-#if defined( BPCH_DIAG )
+#ifdef BPCH_DIAG
       USE DIAG_MOD,            ONLY : AD72
 #endif
 !
@@ -302,8 +302,6 @@
       REAL(KIND=RB)          :: PCENTER(State_Grid%NX,State_Grid%NY,
      &                                  State_Grid%NZ)
       REAL(KIND=RB)          :: PEDGE  (State_Grid%NX,State_Grid%NY,
-     &                                  State_Grid%NZ)
-      LOGICAL                :: INTROP (State_Grid%NX,State_Grid%NY,
      &                                  State_Grid%NZ)
 
       !-----------------------------------------------------------------
@@ -760,7 +758,6 @@
          PEDGE  (I,J,L) = GET_PEDGE  ( I, J, L )
          H2OVMR (I,J,L) = State_Met%AVGW(I,J,L)
          TLAY   (I,J,L) = State_Met%T(I,J,L)
-         INTROP (I,J,L) = State_Met%InTroposphere(I,J,L)
          SUNCOS (I,J,L) = State_Met%SUNCOS(I,J)
       ENDDO
       TSFC  (I,J)   = State_Met%TSKIN(I,J)
@@ -841,7 +838,7 @@
              CLDFR(I,J,L)  = State_Met%CLDF(I,J,L)
             ENDIF !CLOUDS
 
-       IF (INTROP(I,J,L).EQ..TRUE.) THEN
+       IF ( State_Met%InTroposphere(I,J,L) ) THEN
           !-----------------------------
           ! WE ARE IN THE TROPOSPHERE
           !-----------------------------
@@ -1042,7 +1039,7 @@
 
           !if UCX on, we need to go above the tropopause to get
           !the strat AOD, but only for IS=8 and IS=9
-          IF ((INTROP(I,J,L).EQ..TRUE.).OR.
+          IF ( State_Met%InTroposphere(I,J,L) .OR.
      &        (Input_Opt%LUCX .and. ((IS.EQ.8).OR.(IS.EQ.9)))) THEN
 
            !MAKE SURE WE HAVE SENSIBLE DATA
@@ -1107,7 +1104,7 @@
 
           !if UCX on, we need to go above the tropopause to get
           !the strat AOD, but only for IS=8 and IS=9
-          IF ((INTROP(I,J,L).EQ..TRUE.).OR.
+          IF ( State_Met%InTroposphere(I,J,L) .OR.
      &        (Input_Opt%LUCX .and. ((IS.EQ.8).OR.(IS.EQ.9)))) THEN
 
            IF ((TAUAER_SW(I,J,L,IB_SW).GT.0).AND.
@@ -1158,7 +1155,7 @@
 
           !if UCX on, we need to go above the tropopause to get
           !the strat AOD, but only for IS=8 and IS=9
-          IF ((INTROP(I,J,L).EQ..TRUE.).OR.
+          IF ( State_Met%InTroposphere(I,J,L) .OR.
      &        (Input_Opt%LUCX .and. ((IS.EQ.8).OR.(IS.EQ.9)))) THEN
 
           IF (IB.LE.16) THEN
@@ -1659,7 +1656,7 @@
 !$OMP+SCHEDULE( DYNAMIC )
       DO J=1,State_Grid%NY
       DO I=1,State_Grid%NX
-#if defined( BPCH_DIAG )
+#ifdef BPCH_DIAG
        !================================================================
        ! %%%%% ND72 (bpch) DIAGNOSTIC %%%%%
        !
@@ -1858,7 +1855,7 @@
          !DIVIDE THROUGH BY AOD
          SSAOUT=SSAOUT/AODOUT
          !offsetting output depending on wavelength
-#if defined( BPCH_DIAG )
+#ifdef BPCH_DIAG
          AD72(I,J,OUTIDX+(8+3*(W-1))*NAD72) =
      &   AD72(I,J,OUTIDX+(8+3*(W-1))*NAD72) + AODOUT
          AD72(I,J,OUTIDX+(9+3*(W-1))*NAD72) =

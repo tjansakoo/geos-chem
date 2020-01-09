@@ -30,7 +30,6 @@
       PUBLIC  :: INIT_FJX
       PUBLIC  :: FAST_JX
       PUBLIC  :: PHOTRATE_ADJ
-
 !
 ! !PRIVATE MEMBER FUNCTIONS:
 !
@@ -45,23 +44,14 @@
       PRIVATE :: SPHERE2
       PRIVATE :: EXTRAL
       PRIVATE :: RD_PROF_NC
-      PRIVATE :: RD_XXX
       PRIVATE :: RD_AOD
       PRIVATE :: RD_MIE
+      PRIVATE :: RD_XXX
       PRIVATE :: RD_JS_JX
       PRIVATE :: SET_AER
 !
 ! !REVISION HISTORY:
-!  27 Mar 2013 - S. D. Eastham - Initial version (based on original GEOS-Chem
-!                                files and instructions from J. Mao)
-!  28 Mar 2013 - S. D. Eastham - Upgraded to Fast-JX v7.0
-!  20 Feb 2014 - M. Sulprizio  - Removed "define.h", this is now obsolete
-!  13 Nov 2014 - M. Yannetti   - Added PRECISION_MOD
-!  29 Mar 2016 - R. Yantosca   - Add flags for rxns adjusted by PHOTRATE_ADJ
-!  27 Jun 2016 - M. Sulprizio  - Remove FJXFUNC and JV_INDEX routines. We now
-!                                obtain the photolysis rates directly from the
-!                                ZPJ array.
-!  29 Nov 2016 - R. Yantosca - grid_mod.F90 is now gc_grid_mod.F90
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -179,7 +169,6 @@
 !                           3 - Maximum Random Overlap (computation intensive)
 !
 ! !REVISION HISTORY:
-!  01 Apr 1998 - P. Murti, R. Martin, R. Yantosca - Initial version
 !  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
@@ -204,7 +193,7 @@
       INTEGER       :: KTOP(State_Grid%NZ)
       INTEGER       :: INDICATOR(State_Grid%NZ+2)
       REAL(fp)      :: FMAX(State_Grid%NZ)    ! maximum cloud fraction
-                                              !  in a block, size can be to
+                                              !  in a block, size can be to 
                                               !  FIX(State_Grid%NZ)+1
       REAL(fp)      :: CLDF1D(State_Grid%NZ)
       REAL(fp)      :: ODNEW(State_Grid%NZ)
@@ -244,6 +233,18 @@
 
       ! Was AOD calculated at 999 nm or reference?
       AOD999    = ( WLAOD == 0 )
+
+      ! Zero diagnostic archival arrays to make sure that we don't have any
+      ! leftover values from the last timestep near the top of the chemgrid
+      IF ( State_Diag%Archive_UVFluxDiffuse ) THEN
+         State_Diag%UVFluxDiffuse = 0.0_f4
+      ENDIF
+      IF ( State_Diag%Archive_UVFluxDirect ) THEN
+         State_Diag%UVFluxDirect = 0.0_f4
+      ENDIF
+      IF ( State_Diag%Archive_UVFluxNet ) THEN
+         State_Diag%UVFluxNet = 0.0_f4
+      ENDIF
 
       !-----------------------------------------------------------------
       ! Special handling for first-time setup
@@ -572,6 +573,7 @@
 !
 ! !REVISION HISTORY:
 !  27 Mar 2013 - S. D. Eastham - Copied from GEOS-Chem v9-01-03
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -865,6 +867,7 @@ c---SUMBX = flux from Lambert reflected I+
 !
 ! !REVISION HISTORY:
 !  28 Mar 2013 - S. D. Eastham - Copied from Fast-JX v7.0
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1129,8 +1132,7 @@ C------------lower boundary, 2nd-order, A-matrix is full (AA)
 !
 ! !REVISION HISTORY:
 !  28 Mar 2013 - S. D. Eastham - Copied from Fast-JX v7.0
-!  02 Apr 2013 - S. D. Eastham - Now only assign J-rates on
-!                                levels within the chemistry grid.
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1249,6 +1251,7 @@ c---also need to allow for Pressure interpolation if SQQ(J) = 'p'
 !
 ! !REVISION HISTORY:
 !  28 Mar 2013 - S. D. Eastham - Copied from Fast-JX v7.0
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1335,7 +1338,7 @@ c---also need to allow for Pressure interpolation if SQQ(J) = 'p'
 !
 ! !REVISION HISTORY:
 !  28 Mar 2013 - S. D. Eastham - Copied from Fast-JX v7.0
-!  04 Dec 2014 - R. Yantosca   - Now use SQRT instead of DSQRT
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1483,8 +1486,7 @@ c  Lowest level intersected by emergent beam
 !
 ! !REVISION HISTORY:
 !  28 Mar 2013 - S. D. Eastham - Copied from Fast-JX v7.0
-!  21 May 2018 - C. Keller     - Use increasingly less extra levels if max.
-!                                is reached, added diagnostics.
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1567,7 +1569,7 @@ c---the number of sub-layers + 1
       enddo
 
 c---check on overflow of arrays, cut off JXTRA at lower L if too many levels
-#if defined( MODEL_GEOS )
+#ifdef MODEL_GEOS
       failed   = .FALSE.
        JTOTL    = L2X + 2
        do L2 = L2X,1,-1
@@ -1644,6 +1646,7 @@ c---check on overflow of arrays, cut off JXTRA at lower L if too many levels
 !
 ! !REVISION HISTORY:
 !  28 Mar 2013 - S. D. Eastham - Copied from Fast-JX v7.0
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1675,9 +1678,6 @@ c---check on overflow of arrays, cut off JXTRA at lower L if too many levels
 !
 ! !USES:
 !
-#ifdef BPCH_DIAG
-      USE CMN_DIAG_MOD,   ONLY : ND64
-#endif
       USE ErrCode_Mod
       USE Input_Opt_Mod,  ONLY : OptInput
       USE inquireMod,     ONLY : findFreeLUN
@@ -1700,13 +1700,7 @@ c---check on overflow of arrays, cut off JXTRA at lower L if too many levels
 !
 ! !REVISION HISTORY:
 !  28 Mar 2013 - S. D. Eastham - Copied from Fast-JX v7.0
-!  05 Mar 2014 - R. Yantosca   - Use correct filenames for use w/ ESMF
-!  27 Sep 2017 - M. Sulprizio  - Define species IDs for ND22 diagnostic
-!  03 Nov 2017 - R. Yantosca   - Now accept State_Diag as an argument
-!  29 Dec 2017 - C. Keller     - Print mapping on root CPU only
-!  19 Sep 2018 - M. Sulprizio  - Read .dat files from data directories instead
-!                                of run directories
-!  10 Apr 2019 - R. Yantosca   - Now read data from FAST_JX/v2019-04 folder
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1714,6 +1708,7 @@ c---check on overflow of arrays, cut off JXTRA at lower L if too many levels
 ! !LOCAL VARIABLES:
 !
       ! Scalars
+      LOGICAL            :: notDryRun
       INTEGER            :: JXUNIT, J, NJXX, PhotoId
       REAL(fp)           :: ND64MULT
 
@@ -1728,40 +1723,48 @@ c---check on overflow of arrays, cut off JXTRA at lower L if too many levels
       !=================================================================
 
       ! Initialize
-      RC       = GC_SUCCESS
-      ErrMsg   = ''
-      ThisLoc  = ' -> at Init_FJX (in module GeosCore/fast_jx_mod.F)'
+      RC          = GC_SUCCESS
+      notDryRun   = ( .not. Input_Opt%DryRun )
+      ErrMsg      = ''
+      ThisLoc     =
+     &   ' -> at Init_FJX (in module GeosCore/fast_jx_mod.F)'
 
-      ! Define species IDs
-      id_CH2IBr   = IND_('CH2IBr'  )
-      id_IBr      = IND_('IBr'     )
-      id_CH2ICl   = IND_('CH2ICl'  )
-      id_ICl      = IND_('ICl'     )
-      id_I2       = IND_('I2'      )
-      id_HOI      = IND_('HOI'     )
-      id_IO       = IND_('IO'      )
-      id_OIO      = IND_('OIO'     )
-      id_INO      = IND_('INO'     )
-      id_IONO     = IND_('IONO'    )
-      id_IONO2    = IND_('IONO2'   )
-      id_I2O2     = IND_('I2O2'    )
-      id_CH3I     = IND_('CH3i'    )
-      id_CH2I2    = IND_('CH2I2'   )
-      id_I2O4     = IND_('I2O4'    )
-      id_I2O3     = IND_('I2O3'    )
+      ! Skip these opterations when running in dry-run mode
+      IF ( notDryRun ) THEN
 
-      IF ( am_I_Root) THEN
-         write(6,*) ' Initializing Fast-JX v7.0 standalone CTM code.'
+         ! Define species IDs
+         id_CH2IBr   = IND_('CH2IBr'  )
+         id_IBr      = IND_('IBr'     )
+         id_CH2ICl   = IND_('CH2ICl'  )
+         id_ICl      = IND_('ICl'     )
+         id_I2       = IND_('I2'      )
+         id_HOI      = IND_('HOI'     )
+         id_IO       = IND_('IO'      )
+         id_OIO      = IND_('OIO'     )
+         id_INO      = IND_('INO'     )
+         id_IONO     = IND_('IONO'    )
+         id_IONO2    = IND_('IONO2'   )
+         id_I2O2     = IND_('I2O2'    )
+         id_CH3I     = IND_('CH3i'    )
+         id_CH2I2    = IND_('CH2I2'   )
+         id_I2O4     = IND_('I2O4'    )
+         id_I2O3     = IND_('I2O3'    )
 
-         if (W_.ne.8 .and. W_.ne.12 .and. W_.ne.18) then
-            ErrMsg =  ' INIT_FJX: invalid no. wavelengths'
-            CALL GC_Error( ErrMsg, RC, ThisLoc )
-            RETURN
-         endif
+         ! Print info
+         IF ( am_I_Root ) THEN
+            write(6,*) ' Initializing Fast-JX v7.0 standalone CTM code.'
+
+            if (W_.ne.8 .and. W_.ne.12 .and. W_.ne.18) then
+               ErrMsg =  ' INIT_FJX: invalid no. wavelengths'
+               CALL GC_Error( ErrMsg, RC, ThisLoc )
+               RETURN
+            endif
+         ENDIF
+
+         ! Get a free LUN
+         JXUNIT = findFreeLUN()
+
       ENDIF
-
-      ! Get a free LUN
-      JXUNIT = findFreeLUN()
 
       ! Define data directory for FAST-JX input
       DATA_DIR = TRIM( Input_Opt%FAST_JX_DIR )
@@ -1771,39 +1774,68 @@ c---check on overflow of arrays, cut off JXTRA at lower L if too many levels
       !=====================================================================
       FILENAME = TRIM( DATA_DIR ) // 'FJX_spec.dat'
 
-      call RD_XXX(JXUNIT,TRIM( FILENAME ), am_I_Root)
+      ! Read file, or just print filename if we are in dry-run mode
+      CALL RD_XXX( JXUNIT, TRIM( FILENAME ), Input_Opt, RC)
 
-#ifdef BPCH_DIAG
-      ! Compute factors for ND64
-      IF ( ND64 > 0 ) THEN
-         UVXFACTOR(:) = 0e+0_fp
-         ND64MULT = UVXPLANCK*UVXCCONST*1.0e+13_fp
-         DO  J=1,W_
-            UVXFACTOR(J) = ND64MULT/WL(J)
-         ENDDO
+      ! Trap potential errors
+      IF ( RC /= GC_SUCCESS ) THEN
+         ErrMsg = 'Error encountered in FAST-JX routine "RD_XXX"!'
+         CALL GC_Error( ErrMsg, RC, ThisLoc )
+         RETURN
       ENDIF
-#endif
+
+      ! Compute factors for UV flux diagnostics
+      IF ( notDryRun ) THEN
+         IF ( State_Diag%Archive_UVFluxNet      .or.
+     &        State_Diag%Archive_UVFluxDirect   .or.
+     &        State_Diag%Archive_UVFluxDiffuse ) THEN
+            UVXFACTOR = 0e+0_fp
+            ND64MULT  = UVXPLANCK*UVXCCONST*1.0e+13_fp
+            DO J = 1, W_
+               UVXFACTOR(J) = ND64MULT/WL(J)
+            ENDDO
+         ENDIF
+      ENDIF
 
       !=====================================================================
       ! Read in 5-wavelength scattering data
+      ! (or just print file name if in dry-run mode)
       !=====================================================================
       FILENAME = TRIM( DATA_DIR ) // 'jv_spec_mie.dat'
 
-      call RD_MIE(JXUNIT,TRIM( FILENAME ), am_I_Root, Input_Opt )
+      ! Read data
+      CALL RD_MIE( JXUNIT, TRIM( FILENAME ), Input_Opt, RC )
+
+      ! Trap potential errors
+      IF ( RC /= GC_SUCCESS ) THEN
+         ErrMsg = 'Error encountered in FAST-JX routine "RD_MIE"!'
+         CALL GC_Error( ErrMsg, RC, ThisLoc )
+         RETURN
+      ENDIF
 
       !=====================================================================
       ! Read in AOD data
+      ! (or just print file name if in dry-run mode)
       !=====================================================================
-      call RD_AOD(JXUNIT, am_I_Root, Input_Opt )
+      CALL RD_AOD( JXUNIT, Input_Opt, RC )
+
+      ! Trap potential errors
+      IF ( RC /= GC_SUCCESS ) THEN
+         ErrMsg = 'Error encountered in FAST-JX routine "RD_AOD"!'
+         CALL GC_Error( ErrMsg, RC, ThisLoc )
+         RETURN
+      ENDIF
 
       ! Set up MIEDX array to interpret between GC and FJX aerosol indexing
-      call SET_AER( am_I_Root, Input_Opt )
+      IF ( notDryRun ) THEN
+         CALL SET_AER( am_I_Root, Input_Opt )
+      ENDIF
 
       !=====================================================================
       ! Read in T & O3 climatology used to fill e.g. upper layers
       ! or if O3 not calc.
       !=====================================================================
-      call RD_PROF_NC( am_I_Root, Input_Opt, RC )
+      CALL RD_PROF_NC( am_I_Root, Input_Opt, RC )
 
       ! Trap potential errors
       IF ( RC /= GC_SUCCESS ) THEN
@@ -1812,10 +1844,13 @@ c---check on overflow of arrays, cut off JXTRA at lower L if too many levels
          RETURN
       ENDIF
 
-      NJXX = NJX
-      do J = 1,NJX
-        TITLEJXX(J) = TITLEJX(J)
-      enddo
+      ! Skip if not in dry-run mode
+      IF ( notDryRun ) THEN
+         NJXX = NJX
+         do J = 1,NJX
+            TITLEJXX(J) = TITLEJX(J)
+         enddo
+      ENDIF
 
       !=====================================================================
       ! Read in photolysis rates used in chemistry code and mapping onto
@@ -1835,69 +1870,73 @@ c---check on overflow of arrays, cut off JXTRA at lower L if too many levels
          RETURN
       ENDIF
 
-      ! Get the GEOS-Chem photolysis index for each of the 1...JVN_ entries
-      ! in the FJX_j2j.dat file.  We'll use this for the diagnostics.
-      DO J = 1, JVN_
+      ! Skip further processing if we are in dry-run mode
+      IF ( notDryRun ) THEN
 
-         IF ( J == Rxn_O3_2a ) THEN
+         ! Get the GEOS-Chem photolysis index for each of the 1...JVN_ entries
+         ! in the FJX_j2j.dat file.  We'll use this for the diagnostics.
+         DO J = 1, JVN_
 
-            !---------------------------------------------------------------
-            ! O3 + hv = O + O(1D) branch 1
-            !
-            ! UCX     : Save this as JO3_O1D in the nPhotol+1 slot
-            ! non_UCX : Save this as JO3     in the nPhotol+1 slot
-            !---------------------------------------------------------------
-            GC_Photo_Id(J) = State_Chm%nPhotol + 1
+            IF ( J == Rxn_O3_2a ) THEN
 
-         ELSE IF ( J == Rxn_O3_1 ) THEN
+               !------------------------------------------------------------
+               ! O3 + hv = O + O(1D) branch 1
+               !
+               ! UCX     : Save this as JO3_O1D in the nPhotol+1 slot
+               ! non_UCX : Save this as JO3     in the nPhotol+1 slot
+               !------------------------------------------------------------
+               GC_Photo_Id(J) = State_Chm%nPhotol + 1
 
-            !---------------------------------------------------------------
-            ! O3 + hv -> O + O
-            !
-            ! UCX     : Save this as JO3_O3P in the nPhotol+2 slot
-            ! non-UCX : undefined
-            !---------------------------------------------------------------
-            IF ( Input_Opt%LUCX ) THEN
-               GC_Photo_Id(J) = State_Chm%nPhotol + 2
+            ELSE IF ( J == Rxn_O3_1 ) THEN
+
+               !------------------------------------------------------------
+               ! O3 + hv -> O + O
+               !
+               ! UCX     : Save this as JO3_O3P in the nPhotol+2 slot
+               ! non-UCX : undefined
+               !-------------------------------------------------------------
+               IF ( Input_Opt%LUCX ) THEN
+                  GC_Photo_Id(J) = State_Chm%nPhotol + 2
+               ELSE
+                  GC_Photo_Id(J) = -999
+               ENDIF
+
+            ELSE IF ( J == Rxn_O3_2b ) THEN
+
+               !------------------------------------------------------------
+               ! O3 + hv -> O2 + O(1d) branch 2
+               !
+               ! UCX     : undefined
+               ! non-UCX : Save into the nPhotol+2 slot
+               !           NOTE: The JPOH rate in the bpch diagnostic will
+               !           now be the sum of the nPhotol+1+nPhotol+2 slots!
+               !------------------------------------------------------------
+               IF ( Input_Opt%LUCX ) THEN
+                  GC_Photo_Id(J) = -999
+               ELSE
+                  GC_Photo_Id(J) = State_Chm%nPhotol + 2
+               ENDIF
+
             ELSE
-               GC_Photo_Id(J) = -999
+
+               !------------------------------------------------------------
+               ! Everything else
+               !
+               ! Find the matching GEOS-Chem photolysis species number
+               !------------------------------------------------------------
+               GC_Photo_Id(J) = Ind_( RNAMES(J), 'P' )
+
             ENDIF
 
-         ELSE IF ( J == Rxn_O3_2b ) THEN
-
-            !---------------------------------------------------------------
-            ! O3 + hv -> O2 + O(1d) branch 2
-            !
-            ! UCX     : undefined
-            ! non-UCX : Save into the nPhotol+2 slot
-            !           NOTE: The JPOH rate in the bpch diagnostic will
-            !           now be the sum of the nPhotol+1 + nPhotol+2 slots!
-            !---------------------------------------------------------------
-            IF ( Input_Opt%LUCX ) THEN
-               GC_Photo_Id(J) = -999
-            ELSE
-               GC_Photo_Id(J) = State_Chm%nPhotol + 2
+            ! Print the mapping
+            IF ( am_I_Root ) THEN
+               IF ( GC_Photo_Id(J) > 0 ) THEN
+                  WRITE(6, 200) RNAMES(J), J, GC_Photo_Id(J), JFACTA(J)
+ 200              FORMAT( a10, ':', i7, 2x, i7, 2x, f7.4 )
+               ENDIF
             ENDIF
-
-         ELSE
-
-            !---------------------------------------------------------------
-            ! Everything else
-            !
-            ! Find the matching GEOS-Chem photolysis species number
-            !---------------------------------------------------------------
-            GC_Photo_Id(J) = Ind_( RNAMES(J), 'P' )
-
-         ENDIF
-
-         ! Print the mapping
-         IF ( am_I_Root ) THEN
-            IF ( GC_Photo_Id(J) > 0 ) THEN
-               WRITE( 6, 200 ) RNAMES(J), J, GC_Photo_Id(J), JFACTA(J)
- 200           FORMAT( a10, ':', i7, 2x, i7, 2x, f7.4 )
-            ENDIF
-         ENDIF
-      ENDDO
+         ENDDO
+      ENDIF
 
 #ifdef MODEL_GEOS
       ! Diagnostics arrays
@@ -1922,19 +1961,22 @@ c---check on overflow of arrays, cut off JXTRA at lower L if too many levels
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE RD_XXX (NUN,NAMFIL,am_I_Root)
+      SUBROUTINE RD_XXX ( NUN, NAMFIL, Input_Opt, RC )
 !
 ! !USES:
 !
+      USE ErrCode_Mod
+      USE Input_Opt_Mod, ONLY : OptInput
 !
 ! !INPUT PARAMETERS:
 !
-      INTEGER, INTENT(IN) :: NUN
-      CHARACTER(*), INTENT(IN) ::  NAMFIL
-      LOGICAL,      INTENT(IN) :: am_I_Root
+      INTEGER,        INTENT(IN)  :: NUN
+      CHARACTER(*),   INTENT(IN)  :: NAMFIL
+      TYPE(OptInput), INTENT(IN)  :: Input_Opt
 !
-! !OUTPUT VARIABLES:
+! !OUTPUT PARAMETERS:
 !
+      INTEGER,        INTENT(OUT) :: RC
 !
 ! !REMARKS:
 !    NEW v-6.8  now allow 1 to 3 sets of X-sects for T or P
@@ -1966,24 +2008,71 @@ c---check on overflow of arrays, cut off JXTRA at lower L if too many levels
 !
 ! !REVISION HISTORY:
 !  28 Mar 2013 - S. D. Eastham - Copied from Fast-JX v7.0
-!  09 May 2014 - S. D. Eastham - Fixed bug when using <18 wavelengths
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
 !
 ! !LOCAL VARIABLES:
 !
-      INTEGER  I, J, JJ, K, IW, NQRD, NWWW,   LQ
-      REAL(fp)  QQ2(199), TQQ2
+      ! Scalars
+      LOGICAL            :: FileExists
+      INTEGER            :: I, J, JJ, K, IW, NQRD, NWWW, LQ
+      REAL(fp)           :: TQQ2
 
-      character*78 TITLE0
-      character*6  TITLEJ2,TITLEJ3
-      character*1  TSTRAT
+      ! Arrays
+      REAL(fp)           :: QQ2(199)
+
+      ! Strings
+      CHARACTER(LEN=255) :: FileMsg, FileStatus
+      CHARACTER(LEN=255) :: ErrMsg,  ThisLoc
+      CHARACTER(LEN=78)  :: TITLE0
+      CHARACTER(LEN=6 )  :: TITLEJ2, TITLEJ3
+      CHARACTER(LEN=1 )  :: TSTRAT
+
+      !=================================================================
+      ! In dry-run mode, print file path to dryrun log and exit.
+      ! Otherwise, print file path to stdout and continue.
+      !=================================================================
+
+      ! Initialize
+      RC      = GC_SUCCESS
+      ErrMsg  = ''
+      ThisLoc = '-> at RD_XXX (in module GeosCore/fast_jx_mod.F)'
+
+      ! Test if the file exists
+      INQUIRE( FILE=TRIM( NamFil ), EXIST=FileExists )
+
+      ! Test if the file exists and define an output string
+      IF ( FileExists ) THEN
+         FileMsg    = 'FAST-JX (RD_XXX): Opening'
+      ELSE
+         FileMsg    = 'FAST-JX (RD_XXX): REQUIRED FILE NOT FOUND'
+      ENDIF
+
+      ! Write to stdout for both regular and dry-run simulations
+      IF ( Input_Opt%AmIRoot ) THEN
+         WRITE( 6, 300 ) TRIM( FileMsg ), TRIM( NamFil )
+ 300     FORMAT( a, ' ', a )
+      ENDIF
+
+      ! For dry-run simulations, return to calling program.
+      ! For regular simulations, throw an error if we can't find the file.
+      IF ( Input_Opt%DryRun ) THEN
+         RETURN
+      ELSE
+         IF ( .not. FileExists ) THEN
+            WRITE( ErrMsg, 300 ) TRIM( FileMsg ), TRIM( NamFil )
+            CALL GC_Error( ErrMsg, RC, ThisLoc )
+            RETURN
+         ENDIF
+      ENDIF
 
       !=================================================================
       ! RD_XXX begins here!
       !=================================================================
 
+      ! Initialization
       TQQ(:,:) = 0.e+0_fp
 
 C----------spectral data----set for new format data------------------
@@ -1991,12 +2080,6 @@ c         note that X_ = max # Xsects read in
 c                   NJX = # fast-JX J-values derived from this (.le. X_)
 
 c >>>> W_ = 12 <<<< means trop-only, discard WL #1-4 and #9-10, some X-sects
-
-      ! Print the name of the file being read to stdout (bmy, 10/24/19)
-      IF ( am_I_Root ) THEN
-         WRITE( 6, 300 ) TRIM( NamFil )
- 300     FORMAT( 'FAST-JX (RD_XXX): Reading ', a )
-      ENDIF
 
       ! Open file
       open (NUN,FILE=NAMFIL,status='old',form='formatted')
@@ -2006,7 +2089,7 @@ c----note that NQRD is not used any more, a read until 'endofJ' is performed
       read (NUN,101) NQRD,NWWW
          NW1 = 1
          NW2 = NWWW
-      IF ( am_I_Root ) THEN
+      IF ( Input_Opt%AmIRoot ) THEN
          write(6,'(1x,a)') TITLE0
          write(6,'(i8)') NWWW
       ENDIF
@@ -2077,7 +2160,7 @@ c---skip stratosphere only J's (denoted by 'x')if W_<18 => trop-only J's
         NJX = JJ
 
       do J = 1,NJX
-        if (am_I_Root) then
+        if ( Input_Opt%AmIRoot ) then
            write(6,200) J,TITLEJX(J),SQQ(J),LQQ(J),(TQQ(I,J),I=1,LQQ(J))
         endif
 c---need to check that TQQ is monotonically increasing:
@@ -2105,7 +2188,7 @@ c---truncate number of wavelengths to do troposphere-only
       if (W_ .ne. WX_) then
 c---TROP-ONLY
        if (W_ .eq. 12) then
-        if (am_I_Root) then
+        if ( Input_Opt%AmIRoot ) then
            write(6,'(a)')
      &      ' >>>TROP-ONLY reduce wavelengths to 12, drop strat X-sects'
         endif
@@ -2142,7 +2225,7 @@ c---TROP-ONLY
         enddo
 c---TROP-QUICK  (must scale solar flux for W=5)
        elseif (W_ .eq. 8) then
-        if (am_I_Root) then
+        if ( Input_Opt%AmIRoot ) then
         write(6,'(a)')
      &   ' >>>TROP-QUICK reduce wavelengths to 8, drop strat X-sects'
         endif
@@ -2209,23 +2292,22 @@ c---TROP-QUICK  (must scale solar flux for W=5)
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE RD_MIE(NUN,NAMFIL,am_I_Root, Input_Opt )
+      SUBROUTINE RD_MIE( NUN, NAMFIL, Input_Opt, RC )
 !
 ! !USES:
 !
-      USE FILE_MOD,           ONLY : IOERROR
-      USE Input_Opt_Mod,      ONLY : OptInput
+      USE ErrCode_Mod
+      USE Input_Opt_Mod, ONLY : OptInput
 !
 ! !INPUT PARAMETERS:
 !
-      INTEGER,        INTENT(IN) :: NUN
-      CHARACTER(*),   INTENT(IN) :: NAMFIL
-      LOGICAL,        INTENT(IN) :: am_I_Root
-      TYPE(OptInput), INTENT(IN) :: Input_Opt   ! Input Options object
-
+      INTEGER,        INTENT(IN)  :: NUN         ! Logical unit #
+      CHARACTER(*),   INTENT(IN)  :: NAMFIL      ! File name
+      TYPE(OptInput), INTENT(IN)  :: Input_Opt   ! Input Options object
 !
-! !OUTPUT VARIABLES:
+! !OUTPUT PARAMETERS:
 !
+      INTEGER,        INTENT(OUT) :: RC          ! Success or failure?
 !
 ! !REMARKS:
 !   --------------------------------------------------------------------
@@ -2241,39 +2323,73 @@ c---TROP-QUICK  (must scale solar flux for W=5)
 !
 ! !REVISION HISTORY:
 !  28 Mar 2013 - S. D. Eastham - Adapted from GEOS-Chem v9-1-3
-!  25 Jun 2015 - M. Sulprizio  - Add brown carbon optical properties from
-!                                M. Hammer
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
 !
 ! !LOCAL VARIABLES:
 !
-      INTEGER  I, J, K, NK
-      CHARACTER*78 TITLE0
-      LOGICAL      :: LBRC
+      ! Scalars
+      INTEGER            :: I, J, K, NK
+      LOGICAL            :: LBRC, FileExists
+
+      ! Strings
+      CHARACTER(LEN=78 ) :: TITLE0
+      CHARACTER(LEN=255) :: FileMsg, ErrMsg, ThisLoc
 
       !=================================================================
-      ! RD_MIE begins here!
+      ! In dry-run mode, print file path to dryrun log and exit.
+      ! Otherwise, print file path to stdout and continue.
+      !=================================================================
+
+      ! Assume success
+      RC = GC_SUCCESS
+      ErrMsg = ''
+      ThisLoc = ' -> at RD_MIE (in module GeosCore/fast_jx_mod.F)'
+
+      ! Test if the file exists
+      INQUIRE( FILE=TRIM( NamFil ), EXIST=FileExists )
+
+      ! Test if the file exists and define an output string
+      IF ( FileExists ) THEN
+         FileMsg = 'FAST-JX (RD_MIE): Opening'
+      ELSE
+         FileMsg = 'FAST-JX (RD_MIE): REQUIRED FILE NOT FOUND'
+      ENDIF
+
+      ! Write to stdout for both regular and dry-run simulations
+      IF ( Input_Opt%AmIRoot ) THEN
+         WRITE( 6, 300 ) TRIM( FileMsg ), TRIM( NamFil )
+ 300     FORMAT( a, ' ', a )
+      ENDIF
+
+      ! For dry-run simulations, return to calling program
+      ! For regular simulations, throw an error if we can't find the file.
+      IF ( Input_Opt%DryRun ) THEN
+         RETURN
+      ELSE
+         IF ( .not. FileExists ) THEN
+            WRITE( ErrMsg, 300 ) TRIM( FileMsg ), TRIM( NamFil )
+            CALL GC_Error( ErrMsg, RC, ThisLoc )
+            RETURN
+         ENDIF
+      ENDIF
+
+      !=================================================================
+      ! RD_MIE begins here -- read data from file
       !=================================================================
 
       ! Copy fields from Input_Opt
       LBRC = Input_Opt%LBRC
-
-      ! Print the name of the file being read to stdout (bmy, 10/24/19)
-      IF ( am_I_Root ) THEN
-         WRITE( 6, 300 ) TRIM( NamFil )
- 300     FORMAT( 'FAST-JX (RD_MIE): Reading ', a )
-      ENDIF
 
       ! Open file
       open (NUN,FILE=NAMFIL,status='old',form='formatted')
 
       ! Read header lines
       READ( NUN,'(A)' ) TITLE0
-      IF  ( am_I_Root ) WRITE( 6, '(1X,A)' ) TITLE0
+      IF  ( Input_Opt%AmIRoot ) WRITE( 6, '(1X,A)' ) TITLE0
       READ( NUN,'(A)' ) TITLE0
-
 
       !---Read aerosol phase functions:
 
@@ -2306,7 +2422,7 @@ c---TROP-QUICK  (must scale solar flux for W=5)
 
       close(NUN)
 
-      IF ( am_I_Root ) THEN
+      IF ( Input_Opt%AmIRoot ) THEN
          write(6,'(a,9f8.1)') ' Aerosol optical: r-eff/rho/Q(@wavel):'
      &             ,(WAA(K,1),K=1,5)
          do J=1,NAA
@@ -2334,23 +2450,21 @@ c---TROP-QUICK  (must scale solar flux for W=5)
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE RD_AOD( NJ1, am_I_Root, Input_Opt )
+      SUBROUTINE RD_AOD( NJ1, Input_Opt, RC )
 !
 ! !USES:
 !
-      USE FILE_MOD,           ONLY : IOERROR
-      USE Input_Opt_Mod,      ONLY : OptInput
-      IMPLICIT NONE
-
+      USE ErrCode_Mod
+      USE Input_Opt_Mod, ONLY : OptInput
 !
 ! !INPUT PARAMETERS:
 !
-      INTEGER,          INTENT(IN) :: NJ1         ! Unit # of file to open
-      TYPE(OptInput),   INTENT(IN) :: Input_Opt   ! Input Options object
-      LOGICAL,          INTENT(IN) :: am_I_Root   ! Is this the root CPU?
+      INTEGER,          INTENT(IN)  :: NJ1         ! Unit # of file to open
+      TYPE(OptInput),   INTENT(IN)  :: Input_Opt   ! Input Options object
 !
-! !INPUT/OUTPUT PARAMETERS:
+! !OUTPUT PARAMETERS:
 !
+      INTEGER,          INTENT(OUT) :: RC          ! Success or failure?
 !
 ! !REMARKS:
 !  The .dat files for each species contain the optical properties
@@ -2372,49 +2486,39 @@ c---TROP-QUICK  (must scale solar flux for W=5)
 !
 ! !REVISION HISTORY:
 !  10 May 2010 - C. Heald      - Initial version
-!  06 Aug 2010 - C. Carouge    - Add an error check when opening the file
-!  01 Aug 2012 - R. Yantosca   - Now restore NJ1 to INTENT(IN) status
-!  31 Mar 2013 - S. D. Eastham - Added to Fast-JX v7.0 implementation
-!  30 Mar 2015 - M. Sulprizio  - Removed NAMFIL argument. Now specify filenames
-!                                for aerosol LUT files in this routine.
-!  02 Apr 2015 - C. Keller     - Append '.rc' to species files in ESMF mode.
-!  12 May 2015 - R. Yantosca   - Bug fix: For PGI compiler, you need to have
-!                                exactly as many elements in the DATA statement
-!                                as there are elements in the SPECFIL array.
-!  25 Jun 2015 - M. Sulprizio  - Add brown carbon optical properties from
-!                                M. Hammer
-!  04 Aug 2015 - M. Long       - Removed ".rc" file specifier. Not necessary.
-!  03 Jan 2018 - M. Sulprizio  - Replace UCX CPP switch with Input_Opt%LUCX
-!  23 Mar 2018 - E. Lundgren   - Pass Input_Opt to Calc_AOD
-!  19 Sep 2018 - M. Sulprizio  - Read .dat files from data directories instead
-!                                of run directories
-!  10 Apr 2019 - R. Yantosca   - Now read data from FAST_JX/v2019-04 folder
-!  26 Apr 2019 - T. Sherwen    - Read FAST-JX files from FAST_JX_DIR
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
 !
 ! !LOCAL VARIABLES
 !
+      ! Scalars
       INTEGER            :: I, J, K, N
       INTEGER            :: IOS
-      CHARACTER*30       :: SPECFIL(6)
-      CHARACTER*30       :: SPECFIL_UCX(8)
+      LOGICAL            :: LBRC, FileExists
+
+      ! Strings
+      CHARACTER(LEN=78 ) :: TITLE0
       CHARACTER(LEN=255) :: DATA_DIR
       CHARACTER(LEN=255) :: THISFILE
+      CHARACTER(LEN=255) :: FileMsg
+      CHARACTER(LEN=255) :: ErrMsg
+      CHARACTER(LEN=255) :: ThisLoc
 
-      LOGICAL            :: LBRC
-
-      CHARACTER*78 TITLE0
+      ! String arrays
+      CHARACTER(LEN=30)  :: SPECFIL(6)
+      CHARACTER(LEN=30)  :: SPECFIL_UCX(8)
 
       !================================================================
       ! RD_AOD begins here!
       !================================================================
 
-      ! Copy fields from Input_Opt
-      LBRC = Input_Opt%LBRC
-
-      ! Define data directory for FAST-JX input
+      ! Initialize
+      RC       = GC_SUCCESS
+      ErrMsg   = ''
+      ThisLoc  = ' -> at RD_AOD (in module GeosCore/fast_jx_mod.F)'
+      LBRC     = Input_Opt%LBRC
       DATA_DIR = TRIM( Input_Opt%FAST_JX_DIR )
 
       ! IMPORTANT: aerosol_mod.F and dust_mod.F expect aerosols in this order
@@ -2437,71 +2541,105 @@ c---TROP-QUICK  (must scale solar flux for W=5)
      &                  "h2so4.dat","h2so4.dat",
      &                  "dust.dat"/
 
-      !array of filenames
+      ! Loop over the array of filenames
       DO k = 1, NSPAA
 
-       ! Choose different set of input files for UCX and tropchem simulations
-       IF ( Input_Opt%LUCX) THEN
-          THISFILE = TRIM( DATA_DIR ) // TRIM( SPECFIL_UCX(k) )
-       ELSE
-          THISFILE = TRIM( DATA_DIR ) // TRIM( SPECFIL(k) )
-       ENDIF
-
-       ! Print the name of the file being read to stdout (bmy, 10/24/19)
-       IF ( am_I_Root ) THEN
-          WRITE( 6, 300 ) TRIM( ThisFile )
- 300      FORMAT( 'FAST-JX (RD_AOD): Reading ', a )
-       ENDIF
-
-       ! Open file
-       OPEN( NJ1, FILE=TRIM( THISFILE ), STATUS='OLD', IOSTAT=IOS )
-
-       ! Error check
-       IF ( IOS /= 0 ) THEN
-         IF ( am_I_Root ) THEN
-          WRITE(6,100) trim(THISFILE)
- 100      FORMAT('Error opening filename=', a )
-          CALL FLUSH(6)
+         ! Choose different set of input files for UCX and tropchem simulations
+         IF ( Input_Opt%LUCX) THEN
+            THISFILE = TRIM( DATA_DIR ) // TRIM( SPECFIL_UCX(k) )
+         ELSE
+            THISFILE = TRIM( DATA_DIR ) // TRIM( SPECFIL(k) )
          ENDIF
-         CALL IOERROR( IOS, NJ1, 'RD_AOD:1')
-       ENDIF
 
+         !--------------------------------------------------------------
+         ! In dry-run mode, print file path to dryrun log and cycle.
+         ! Otherwise, print file path to stdout and continue.
+         !--------------------------------------------------------------
 
-       ! Read header lines
-       READ(  NJ1,'(A)'    ) TITLE0
-       IF  ( am_I_Root ) WRITE( 6,  '(1X,A)' ) TITLE0
-       READ(  NJ1,'(A)'    ) TITLE0
-       !Second header line added for more info
-       IF  ( am_I_Root ) WRITE( 6,  '(1X,A)' ) TITLE0
-       READ(  NJ1,'(A)'    ) TITLE0
+         ! Test if the file exists
+         INQUIRE( FILE=TRIM( ThisFile ), EXIST=FileExists )
 
+         ! Test if the file exists and define an output string
+         IF ( FileExists ) THEN
+            FileMsg = 'FAST-JX (RD_AOD): Opening'
+         ELSE
+            FileMsg = 'FAST-JX (RD_AOD): REQUIRED FILE NOT FOUND'
+         ENDIF
+
+         ! Write to stdout for both regular and dry-run simulations
+         IF ( Input_Opt%AmIRoot ) THEN
+            WRITE( 6, 300 ) TRIM( FileMsg ), TRIM( ThisFile )
+ 300        FORMAT( a, ' ', a )
+         ENDIF
+
+         ! For dry-run simulations, cycle to next file.
+         ! For regular simulations, throw an error if we can't find the file.
+         IF ( Input_Opt%DryRun ) THEN
+            CYCLE
+         ELSE
+            IF ( .not. FileExists ) THEN
+               WRITE( ErrMsg, 300 ) TRIM( FileMsg ), TRIM( ThisFile )
+               CALL GC_Error( ErrMsg, RC, ThisLoc )
+               RETURN
+            ENDIF
+         ENDIF
+
+         !--------------------------------------------------------------
+         ! If not a dry-run, read data from each species file
+         !--------------------------------------------------------------
+
+         ! Open file
+         OPEN( NJ1, FILE=TRIM( THISFILE ), STATUS='OLD', IOSTAT=RC )
+
+         ! Error check
+         IF ( RC /= 0 ) THEN
+            ErrMsg = 'Error opening file: ' // TRIM( ThisFile )
+            CALL GC_Error( ErrMsg, RC, ThisLoc )
+            RETURN
+         ENDIF
+
+         ! Read header lines
+         READ(  NJ1, '(A)' ) TITLE0
+         IF ( Input_Opt%AmIRoot ) WRITE( 6, '(1X,A)' ) TITLE0
+
+         ! Second header line added for more info
+         READ(  NJ1, '(A)' ) TITLE0
+         IF ( Input_Opt%AmIRoot ) WRITE( 6, '(1X,A)' ) TITLE0
+
+         READ(  NJ1, '(A)' ) TITLE0
  110     FORMAT( 3x, a20 )
-       DO i = 1, NRAA
-        DO j = 1, NWVAA
 
-         READ(NJ1,*) WVAA(j,k),RHAA(i,k),NRLAA(j,i,k),NCMAA(j,i,k),
-     &               RDAA(i,k),RWAA(i,k),SGAA(i,k),QQAA(j,i,k),
-     &               ALPHAA(j,i,k),REAA(i,k),SSAA(j,i,k),
-     &               ASYMAA(j,i,k),(PHAA(j,i,k,n),n=1,8)
-         ! make note of where 1000nm is for FAST-J calcs
-         IF (WVAA(j,k).EQ.1000.0) IWV1000=J
+         DO i = 1, NRAA
+         DO j = 1, NWVAA
 
-        ENDDO
-       ENDDO
-       ! Echo info to stdout
-       IF ( am_I_Root ) THEN
-       ENDIF
-       ! Close file
-       CLOSE( NJ1 )
+            READ(NJ1,*) WVAA(j,k),RHAA(i,k),NRLAA(j,i,k),NCMAA(j,i,k),
+     &                  RDAA(i,k),RWAA(i,k),SGAA(i,k),QQAA(j,i,k),
+     &                  ALPHAA(j,i,k),REAA(i,k),SSAA(j,i,k),
+     &                  ASYMAA(j,i,k),(PHAA(j,i,k,n),n=1,8)
+
+            ! make note of where 1000nm is for FAST-J calcs
+            IF (WVAA(j,k).EQ.1000.0) IWV1000=J
+
+         ENDDO
+         ENDDO
+
+         ! Close file
+         CLOSE( NJ1 )
       ENDDO
 
-      IF ( am_I_Root ) THEN
-         WRITE( 6, * ) 'Optics read for all wavelengths successfully'
-      ENDIF
+      !=================================================================
+      ! Only do the following if we are not running in dry-run mode
+      !=================================================================
+      IF ( .not. Input_Opt%DryRun ) THEN
 
-      !now calculate the required wavelengths in the LUT to calculate
-      !the requested AOD
-      CALL CALC_AOD( am_I_Root, Input_Opt )
+         IF ( Input_Opt%AmIRoot ) THEN
+            WRITE( 6, * ) 'Optics read for all wavelengths successfully'
+         ENDIF
+
+         ! Now calculate the required wavelengths in the LUT to calculate
+         ! the requested AOD
+         CALL CALC_AOD( Input_Opt )
+      ENDIF
 
       END SUBROUTINE RD_AOD
 !EOC
@@ -2521,7 +2659,7 @@ c---TROP-QUICK  (must scale solar flux for W=5)
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE CALC_AOD( am_I_Root, Input_Opt )
+      SUBROUTINE CALC_AOD( Input_Opt )
 !
 ! !USES:
 !
@@ -2539,7 +2677,6 @@ c---TROP-QUICK  (must scale solar flux for W=5)
 !
 ! !INPUT PARAMETERS:
 !
-      LOGICAL,          INTENT(IN) :: am_I_Root   ! Is this the root CPU?
       TYPE(OptInput),   INTENT(IN) :: Input_Opt
 !
 ! !REMARKS:
@@ -2566,10 +2703,7 @@ c---TROP-QUICK  (must scale solar flux for W=5)
 !
 ! !REVISION HISTORY:
 !  18 Jun 2013 - D. Ridley   - Initial version
-!  15 Dec 2014 - M. Sulprizio- Added ProTeX headers
-!  02 Apr 2015 - C. Keller   - Added am_I_Root argument
-!  23 Mar 2018 - E. Lundgren - Added Input_Opt argument for wavelength vars
-!                              read in input.geos now stored in Input_Opt
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -2654,7 +2788,7 @@ c---TROP-QUICK  (must scale solar flux for W=5)
        CCOEF_WV(W) =(Input_Opt%WVSELECT(W)-WVAA(IWVSELECT(1,W),1))/
      &              (WVAA(IWVSELECT(2,W),1)-WVAA(IWVSELECT(1,W),1))
       ENDIF
-      IF ( am_I_Root ) THEN
+      IF ( Input_Opt%AmIRoot ) THEN
          write(6,*) 'N WAVELENGTHS: ',Input_Opt%NWVSELECT
          write(6,*) 'WAVELENGTH REQUESTED:',Input_Opt%WVSELECT(W)
          write(6,*) 'WAVELENGTH REQUIRED:', NWVREQUIRED
@@ -2742,7 +2876,7 @@ c---TROP-QUICK  (must scale solar flux for W=5)
       !i.e. without the standard and LW wavelengths
       IRTWVSELECT(1,W) = IRTWVSELECT(1,W) - NWVAA0 - NBNDLW
       IRTWVSELECT(2,W) = IRTWVSELECT(2,W) - NWVAA0 - NBNDLW
-      IF ( am_I_Root ) THEN
+      IF ( Input_Opt%AmIRoot ) THEN
       write(6,*) 'N RT WAVELENGTHS: ',Input_Opt%NWVSELECT
       write(6,*) 'RT WAVELENGTH REQUESTED:',Input_Opt%WVSELECT(W)
       write(6,*) 'RT WAVELENGTH REQUIRED:', NRTWVREQUIRED
@@ -2797,12 +2931,7 @@ c---TROP-QUICK  (must scale solar flux for W=5)
 !
 ! !REVISION HISTORY:
 !  28 Mar 2013 - S. D. Eastham - Copied from Fast-JX v7.0
-!  31 Mar 2013 - S. D. Eastham - Modified to track number of branches
-!  29 Mar 2016 - R. Yantosca   - Now flag rxn numbers for use in PHOTRATE_ADJ
-!  27 Jun 2016 - M. Sulprizio  - Add RXN_NO2 flag for PARANOX
-!  10 Mar 2017 - C. Keller     - Wrapped print out into am_I_Root statement
-!  19 Dec 2017 - R. Yantosca   - Now return error code to calling routine
-!  03 Jan 2018 - M. Sulprizio  - Replace UCX CPP switch with Input_Opt%LUCX
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -2810,6 +2939,7 @@ c---TROP-QUICK  (must scale solar flux for W=5)
 ! !LOCAL VARIABLES:
 !
       ! Scalars
+      LOGICAL            :: FileExists
       INTEGER            :: J, JJ, K
       REAL(fp)           :: F_FJX
 
@@ -2818,7 +2948,7 @@ c---TROP-QUICK  (must scale solar flux for W=5)
       CHARACTER(LEN=50 ) :: T_REACT
       CHARACTER(LEN=50 ) :: TEXT
       CHARACTER(LEN=120) :: CLINE
-      CHARACTER(LEN=255) :: ErrMsg, ThisLoc
+      CHARACTER(LEN=255) :: ErrMsg, ThisLoc, FileMsg
 
       ! String arrays
       CHARACTER(LEN=6)   :: JMAP(JVN_)
@@ -2830,23 +2960,52 @@ c---TROP-QUICK  (must scale solar flux for W=5)
       ! Initialize
       RC       = GC_SUCCESS
       ErrMsg   = ''
-      ThisLoc  = ' -> at Rd_Js_Jx  (in module GeosCore/fast_jx_mod.F)'
+      ThisLoc  = ' -> at Rd_Js_Jx (in module GeosCore/fast_jx_mod.F)'
 
-! Read the FJX_j2j.dat file to map model specific J's onto fast-JX J's
-! The chemistry code title describes fully the reaction (a50)
-! Blank (unfilled) chemistry J's are unmapped
-! The number NRATJ is the last JJ readin that is .le. JVN
-!   include fractional quantum yield for the fast-JX J's
+      !=================================================================
+      ! In dry-run mode, print file path to dryrun log and exit.
+      ! Otherwise, print file path to stdout and continue.
+      !=================================================================
+
+      ! Test if the file exists
+      INQUIRE( FILE=TRIM( NamFil ), EXIST=FileExists )
+
+      ! Test if the file exists and define an output string
+      IF ( FileExists ) THEN
+         FileMsg = 'FAST-JX (RD_JS_JX): Opening'
+      ELSE
+         FileMsg = 'FAST-JX (RD_JS_JX): REQUIRED FILE NOT FOUND'
+      ENDIF
+
+      ! Write to stdout for both regular and dry-run simulations
+      IF ( Input_Opt%AmIRoot ) THEN
+         WRITE( 6, 300 ) TRIM( FileMsg ), TRIM( NamFil )
+ 300     FORMAT( a, ' ', a )
+      ENDIF
+
+      ! For dry-run simulations, return to calling program.
+      ! For regular simulations, throw an error if we can't find the file.
+      IF ( Input_Opt%DryRun ) THEN
+         RETURN
+      ELSE
+         IF ( .not. FileExists ) THEN
+            WRITE( ErrMsg, 300 ) TRIM( FileMsg ), TRIM( NamFil )
+            CALL GC_Error( ErrMsg, RC, ThisLoc )
+            RETURN
+         ENDIF
+      ENDIF
+
+      !=================================================================
+      ! Read the FJX_j2j.dat file to map model specific J's onto fast-JX J's
+      ! The chemistry code title describes fully the reaction (a50)
+      ! Blank (unfilled) chemistry J's are unmapped
+      ! The number NRATJ is the last JJ readin that is .le. JVN
+      ! include fractional quantum yield for the fast-JX J's
+      !=================================================================
 
       JLABEL(:) = '------'
       JMAP(:)   = '------'
       JFACTA(:) = 0.e+0_fp
-
-      ! Print the name of the file being read to stdout (bmy, 10/24/19)
-      IF ( am_I_Root ) THEN
-         WRITE( 6, 300 ) TRIM( NamFil )
- 300     FORMAT( 'FAST-JX (RD_JS_JX): Reading ', a )
-      ENDIF
 
       ! Open file
       open (NUNIT,file=NAMFIL,status='old',form='formatted')
@@ -3159,7 +3318,7 @@ c---Zero / Set index arrays that map Jvalue(j) onto rates
 !
 ! !REVISION HISTORY:
 !  28 Mar 2013 - S. D. Eastham - Adapted from Fast-JX v7.0
-!  06 Jan 2016 - E. Lundgren   - Use global PI rather than local definition
+!  See the Git history with the gitk browser
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -3207,10 +3366,6 @@ c---Zero / Set index arrays that map Jvalue(j) onto rates
 !
 ! !USES:
 !
-#if defined( BPCH_DIAG )
-      USE CMN_DIAG_MOD,   ONLY : LD22, LD64, ND22, ND64
-      USE DIAG_MOD,       ONLY : AD22, AD64, LTJV
-#endif
       USE Input_Opt_Mod,  ONLY : OptInput
       USE State_Diag_Mod, ONLY : DgnState
       USE State_Grid_Mod, ONLY : GrdState
@@ -3244,10 +3399,7 @@ c---Zero / Set index arrays that map Jvalue(j) onto rates
 !
 ! !REVISION HISTORY:
 !  28 Mar 2013 - S. D. Eastham - Copied from Fast-JX v7.0
-!  05 Mar 2014 - R. Yantosca - Now only save ND64 with LD64 specified levels
-!  26 Sep 2017 - M. Sulprizio- Add new halogen species to ND22 (L. Zhu)
-!  04 Oct 2017 - E. Lundgren - Populate State_Diag J-Values array for nc diag
-!  03 Jan 2018 - M. Sulprizio- Replace UCX CPP switch with Input_Opt%LUCX
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -3294,8 +3446,10 @@ C-----------------------------------------------------------------------
       ! T_INPUT: Input temperature (K) with extra layer for compatibility
       REAL(fp) :: T_INPUT(JXL1_+1)
 
-      ! AD64 diagnostics
-      REAL(fp), DIMENSION(JXL1_) :: FDIRECT, FDIFFUSE
+      ! UVFlux* diagnostics
+      REAL(fp) :: FDIRECT (JXL1_)
+      REAL(fp) :: FDIFFUSE(JXL1_)
+      REAL(fp) :: UVX_CONST
 
       ! Logical flags
       LOGICAL :: IS_HALOGENS
@@ -3608,235 +3762,64 @@ C-----------------------------------------------------------------------
          ENDDO
       ENDIF
 
-#if defined( BPCH_DIAG )
       !=================================================================
-      ! ND64 (bpch) diagnostic
-      !
       ! UV radiative fluxes (direct, diffuse, net) [W/m2]
       !
-      ! New diagnostic (SDE 2013-10-25)
+      ! Updated for netCDF from nd64 (JMM 2019-09-11)
       ! Use it to calculate fluxes for output if necessary
+      !
+      ! Get net direct and net diffuse fluxes separately
+      ! Order:
+      !    1 - Net flux
+      !    2 - Direct flux
+      !    3 - Diffuse flux
+      ! Convention: negative is downwards
       !=================================================================
-      IF ( ND64 > 0 .and. L <= LD64 ) THEN
-         ! Get net direct and net diffuse fluxes separately
-         ! Order:
-         !    1 - Net flux
-         !    2 - Direct flux
-         !    3 - Diffuse flux
-         ! Convention: -ve is downwards
-         DO K=1,W_
-            ! Direct flux at the bottom
-            FDIRECT(:) = 0.0
-            FDIFFUSE(:) = 0.0
-            FDIRECT(1) = FSBOT(K)
-            FDIFFUSE(1) = FJBOT(K)
-            DO L=2,LD64
+      IF ( State_Diag%Archive_UVFluxDiffuse .or.
+     &     State_Diag%Archive_UVFluxDirect .or.
+     &     State_Diag%Archive_UVFluxNet ) THEN
+
+         ! Loop over wavelength bins
+         DO K = 1, W_
+
+            ! Initialize
+            FDIRECT  = 0.0_fp
+            FDIFFUSE = 0.0_fp
+
+            ! Direct & diffuse fluxes at each level
+            FDIRECT(1)  = FSBOT(K)                    ! surface
+            FDIFFUSE(1) = FJBOT(K)                    ! surface
+            DO L = 2, State_Grid%NZ
                FDIRECT(L) = FDIRECT(L-1) + FLXD(L-1,K)
                FDIFFUSE(L) = FJFLX(L-1,K)
             ENDDO
-            DO L=1,L1_
-               AD64(ILON,ILAT,L,K,1) = AD64(ILON,ILAT,L,K,1) +
-     &            ((FDIRECT(L)+FDIFFUSE(L))*SOLF*FL(K)*UVXFACTOR(K))
-               AD64(ILON,ILAT,L,K,2) = AD64(ILON,ILAT,L,K,2) +
-     &            (FDIRECT(L)*SOLF*FL(K)*UVXFACTOR(K))
-               AD64(ILON,ILAT,L,K,3) = AD64(ILON,ILAT,L,K,3) +
-     &            (FDIFFUSE(L)*SOLF*FL(K)*UVXFACTOR(K))
+
+            ! Constant to multiply UV fluxes at each wavelength bin
+            UVX_CONST = SOLF * FL(K) * UVXFACTOR(K)
+
+            ! Archive into diagnostic arrays
+            DO L = 1, State_Grid%NZ
+
+               IF ( State_Diag%Archive_UVFluxNet ) THEN
+                  State_Diag%UVFluxNet(ILON,ILAT,L,K) =
+     &            State_Diag%UVFluxNet(ILON,ILAT,L,K) +
+     &                 ( ( FDIRECT(L) + FDIFFUSE(L) ) * UVX_CONST )
+               ENDIF
+
+               IF ( State_Diag%Archive_UVFluxDirect ) THEN
+                  State_Diag%UVFluxDirect(ILON,ILAT,L,K) =
+     &            State_Diag%UVFluxDirect(ILON,ILAT,L,K) +
+     &                 ( FDIRECT(L) * UVX_CONST )
+               ENDIF
+
+               IF ( State_Diag%Archive_UVFluxDiffuse ) THEN
+                  State_Diag%UVFluxDiffuse(ILON,ILAT,L,K) =
+     &            State_Diag%UVFluxDiffuse(ILON,ILAT,L,K) +
+     &                 ( FDIFFUSE(L) * UVX_CONST )
+               ENDIF
             ENDDO
          ENDDO
       ENDIF
-
-      !=================================================================
-      ! ND22 (bpch) diagnostic
-      !
-      ! Archive photolysis rates [s-1] for each species
-      ! summed over all reaction branches
-      !
-      ! NOTE: Special handling for some reactions is done in
-      ! routine PHOTRATE_ADJ, which is called in DO_FLEXCHEM.
-      !=================================================================
-      IF ( ND22 > 0 ) THEN
-
-         ! Save J-values for 2PM diagnostic boxes
-         IF ( LTJV(ILON,ILAT) > 0 ) THEN
-
-            DO L = 1, LD22
-               ! AD22 IDs 5, 6, and 15 (J-values for O3 and O2)
-               ! are handled in routine PHOTRATE_ADJ
-               ! Hardcode ZPJ indices based on valued from FJX_j2j.dat
-               ! for now (mps, 3/15/16)
-               ! TMS (18/10/10) - IDs 77, 78 (JNIT, JNITs)
-               ! also handled in routine PHOTRATE_ADJ
-               !
-               ! NOTE: Updated to remove duplicate ClNO2 entry #101,
-               ! This reduces the # of photolyzed species from 130 to 129.
-               ! Entries 102-130 are now renumbered as 101-129.
-               ! (bmy, 4/10/19)
-               AD22(ILON,ILAT,L, 1) = AD22(ILON,ILAT,L, 1) +  ! JNO2
-     &                                ZPJ(L,11,ILON,ILAT)
-               AD22(ILON,ILAT,L, 2) = AD22(ILON,ILAT,L, 2) +  ! JHNO3
-     &                                ZPJ(L,16,ILON,ILAT)
-               AD22(ILON,ILAT,L, 3) = AD22(ILON,ILAT,L, 3) +  ! JH2O2
-     &                                ZPJ(L, 9,ILON,ILAT)
-               AD22(ILON,ILAT,L, 4) = AD22(ILON,ILAT,L, 4) +  ! JCH2O
-     &                                ZPJ(L, 7,ILON,ILAT)  +
-     &                                ZPJ(L, 8,ILON,ILAT)
-               AD22(ILON,ILAT,L, 7) = AD22(ILON,ILAT,L, 7) +  ! JGLYX
-     &                                ZPJ(L,72,ILON,ILAT)  +
-     &                                ZPJ(L,73,ILON,ILAT)  +
-     &                                ZPJ(L,74,ILON,ILAT)
-               AD22(ILON,ILAT,L, 8) = AD22(ILON,ILAT,L, 8) +  ! JMGLY
-     &                                ZPJ(L,71,ILON,ILAT)
-               AD22(ILON,ILAT,L, 9) = AD22(ILON,ILAT,L, 9) +  ! JBrO
-     &                                ZPJ(L,28,ILON,ILAT)
-               AD22(ILON,ILAT,L,10) = AD22(ILON,ILAT,L,10) +  ! JHOBr
-     &                                ZPJ(L,32,ILON,ILAT)
-               AD22(ILON,ILAT,L,11) = AD22(ILON,ILAT,L,11) +  ! JBrNO2
-     &                                ZPJ(L,31,ILON,ILAT)
-               AD22(ILON,ILAT,L,12) = AD22(ILON,ILAT,L,12) +  ! JBrNO3
-     &                                ZPJ(L,29,ILON,ILAT)  +
-     &                                ZPJ(L,30,ILON,ILAT)
-               AD22(ILON,ILAT,L,13) = AD22(ILON,ILAT,L,13) +  ! JCHBr3
-     &                                ZPJ(L,56,ILON,ILAT)
-               AD22(ILON,ILAT,L,14) = AD22(ILON,ILAT,L,14) +  ! JBr2
-     &                                ZPJ(L,23,ILON,ILAT)
-               AD22(ILON,ILAT,L,16) = AD22(ILON,ILAT,L,16) +  ! JN2O
-     &                                ZPJ(L,36,ILON,ILAT)
-               AD22(ILON,ILAT,L,17) = AD22(ILON,ILAT,L,17) +  ! JNO
-     &                                ZPJ(L, 6,ILON,ILAT)
-               AD22(ILON,ILAT,L,18) = AD22(ILON,ILAT,L,18) +  ! JNO3
-     &                                ZPJ(L,12,ILON,ILAT)  +
-     &                                ZPJ(L,13,ILON,ILAT)
-               AD22(ILON,ILAT,L,19) = AD22(ILON,ILAT,L,19) +  ! JCFC11
-     &                                ZPJ(L,37,ILON,ILAT)
-               AD22(ILON,ILAT,L,20) = AD22(ILON,ILAT,L,20) +  ! JCFC12
-     &                                ZPJ(L,38,ILON,ILAT)
-               AD22(ILON,ILAT,L,21) = AD22(ILON,ILAT,L,21) +  ! JCCl4
-     &                                ZPJ(L,42,ILON,ILAT)
-               AD22(ILON,ILAT,L,22) = AD22(ILON,ILAT,L,22) +  ! JCH3Cl
-     &                                ZPJ(L,43,ILON,ILAT)
-               AD22(ILON,ILAT,L,23) = AD22(ILON,ILAT,L,23) +  ! JACET
-     &                                ZPJ(L,76,ILON,ILAT)  +
-     &                                ZPJ(L,77,ILON,ILAT)
-               AD22(ILON,ILAT,L,24) = AD22(ILON,ILAT,L,24) +  ! JALD2
-     &                                ZPJ(L,61,ILON,ILAT)  +
-     &                                ZPJ(L,62,ILON,ILAT)
-               AD22(ILON,ILAT,L,25) = AD22(ILON,ILAT,L,25) +  ! JMVK
-     &                                ZPJ(L,63,ILON,ILAT)  +
-     &                                ZPJ(L,64,ILON,ILAT)  +
-     &                                ZPJ(L,65,ILON,ILAT)
-               AD22(ILON,ILAT,L,26) = AD22(ILON,ILAT,L,26) +  ! JMACR
-     &                                ZPJ(L,66,ILON,ILAT)  +
-     &                                ZPJ(L,67,ILON,ILAT)
-               AD22(ILON,ILAT,L,27) = AD22(ILON,ILAT,L,27) +  ! JHAC
-     &                                ZPJ(L,75,ILON,ILAT)
-               AD22(ILON,ILAT,L,28) = AD22(ILON,ILAT,L,28) +  ! JGLYC
-     &                                ZPJ(L,68,ILON,ILAT)
-               AD22(ILON,ILAT,L,29) = AD22(ILON,ILAT,L,29) +  ! JPIP
-     &                                ZPJ(L,105,ILON,ILAT)
-               AD22(ILON,ILAT,L,30) = AD22(ILON,ILAT,L,30) +  ! JIPMN
-     &                                ZPJ(L,106,ILON,ILAT)
-               AD22(ILON,ILAT,L,31) = AD22(ILON,ILAT,L,31) +  ! JETHLN
-     &                                ZPJ(L,107,ILON,ILAT)
-               AD22(ILON,ILAT,L,32) = AD22(ILON,ILAT,L,32) +  ! JDHDC
-     &                                ZPJ(L,108,ILON,ILAT)
-               AD22(ILON,ILAT,L,33) = AD22(ILON,ILAT,L,33) +  ! JHPALD
-     &                                ZPJ(L,109,ILON,ILAT)
-               AD22(ILON,ILAT,L,34) = AD22(ILON,ILAT,L,34) +  ! JISN1
-     &                                ZPJ(L,110,ILON,ILAT)
-               AD22(ILON,ILAT,L,35) = AD22(ILON,ILAT,L,35) +  ! JMONITS
-     &                                ZPJ(L,111,ILON,ILAT)
-               AD22(ILON,ILAT,L,36) = AD22(ILON,ILAT,L,36) +  ! JMONITU
-     &                                ZPJ(L,112,ILON,ILAT)
-               AD22(ILON,ILAT,L,37) = AD22(ILON,ILAT,L,37) +  ! JHONIT
-     &                                ZPJ(L,113,ILON,ILAT)
-               ! lei, 05/15/17 - added new halogen species below
-               IF ( IS_HALOGENS ) THEN
-               AD22(ILON,ILAT,L,38) = AD22(ILON,ILAT,L,38) +  ! JCH3Br
-     &                                ZPJ(L,50,ILON,ILAT)
-               AD22(ILON,ILAT,L,39) = AD22(ILON,ILAT,L,39) +  ! JBrCl
-     &                                ZPJ(L,33,ILON,ILAT)
-               AD22(ILON,ILAT,L,40) = AD22(ILON,ILAT,L,40) +  ! JCH2Br2
-     &                                ZPJ(L,55,ILON,ILAT)
-               AD22(ILON,ILAT,L,41) = AD22(ILON,ILAT,L,41) +  ! JCH2IBr
-     &                                ZPJ(L,125,ILON,ILAT)
-               AD22(ILON,ILAT,L,42) = AD22(ILON,ILAT,L,42) +  ! JIBr
-     &                                ZPJ(L,128,ILON,ILAT)
-               AD22(ILON,ILAT,L,43) = AD22(ILON,ILAT,L,43) +  ! JCl2
-     &                                ZPJ(L,22,ILON,ILAT)
-               AD22(ILON,ILAT,L,44) = AD22(ILON,ILAT,L,44) +  ! JClO
-     &                                ZPJ(L,27,ILON,ILAT)
-               AD22(ILON,ILAT,L,45) = AD22(ILON,ILAT,L,45) +  ! JOClO
-     &                                ZPJ(L,25,ILON,ILAT)
-               AD22(ILON,ILAT,L,46) = AD22(ILON,ILAT,L,46) +  ! JCl2O2
-     &                                ZPJ(L,26,ILON,ILAT)
-               AD22(ILON,ILAT,L,47) = AD22(ILON,ILAT,L,47) +  ! JClNO2
-     &                                ZPJ(L,21,ILON,ILAT)
-               AD22(ILON,ILAT,L,48) = AD22(ILON,ILAT,L,48) +  ! JClNO3
-     &                                ZPJ(L,19,ILON,ILAT)  +
-     &                                ZPJ(L,20,ILON,ILAT)
-               AD22(ILON,ILAT,L,49) = AD22(ILON,ILAT,L,49) +  ! JHOCl
-     &                                ZPJ(L,24,ILON,ILAT)
-               AD22(ILON,ILAT,L,50) = AD22(ILON,ILAT,L,50) +  ! JCH3CCl3
-     &                                ZPJ(L,44,ILON,ILAT)
-               AD22(ILON,ILAT,L,51) = AD22(ILON,ILAT,L,51) +  ! JCFC113
-     &                                ZPJ(L,39,ILON,ILAT)
-               AD22(ILON,ILAT,L,52) = AD22(ILON,ILAT,L,52) +  ! JCFC114
-     &                                ZPJ(L,40,ILON,ILAT)
-               AD22(ILON,ILAT,L,53) = AD22(ILON,ILAT,L,53) +  ! JCFC115
-     &                                ZPJ(L,41,ILON,ILAT)
-               AD22(ILON,ILAT,L,54) = AD22(ILON,ILAT,L,54) +  ! JHCFC123
-     &                                ZPJ(L,47,ILON,ILAT)
-               AD22(ILON,ILAT,L,55) = AD22(ILON,ILAT,L,55) +  ! JHCFC141b
-     &                                ZPJ(L,48,ILON,ILAT)
-               AD22(ILON,ILAT,L,56) = AD22(ILON,ILAT,L,56) +  ! JHCFC142b
-     &                                ZPJ(L,49,ILON,ILAT)
-               AD22(ILON,ILAT,L,57) = AD22(ILON,ILAT,L,57) +  ! JHCFC22
-     &                                ZPJ(L,46,ILON,ILAT)
-               AD22(ILON,ILAT,L,58) = AD22(ILON,ILAT,L,58) +  ! JH1211
-     &                                ZPJ(L,51,ILON,ILAT)
-               AD22(ILON,ILAT,L,59) = AD22(ILON,ILAT,L,59) +  ! JClOO
-     &                                ZPJ(L,101,ILON,ILAT)
-               AD22(ILON,ILAT,L,60) = AD22(ILON,ILAT,L,60) +  ! JCH2Cl2
-     &                                ZPJ(L,45,ILON,ILAT)
-               AD22(ILON,ILAT,L,61) = AD22(ILON,ILAT,L,61) +  ! JCH2ICl
-     &                                ZPJ(L,124,ILON,ILAT)
-               AD22(ILON,ILAT,L,62) = AD22(ILON,ILAT,L,62) +  ! JICl
-     &                                ZPJ(L,129,ILON,ILAT)
-               AD22(ILON,ILAT,L,63) = AD22(ILON,ILAT,L,63) +  ! JI2
-     &                                ZPJ(L,114,ILON,ILAT)
-               AD22(ILON,ILAT,L,64) = AD22(ILON,ILAT,L,64) +  ! JHOI
-     &                                ZPJ(L,115,ILON,ILAT)
-               AD22(ILON,ILAT,L,65) = AD22(ILON,ILAT,L,65) +  ! JIO
-     &                                ZPJ(L,116,ILON,ILAT)
-               AD22(ILON,ILAT,L,66) = AD22(ILON,ILAT,L,66) +  ! JOIO
-     &                                ZPJ(L,117,ILON,ILAT)
-               AD22(ILON,ILAT,L,67) = AD22(ILON,ILAT,L,67) +  ! JINO
-     &                                ZPJ(L,118,ILON,ILAT)
-               AD22(ILON,ILAT,L,68) = AD22(ILON,ILAT,L,68) +  ! JIONO
-     &                                ZPJ(L,119,ILON,ILAT)
-               AD22(ILON,ILAT,L,69) = AD22(ILON,ILAT,L,69) +  ! JIONO2
-     &                                ZPJ(L,120,ILON,ILAT)
-               AD22(ILON,ILAT,L,70) = AD22(ILON,ILAT,L,70) +  ! JI2O2
-     &                                ZPJ(L,121,ILON,ILAT)
-               AD22(ILON,ILAT,L,71) = AD22(ILON,ILAT,L,71) +  ! JCH3I
-     &                                ZPJ(L,122,ILON,ILAT)
-               AD22(ILON,ILAT,L,72) = AD22(ILON,ILAT,L,72) +  ! JCH2I2
-     &                                ZPJ(L,123,ILON,ILAT)
-               AD22(ILON,ILAT,L,73) = AD22(ILON,ILAT,L,73) +  ! JI2O4
-     &                                ZPJ(L,126,ILON,ILAT)
-               AD22(ILON,ILAT,L,74) = AD22(ILON,ILAT,L,74) +  ! JI2O3
-     &                                ZPJ(L,127,ILON,ILAT)
-               AD22(ILON,ILAT,L,75) = AD22(ILON,ILAT,L,75) +  ! JH1301
-     &                                ZPJ(L,53,ILON,ILAT)
-               AD22(ILON,ILAT,L,76) = AD22(ILON,ILAT,L,76) +  ! JH2402
-     &                                ZPJ(L,54,ILON,ILAT)
-               ENDIF ! IS_HALOGENS
-            ENDDO
-
-         ENDIF
-
-      ENDIF
-#endif
 
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !%%% COMMENT OUT FAST-J DIAGNOSTICS FOR NOW (bmy, 3/5/14)
@@ -4630,7 +4613,7 @@ C---Always does PL(2) = P[1]
 !
 ! !REVISION HISTORY:
 !  30 Mar 2013 - S. D. Eastham - Adapted from J. Mao code
-!  05 Jan 2016 - E. Lundgren   - Use global physical parameters
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -4902,7 +4885,7 @@ C---Always does PL(2) = P[1]
 !
 ! !REVISION HISTORY:
 !  31 Mar 2013 - S. D. Eastham - Adapted from J. Mao FJX v6.2 implementation
-!  03 Jan 2018 - M. Sulprizio  - Replace UCX CPP switch with Input_Opt%LUCX
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -4993,7 +4976,7 @@ C---Always does PL(2) = P[1]
       USE m_netcdf_io_readattr
       USE m_netcdf_io_close
       USE ErrCode_Mod
-      USE Input_Opt_Mod,      ONLY : OptInput
+      USE Input_Opt_Mod, ONLY : OptInput
 !
 ! !INPUT PARAMETERS:
 !
@@ -5011,52 +4994,82 @@ C---Always does PL(2) = P[1]
 !
 ! !REVISION HISTORY:
 !  19 Apr 2012 - R. Yantosca - Initial version
-!  30 Jul 2012 - R. Yantosca - Now accept am_I_Root as an argument when
-!                              running with the traditional driver main.F
-!  10 Apr 2013 - S. D. Eastham - Adapted for Fast-JX v7.0
-!  20 Jun 2014 - R. Yantosca - Now accept am_I_Root, Input_Opt, RC
-!  13 Mar 2015 - R. Yantosca - Replace DATA_DIR_1x1 w/ CHEM_INPUTS_DIR
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
 !
 ! !LOCAL VARIABLES:
 !
-      ! netCDF file handle
+      ! Scalars
+      LOGICAL            :: FileExists          ! Does input file exist?
       INTEGER            :: fId                 ! netCDF file ID
 
-      ! Character strings
+      ! Strings
       CHARACTER(LEN=255) :: nc_dir              ! netCDF directory name
       CHARACTER(LEN=255) :: nc_file             ! netCDF file name
       CHARACTER(LEN=255) :: nc_path             ! netCDF path name
       CHARACTER(LEN=255) :: v_name              ! netCDF variable name
       CHARACTER(LEN=255) :: a_name              ! netCDF attribute name
       CHARACTER(LEN=255) :: a_val               ! netCDF attribute value
+      CHARACTER(LEN=255) :: FileMsg
+      CHARACTER(LEN=255) :: ErrMsg
+      CHARACTER(LEN=255) :: ThisLoc
 
-      ! Arrays for netCDF start and count values
+      ! Arrays
       INTEGER            :: st3d(3), ct3d(3)    ! For 3D arrays
 
       !=================================================================
       ! RD_PROF_NC begins here!
       !=================================================================
 
+      ! Initialize
       ! Assume success
-      RC = GC_SUCCESS
-
-      !=========================================================================
-      ! Open and read data from the netCDF file
-      !=========================================================================
+      RC      = GC_SUCCESS
+      ErrMsg  = ''
+      ThisLoc = ' -> at RD_PROF_NC (in module GeosCore/fast_jx_mod.F)'
 
       ! Directory and file names
       nc_dir  = TRIM( Input_Opt%CHEM_INPUTS_DIR ) // 'FastJ_201204/'
       nc_file = 'fastj.jv_atms_dat.nc'
       nc_path = TRIM( nc_dir ) // TRIM( nc_file )
 
-      ! Print the name of the file being read to stdout (bmy, 10/24/19)
-      IF ( am_I_Root ) THEN
-         WRITE( 6, 300 ) TRIM( nc_path )
- 300     FORMAT( 'FAST-JX (RD_PROF_NC): Reading ', a )
+      !=================================================================
+      ! In dry-run mode, print file path to dryrun log and exit.
+      ! Otherwise, print file path to stdout and continue.
+      !=================================================================
+
+      ! Test if the file exists
+      INQUIRE( FILE=TRIM( nc_path ), EXIST=FileExists )
+
+      ! Test if the file exists and define an output string
+      IF ( FileExists ) THEN
+         FileMsg = 'FAST-JX (RD_PROF_NC): Opening'
+      ELSE
+         FileMsg = 'FAST-JX (RD_PROF_NC): REQUIRED FILE NOT FOUND'
       ENDIF
+
+      ! Write to stdout for both regular and dry-run simulations
+      IF ( Input_Opt%AmIRoot ) THEN
+         WRITE( 6, 300 ) TRIM( FileMsg ), TRIM( nc_path )
+ 300     FORMAT( a, ' ', a )
+      ENDIF
+
+      ! For dry-run simulations, return to calling program.
+      ! For regular simulations, throw an error if we can't find the file.
+      IF ( Input_Opt%DryRun ) THEN
+         RETURN
+      ELSE
+         IF ( .not. FileExists ) THEN
+            WRITE( ErrMsg, 300 ) TRIM( FileMsg ), TRIM( nc_path )
+            CALL GC_Error( ErrMsg, RC, ThisLoc )
+            RETURN
+         ENDIF
+      ENDIF
+
+      !=========================================================================
+      ! Open and read data from the netCDF file
+      !=========================================================================
 
       ! Open netCDF file
       CALL Ncop_Rd( fId, TRIM(nc_path) )
@@ -5152,10 +5165,6 @@ C---Always does PL(2) = P[1]
 !
 ! !USES:
 !
-#if defined( BPCH_DIAG )
-      USE CMN_DIAG_MOD,   ONLY : LD22, ND22
-      USE DIAG_MOD,       ONLY : AD22, LTJV
-#endif
       USE ErrCode_Mod
       USE Input_Opt_Mod,  ONLY : OptInput
       USE State_Diag_Mod, ONLY : DgnState
@@ -5188,13 +5197,7 @@ C---Always does PL(2) = P[1]
 !  %%%% NOT KEEP ANY CONFLICTING OR INCORRECT INFORMATION (bmy, 3/28/16) %%%%
 !
 ! !REVISION HISTORY:
-!  10 Mar 2016 - M. Sulprizio- Added ProTeX header
-!  18 Apr 2016 - R. Yantosca - Remove Input_Opt, State_Met, State_Chm args
-!                              and pass air density & temperature instead
-!  18 Apr 2016 - R. Yantosca - Also prevent div-by-zero conditions
-!  16 Mar 2017 - M. Sulprizio- Restore P(OH) from O3 photolysis for ND22
-!  04 Oct 2017 - E. Lundgren - Pass State_Diag and populate J-Values array
-!  19 Dec 2017 - R. Yantosca - Now use Input_Opt%LUCX instead of ifdefs
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5212,10 +5215,6 @@ C---Always does PL(2) = P[1]
 
       ! Initialize
       RC      = GC_SUCCESS
-#if defined( BPCH_DIAG )
-      Do_ND22 = ( ND22 > 0 .and. L <= LD22 .and. LTJV(I,J) > 0 )
-#endif
-
 
       ! For all mechanisms. Set the photolysis rate of NITs and NIT to a
       ! scaled value of JHNO3. NOTE: this is set in input.geos
@@ -5271,17 +5270,6 @@ C---Always does PL(2) = P[1]
          ! RXN_H2SO4 specifies SO4 + hv -> SO2 + OH + OH
          ZPJ(L,RXN_H2SO4,I,J) = ZPJ(L,RXN_H2SO4,I,J) * FRAC
 
-#if defined( BPCH_DIAG )
-         !--------------------------------------------------------------
-         ! ND22 (bpch) diagnostic
-         !
-         ! Store unadjusted O2 photolysis rate as ND22(:,:,:,15)
-         !--------------------------------------------------------------
-         IF ( Do_ND22 ) THEN
-            AD22(I,J,L,15) = AD22(I,J,L,15) + ZPJ(L,RXN_O2,I,J)
-         ENDIF
-#endif
-
          !==============================================================
          ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          ! %%% FOR MECHANISMS WITH UCX                              %%%
@@ -5304,40 +5292,7 @@ C---Always does PL(2) = P[1]
          ZPJ(L,RXN_O3_1,I,J) = ZPJ(L,RXN_O3_1,I,J)
      &                       - ZPJ(L,RXN_O3_2a,I,J)
 
-#if defined( BPCH_DIAG )
-         !--------------------------------------------------------------
-         ! ND22 (bpch) diagnostic
-         !
-         ! For UCX, store O1D and O3P photolysis rates separately
-         !--------------------------------------------------------------
-         IF ( Do_ND22 ) THEN
-            AD22(I,J,L,5) = AD22(I,J,L,5) + ZPJ(L,RXN_O3_2a,I,J)
-            AD22(I,J,L,6) = AD22(I,J,L,6) + ZPJ(L,RXN_O3_1, I,J)
-         ENDIF
-#endif
-
       ELSE
-
-         !==============================================================
-         ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-         ! %%% FOR MECHANISMS WITHOUT UCX %%%
-         ! %%% (tropchem)                 %%%
-         ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-         !
-         ! SPECIAL TREATMENT FOR O3+hv -> OH+OH (trop-only simulation)
-         !==============================================================
-
-#if defined( BPCH_DIAG )
-         !--------------------------------------------------------------
-         ! ND22 (bpch) diagnostic
-         !
-         ! Store unadjusted total O3 photolysis rate as AD22(:,:,:,5)
-         ! RXN_O3_2a specifies: O3 + hv -> O2 + O(1D)
-         !--------------------------------------------------------------
-         IF ( Do_ND22 ) THEN
-            AD22(I,J,L,5) = AD22(I,J,L,5) + ZPJ(L,RXN_O3_2a,I,J)
-         ENDIF
-#endif
 
          !==============================================================
          ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -5402,39 +5357,7 @@ C---Always does PL(2) = P[1]
      &                           * RO1DplH2  / RO1D
 
          ENDIF
-
-#if defined( BPCH_DIAG )
-         !--------------------------------------------------------------
-         ! ND22 (bpch) diagnostic
-         !
-         ! Store P(OH) from O3 photolysis as AD22(:,:,:,6)
-         !--------------------------------------------------------------
-         IF ( Do_ND22 ) THEN
-            AD22(I,J,L,6) = AD22(I,J,L,6)
-     &                    + ZPJ(L,RXN_O3_2a,I,J)
-     &                    + ZPJ(L,RXN_O3_2b,I,J)
-         ENDIF
-#endif
-
       ENDIF
-
-#if defined( BPCH_DIAG )
-      !--------------------------------------------------------------
-      ! ND22 (bpch) diagnostic
-      !
-      ! Store JNIT and JNITs
-      !--------------------------------------------------------------
-      IF ( Do_ND22 ) THEN
-
-         AD22(I,J,L,77) = AD22(I,J,L,77) +  ! JNITs
-     &                          ZPJ(L,RXN_JNITSa,I,J) +
-     &                          ZPJ(L,RXN_JNITSb,I,J)
-         AD22(I,J,L,78) = AD22(I,J,L,78) +  ! JNIT
-     &                          ZPJ(L,RXN_JNITa,I,J) +
-     &                          ZPJ(L,RXN_JNITb,I,J)
-
-      ENDIF
-#endif
 
       END SUBROUTINE PHOTRATE_ADJ
 !EOC

@@ -21,13 +21,15 @@ MODULE State_Diag_Mod
 !
 ! USES:
 
-  USE CMN_Size_Mod,    ONLY : NDUST
+  USE CMN_Size_Mod,     ONLY : NDUST
   USE DiagList_Mod
   USE ErrCode_Mod
   USE Precision_Mod
   USE Registry_Mod
-  USE Species_Mod,     ONLY : Species
-  USE State_Chm_Mod,   ONLY : ChmState
+  USE Species_Mod,      ONLY : Species
+  USE State_Chm_Mod,    ONLY : ChmState
+  USE CMN_FJX_MOD,      ONLY : W_
+  USE gckpp_Parameters, ONLY : NREACT
 
   IMPLICIT NONE
   PRIVATE
@@ -145,10 +147,11 @@ MODULE State_Diag_Mod
      REAL(f4),  POINTER :: JVal            (:,:,:,:) ! J-values, instantaneous
      REAL(f4),  POINTER :: JNoon           (:,:,:,:) ! Noon J-values
      REAL(f4),  POINTER :: JNoonFrac       (:,:    ) ! Frac of when it was noon
-     REAL(f4),  POINTER :: RxnRates        (:,:,:,:) ! Reaction rates from KPP
-     REAL(f4),  POINTER :: UVFluxDiffuse   (:,:,:  ) ! Diffuse UV flux per bin
-     REAL(f4),  POINTER :: UVFluxDirect    (:,:,:  ) ! Direct UV flux per bin
-     REAL(f4),  POINTER :: UVFluxNet       (:,:,:  ) ! Net UV flux per bin
+     REAL(f4),  POINTER :: RxnRate         (:,:,:,:) ! KPP eqn eaction rates
+     REAL(f4),  POINTER :: OHreactivity    (:,:,:  ) ! OH reactivity
+     REAL(f4),  POINTER :: UVFluxDiffuse   (:,:,:,:) ! Diffuse UV flux per bin
+     REAL(f4),  POINTER :: UVFluxDirect    (:,:,:,:) ! Direct UV flux per bin
+     REAL(f4),  POINTER :: UVFluxNet       (:,:,:,:) ! Net UV flux per bin
      REAL(f4),  POINTER :: OHconcAfterChem (:,:,:  ) ! OH, HO2, O1D, and O3P
      REAL(f4),  POINTER :: HO2concAfterChem(:,:,:  ) !  concentrations
      REAL(f4),  POINTER :: O1DconcAfterChem(:,:,:  ) !  upon exiting the
@@ -158,7 +161,8 @@ MODULE State_Diag_Mod
      LOGICAL :: Archive_JVal
      LOGICAL :: Archive_JNoon
      LOGICAL :: Archive_JNoonFrac
-     LOGICAL :: Archive_RxnRates
+     LOGICAL :: Archive_RxnRate
+     LOGICAL :: Archive_OHreactivity
      LOGICAL :: Archive_UVFluxDiffuse
      LOGICAL :: Archive_UVFluxDirect
      LOGICAL :: Archive_UVFluxNet
@@ -176,14 +180,12 @@ MODULE State_Diag_Mod
      REAL(f4),  POINTER :: O3concAfterChem (:,:,:  ) ! O3
      REAL(f4),  POINTER :: RO2concAfterChem(:,:,:  ) ! RO2
      REAL(f4),  POINTER :: CH4pseudoFlux   (:,:    ) ! CH4 pseudo-flux
-     REAL(f4),  POINTER :: OHreactivity    (:,:,:  ) ! OH reactivity
      REAL(f4),  POINTER :: KppError        (:,:,:  ) ! Kpp integration error
      LOGICAL :: Archive_JValIndiv
      LOGICAL :: Archive_RxnRconst
      LOGICAL :: Archive_O3concAfterChem
      LOGICAL :: Archive_RO2concAfterChem
      LOGICAL :: Archive_CH4pseudoFlux
-     LOGICAL :: Archive_OHreactivity
      LOGICAL :: Archive_KppError
 #endif
 
@@ -389,6 +391,25 @@ MODULE State_Diag_Mod
      LOGICAL :: Archive_DryDepVelForALT1
      LOGICAL :: Archive_SpeciesConcALT1
      LOGICAL :: Archive_ConcAboveSfc
+
+     ! KPP solver diagnostics
+     REAL(f4), POINTER :: KppIntCounts(:,:,:)
+     REAL(f4), POINTER :: KppJacCounts(:,:,:)
+     REAL(f4), POINTER :: KppTotSteps (:,:,:)
+     REAL(f4), POINTER :: KppAccSteps (:,:,:)
+     REAL(f4), POINTER :: KppRejSteps (:,:,:)
+     REAL(f4), POINTER :: KppLuDecomps(:,:,:)
+     REAL(f4), POINTER :: KppSubsts   (:,:,:)
+     REAL(f4), POINTER :: KppSmDecomps(:,:,:)
+     LOGICAL :: Archive_KppIntCounts
+     LOGICAL :: Archive_KppJacCounts
+     LOGICAL :: Archive_KppTotSteps
+     LOGICAL :: Archive_KppAccSteps
+     LOGICAL :: Archive_KppRejSteps
+     LOGICAL :: Archive_KppLuDecomps
+     LOGICAL :: Archive_KppSubsts
+     LOGICAL :: Archive_KppSmDecomps
+     LOGICAL :: Archive_KppDiags
 
      !----------------------------------------------------------------------
      ! Specialty Simulation Diagnostic Arrays
@@ -847,7 +868,8 @@ CONTAINS
     State_Diag%JVal                                => NULL()
     State_Diag%JNoon                               => NULL()
     State_Diag%JNoonFrac                           => NULL()
-    State_Diag%RxnRates                            => NULL()
+    State_Diag%RxnRate                             => NULL()
+    State_Diag%OHreactivity                        => NULL()
     State_Diag%UVFluxDiffuse                       => NULL()
     State_Diag%UVFluxDirect                        => NULL()
     State_Diag%UVFluxNet                           => NULL()
@@ -860,7 +882,8 @@ CONTAINS
     State_Diag%Archive_JVal                        = .FALSE.
     State_Diag%Archive_JNoon                       = .FALSE.
     State_Diag%Archive_JNoonFrac                   = .FALSE.
-    State_Diag%Archive_RxnRates                    = .FALSE.
+    State_Diag%Archive_RxnRate                     = .FALSE.
+    State_Diag%Archive_OHreactivity                = .FALSE.
     State_Diag%Archive_UVFluxDiffuse               = .FALSE.
     State_Diag%Archive_UVFluxDirect                = .FALSE.
     State_Diag%Archive_UVFluxNet                   = .FALSE.
@@ -877,14 +900,12 @@ CONTAINS
     State_Diag%O3concAfterChem                     => NULL()
     State_Diag%RO2concAfterChem                    => NULL()
     State_Diag%CH4pseudoflux                       => NULL()
-    State_Diag%OHreactivity                        => NULL()
     State_Diag%KppError                            => NULL()
     State_Diag%Archive_JValIndiv                   = .FALSE.
     State_Diag%Archive_RxnRconst                   = .FALSE.
     State_Diag%Archive_O3concAfterChem             = .FALSE.
     State_Diag%Archive_RO2concAfterChem            = .FALSE.
     State_Diag%Archive_CH4pseudoflux               = .FALSE.
-    State_Diag%Archive_OHreactivity                = .FALSE.
     State_Diag%Archive_KppError                    = .FALSE.
 #endif
 
@@ -1085,6 +1106,25 @@ CONTAINS
     State_Diag%Archive_DryDepRaALT1                = .FALSE.
     State_Diag%Archive_DryDepVelForALT1            = .FALSE.
     State_Diag%Archive_SpeciesConcALT1             = .FALSE.
+
+    ! KPP solver diagnostics
+    State_Diag%KppIntCounts                        => NULL()
+    State_Diag%KppJacCounts                        => NULL()
+    State_Diag%KppTotSteps                         => NULL()
+    State_Diag%KppAccSteps                         => NULL()
+    State_Diag%KppRejSteps                         => NULL()
+    State_Diag%KppLuDecomps                        => NULL()
+    State_Diag%KppSubsts                           => NULL()
+    State_Diag%KppSmDecomps                        => NULL()
+    State_Diag%Archive_KppIntCounts                = .FALSE.
+    State_Diag%Archive_KppJacCounts                = .FALSE.
+    State_Diag%Archive_KppTotSteps                 = .FALSE.
+    State_Diag%Archive_KppAccSteps                 = .FALSE.
+    State_Diag%Archive_KppRejSteps                 = .FALSE.
+    State_Diag%Archive_KppLuDecomps                = .FALSE.
+    State_Diag%Archive_KppSubsts                   = .FALSE.
+    State_Diag%Archive_KppSmDecomps                = .FALSE.
+    State_Diag%Archive_KppDiags                    = .FALSE.
 
     ! Time in troposphere diagnostic
     State_Diag%FracOfTimeInTrop                    => NULL()
@@ -1311,7 +1351,17 @@ CONTAINS
     State_Diag%ObsPack_Species_Name                => NULL()
     State_Diag%ObsPack_Species_LName               => NULL()
 
+    !------------------------------------------------------------------------
+    ! Exit if this is a dry-run simulation
+    !------------------------------------------------------------------------
+    IF ( Input_Opt%DryRun ) THEN
+       RC = GC_SUCCESS
+       RETURN
+    ENDIF
+
+    !------------------------------------------------------------------------
     ! Write header
+    !------------------------------------------------------------------------
     IF ( am_I_Root ) THEN
     WRITE( 6, 10 )
  10 FORMAT( /, 'Allocating the following fields of the State_Diag object:' )
@@ -2455,23 +2505,47 @@ CONTAINS
        !--------------------------------------------------------------------
        ! KPP Reaction Rates
        !--------------------------------------------------------------------
-       arrayID = 'State_Diag%RxnRates'
-       diagID  = 'RxnRates'
+       arrayID = 'State_Diag%RxnRate'
+       diagID  = 'RxnRate'
        CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
        IF ( Found ) THEN
           IF ( am_I_Root ) WRITE(6,20) ADJUSTL( arrayID ), TRIM( diagID )
-          ALLOCATE( State_Diag%RxnRates( IM, JM, LM, nSpecies ), STAT=RC )
+          ALLOCATE( State_Diag%RxnRate( IM, JM, LM, NREACT ), STAT=RC )
           CALL GC_CheckVar( arrayID, 0, RC )
           IF ( RC /= GC_SUCCESS ) RETURN
-          State_Diag%RxnRates = 0.0_f4
-          CALL Register_DiagField( am_I_Root, diagID, State_Diag%RxnRates,   &
+          State_Diag%RxnRate = 0.0_f4
+          State_Diag%Archive_RxnRate = .TRUE.
+          CALL Register_DiagField( am_I_Root, diagID, State_Diag%RxnRate,   &
                                    State_Chm, State_Diag, RC                )
           IF ( RC /= GC_SUCCESS ) RETURN
        ENDIF
 #else
-       ALLOCATE( State_Diag%RxnRates( IM, JM, LM, Input_Opt%NN_RxnRates ),   &
-                 STAT=RC )
+       IF ( INPUT_Opt%NN_RxnRates > 0 ) THEN
+          State_Diag%Archive_RxnRate = .TRUE.
+          ALLOCATE( State_Diag%RxnRate( IM, JM, LM, Input_Opt%NN_RxnRates ), &
+                    STAT=RC )
+          State_Diag%RxnRate = 0.0_f4
+       ENDIF
 #endif
+
+       !--------------------------------------------------------------------
+       ! OH reactivity
+       !--------------------------------------------------------------------
+       arrayID = 'State_Diag%OHreactivity'
+       diagID  = 'OHreactivity'
+       CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
+       IF ( Found ) THEN
+          if(am_I_Root) WRITE( 6, 20 ) ADJUSTL( arrayID ), TRIM( diagID )
+          ALLOCATE( State_Diag%OHreactivity( IM, JM, LM ), STAT=RC )
+          CALL GC_CheckVar( arrayID, 0, RC )
+          IF ( RC /= GC_SUCCESS ) RETURN
+          State_Diag%OHreactivity = 0.0_f4
+          State_Diag%Archive_OHreactivity = .TRUE.
+          CALL Register_DiagField( am_I_Root, diagID,                        &
+                                   State_Diag%OHreactivity,                  &
+                                   State_Chm, State_Diag, RC                )
+          IF ( RC /= GC_SUCCESS ) RETURN
+       ENDIF
 
        !--------------------------------------------------------------------
        ! J-Values (instantaneous values)
@@ -2541,7 +2615,7 @@ CONTAINS
        CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
        IF ( Found ) THEN
           IF ( am_I_Root ) WRITE(6,20) ADJUSTL( arrayID ), TRIM( diagID )
-          ALLOCATE( State_Diag%UVFluxDiffuse( IM, JM, LM ), STAT=RC )
+          ALLOCATE( State_Diag%UVFluxDiffuse( IM, JM, LM, W_ ), STAT=RC )
           CALL GC_CheckVar( arrayID, 0, RC )
           IF ( RC /= GC_SUCCESS ) RETURN
           State_Diag%UVFluxDiffuse = 0.0_f4
@@ -2560,7 +2634,7 @@ CONTAINS
        CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
        IF ( Found ) THEN
           IF ( am_I_Root ) WRITE(6,20) ADJUSTL( arrayID ), TRIM( diagID )
-          ALLOCATE( State_Diag%UVFluxDirect( IM, JM, LM ), STAT=RC )
+          ALLOCATE( State_Diag%UVFluxDirect( IM, JM, LM, W_ ), STAT=RC )
           CALL GC_CheckVar( arrayID, 0, RC )
           IF ( RC /= GC_SUCCESS ) RETURN
           State_Diag%UVFluxDirect = 0.0_f4
@@ -2579,7 +2653,7 @@ CONTAINS
        CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
        IF ( Found ) THEN
           IF ( am_I_Root ) WRITE(6,20) ADJUSTL( arrayID ), TRIM( diagID )
-          ALLOCATE( State_Diag%UVFluxNet( IM, JM, LM ), STAT=RC )
+          ALLOCATE( State_Diag%UVFluxNet( IM, JM, LM, W_ ), STAT=RC )
           CALL GC_CheckVar( arrayID, 0, RC )
           IF ( RC /= GC_SUCCESS ) RETURN
           State_Diag%UVFluxNet = 0.0_f4
@@ -2931,6 +3005,158 @@ CONTAINS
           IF ( RC /= GC_SUCCESS ) RETURN
        ENDIF
 
+       !-------------------------------------------------------------------
+       ! Number of KPP Integrations per grid box
+       !-------------------------------------------------------------------
+       arrayID = 'State_Diag%KppIntCounts'
+       diagID  = 'KppIntCounts'
+       CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
+       IF ( Found ) THEN
+          IF ( am_I_Root ) WRITE( 6, 20 ) ADJUSTL( arrayID ), TRIM( diagID )
+          ALLOCATE( State_Diag%KppIntCounts( IM, JM, LM ), STAT=RC )
+          CALL GC_CheckVar( arrayID, 0, RC )
+          IF ( RC /= GC_SUCCESS ) RETURN
+          State_Diag%KppIntCounts = 0.0_f4
+          State_Diag%Archive_KppIntCounts = .TRUE.
+          CALL Register_DiagField( am_I_Root, diagID,                        &
+                                   State_Diag%KppIntCounts,                  &
+                                   State_Chm, State_Diag, RC                )
+          IF ( RC /= GC_SUCCESS ) RETURN
+       ENDIF
+
+       !-------------------------------------------------------------------
+       ! Number of times KPP updated the Jacobian per grid box
+       !-------------------------------------------------------------------
+       arrayID = 'State_Diag%KppJacCounts'
+       diagID  = 'KppJacCounts'
+       CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
+       IF ( Found ) THEN
+          IF ( am_I_Root ) WRITE( 6, 20 ) ADJUSTL( arrayID ), TRIM( diagID )
+          ALLOCATE( State_Diag%KppJacCounts( IM, JM, LM ), STAT=RC )
+          CALL GC_CheckVar( arrayID, 0, RC )
+          IF ( RC /= GC_SUCCESS ) RETURN
+          State_Diag%KppJacCounts = 0.0_f4
+          State_Diag%Archive_KppJacCounts = .TRUE.
+          CALL Register_DiagField( am_I_Root, diagID,                        &
+                                   State_Diag%KppJacCounts,                  &
+                                   State_Chm, State_Diag, RC                )
+          IF ( RC /= GC_SUCCESS ) RETURN
+       ENDIF
+
+       !-------------------------------------------------------------------
+       ! Number of KPP total internal integration time steps
+       !-------------------------------------------------------------------
+       arrayID = 'State_Diag%KppTotSteps'
+       diagID  = 'KppTotSteps'
+       CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
+       IF ( Found ) THEN
+          IF ( am_I_Root ) WRITE( 6, 20 ) ADJUSTL( arrayID ), TRIM( diagID )
+          ALLOCATE( State_Diag%KppTotSteps( IM, JM, LM ), STAT=RC )
+          CALL GC_CheckVar( arrayID, 0, RC )
+          IF ( RC /= GC_SUCCESS ) RETURN
+          State_Diag%KppTotSteps = 0.0_f4
+          State_Diag%Archive_KppTotSteps = .TRUE.
+          CALL Register_DiagField( am_I_Root, diagID,                        &
+                                   State_Diag%KppTotSteps,                   &
+                                   State_Chm, State_Diag, RC                )
+          IF ( RC /= GC_SUCCESS ) RETURN
+       ENDIF
+
+       !-------------------------------------------------------------------
+       ! Number of KPP accepted internal integration time steps
+       !-------------------------------------------------------------------
+       arrayID = 'State_Diag%KppAccSteps'
+       diagID  = 'KppAccSteps'
+       CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
+       IF ( Found ) THEN
+          IF ( am_I_Root ) WRITE( 6, 20 ) ADJUSTL( arrayID ), TRIM( diagID )
+          ALLOCATE( State_Diag%KppAccSteps( IM, JM, LM ), STAT=RC )
+          CALL GC_CheckVar( arrayID, 0, RC )
+          IF ( RC /= GC_SUCCESS ) RETURN
+          State_Diag%KppAccSteps = 0.0_f4
+          State_Diag%Archive_KppAccSteps = .TRUE.
+          CALL Register_DiagField( am_I_Root, diagID,                        &
+                                   State_Diag%KppAccSteps,                   &
+                                   State_Chm, State_Diag, RC                )
+          IF ( RC /= GC_SUCCESS ) RETURN
+       ENDIF
+
+       !-------------------------------------------------------------------
+       ! Number of KPP rejected internal integration time steps
+       !-------------------------------------------------------------------
+       arrayID = 'State_Diag%KppRejSteps'
+       diagID  = 'KppRejSteps'
+       CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
+       IF ( Found ) THEN
+          IF ( am_I_Root ) WRITE( 6, 20 ) ADJUSTL( arrayID ), TRIM( diagID )
+          ALLOCATE( State_Diag%KppRejSteps( IM, JM, LM ), STAT=RC )
+          CALL GC_CheckVar( arrayID, 0, RC )
+          IF ( RC /= GC_SUCCESS ) RETURN
+          State_Diag%KppRejSteps = 0.0_f4
+          State_Diag%Archive_KppRejSteps = .TRUE.
+          CALL Register_DiagField( am_I_Root, diagID,                        &
+                                   State_Diag%KppRejSteps,                   &
+                                   State_Chm, State_Diag, RC                )
+          IF ( RC /= GC_SUCCESS ) RETURN
+       ENDIF
+
+       !-------------------------------------------------------------------
+       ! Number of KPP LU Decompositions
+       !-------------------------------------------------------------------
+       arrayID = 'State_Diag%KppLuDecomps'
+       diagID  = 'KppLuDecomps'
+       CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
+       IF ( Found ) THEN
+          IF ( am_I_Root ) WRITE( 6, 20 ) ADJUSTL( arrayID ), TRIM( diagID )
+          ALLOCATE( State_Diag%KppLuDecomps( IM, JM, LM ), STAT=RC )
+          CALL GC_CheckVar( arrayID, 0, RC )
+          IF ( RC /= GC_SUCCESS ) RETURN
+          State_Diag%KppLuDecomps = 0.0_f4
+          State_Diag%Archive_KppLuDecomps = .TRUE.
+          CALL Register_DiagField( am_I_Root, diagID,                        &
+                                   State_Diag%KppLuDecomps,                  &
+                                   State_Chm, State_Diag, RC                )
+          IF ( RC /= GC_SUCCESS ) RETURN
+       ENDIF
+
+       !-------------------------------------------------------------------
+       ! Number of KPP substitutions (forward and backward)
+       !-------------------------------------------------------------------
+       arrayID = 'State_Diag%KppSubsts'
+       diagID  = 'KppSubsts'
+       CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
+       IF ( Found ) THEN
+          IF ( am_I_Root ) WRITE( 6, 20 ) ADJUSTL( arrayID ), TRIM( diagID )
+          ALLOCATE( State_Diag%KppSubsts( IM, JM, LM ), STAT=RC )
+          CALL GC_CheckVar( arrayID, 0, RC )
+          IF ( RC /= GC_SUCCESS ) RETURN
+          State_Diag%KppSubsts = 0.0_f4
+          State_Diag%Archive_KppSubsts = .TRUE.
+          CALL Register_DiagField( am_I_Root, diagID,                        &
+                                   State_Diag%KppSubsts,                     &
+                                   State_Chm, State_Diag, RC                )
+          IF ( RC /= GC_SUCCESS ) RETURN
+       ENDIF
+
+       !-------------------------------------------------------------------
+       ! Number of KPP singular matrix decompositions
+       !-------------------------------------------------------------------
+       arrayID = 'State_Diag%KppSmDecomps'
+       diagID  = 'KppSmDecomps'
+       CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
+       IF ( Found ) THEN
+          IF ( am_I_Root ) WRITE( 6, 20 ) ADJUSTL( arrayID ), TRIM( diagID )
+          ALLOCATE( State_Diag%KppSmDecomps( IM, JM, LM ), STAT=RC )
+          CALL GC_CheckVar( arrayID, 0, RC )
+          IF ( RC /= GC_SUCCESS ) RETURN
+          State_Diag%KppSmDecomps = 0.0_f4
+          State_Diag%Archive_KppSmDecomps = .TRUE.
+          CALL Register_DiagField( am_I_Root, diagID,                        &
+                                   State_Diag%KppSmDecomps,                  &
+                                   State_Chm, State_Diag, RC                )
+          IF ( RC /= GC_SUCCESS ) RETURN
+       ENDIF
+
 #if defined( MODEL_GEOS )
        !--------------------------------------------------------------------
        ! CH4 pseudo-flux
@@ -2947,25 +3173,6 @@ CONTAINS
           State_Diag%Archive_CH4pseudoFlux = .TRUE.
           CALL Register_DiagField( am_I_Root, diagID,                        &
                                    State_Diag%CH4pseudoFlux,                 &
-                                   State_Chm, State_Diag, RC                )
-          IF ( RC /= GC_SUCCESS ) RETURN
-       ENDIF
-
-       !--------------------------------------------------------------------
-       ! OH reactivity
-       !--------------------------------------------------------------------
-       arrayID = 'State_Diag%OH_reactivity'
-       diagID  = 'OH_reactivity'
-       CALL Check_DiagList( am_I_Root, Diag_List, diagID, Found, RC )
-       IF ( Found ) THEN
-          if(am_I_Root) WRITE( 6, 20 ) ADJUSTL( arrayID ), TRIM( diagID )
-          ALLOCATE( State_Diag%OHreactivity( IM, JM, LM ), STAT=RC )
-          CALL GC_CheckVar( arrayID, 0, RC )
-          IF ( RC /= GC_SUCCESS ) RETURN
-          State_Diag%OHreactivity = 0.0_f4
-          State_Diag%Archive_OHreactivity = .TRUE.
-          CALL Register_DiagField( am_I_Root, diagID,                        &
-                                   State_Diag%OHreactivity,                  &
                                    State_Chm, State_Diag, RC                )
           IF ( RC /= GC_SUCCESS ) RETURN
        ENDIF
@@ -3001,12 +3208,12 @@ CONTAINS
        ! being requested as diagnostic output when the corresponding
        ! array has not been allocated.
        !-------------------------------------------------------------------
-       DO N = 1, 25
+       DO N = 1, 34
 
           ! Select the diagnostic ID
           SELECT CASE( N )
              CASE( 1  )
-                diagID = 'RxnRates'
+                diagID = 'RxnRate'
              CASE( 2  )
                 diagID = 'JVal'
              CASE( 3  )
@@ -3055,6 +3262,24 @@ CONTAINS
                 diagID = 'BetaNO'
              CASE( 25 )
                 diagID = 'TotalBiogenicOA'
+             CASE( 26 )
+                diagID = 'OHreactivity'
+             CASE( 27 )
+                diagID = 'KppIntCounts'
+             CASE( 28 )
+                diagID = 'KppJacCounts'
+             CASE( 29 )
+                diagID = 'KppTotSteps'
+             CASE( 30 )
+                diagID = 'KppAccSteps'
+             CASE( 31 )
+                diagID = 'KppRejSteps'
+             CASE( 32 )
+                diagID = 'KppLuDecomps'
+             CASE( 33 )
+                diagID = 'KppSubsts'
+             CASE( 34 )
+                diagID = 'KppSmDecomps'
           END SELECT
 
           ! Exit if any of the above are in the diagnostic list
@@ -5406,9 +5631,10 @@ CONTAINS
     !=======================================================================
     ! These diagnostics are only relevant for:
     !
-    ! THE CO SPECIALTY SIMULATION
+    ! THE CO SPECIALTY SIMULATION and
+    ! THE FULL-CHEMISTRY SIMULATIONS (for archiving output for tagCO)
     !=======================================================================
-    IF ( Input_Opt%ITS_A_TAGCO_SIM ) THEN
+    IF ( Input_Opt%ITS_A_TAGCO_SIM .or. Input_Opt%ITS_A_FULLCHEM_SIM ) THEN
 
        !--------------------------------------------------------------------
        ! Production of CO from CH4
@@ -5474,7 +5700,7 @@ CONTAINS
           IF ( Found ) THEN
              ErrMsg = TRIM( diagId ) // ' is a requested diagnostic, '    // &
                       'but this is only appropriate for the '             // &
-                      'tagged CO specialty simulations.'
+                      'tagged CO or full-chemistry simulations.'
              CALL GC_Error( ErrMsg, RC, ThisLoc )
              RETURN
           ENDIF
@@ -6473,31 +6699,40 @@ CONTAINS
                                    State_Diag%Archive_TotalOC           .or. &
                                    State_Diag%Archive_TotalBiogenicOA       )
 
-     State_Diag%Archive_AOD  = ( State_Diag%Archive_AODHygWL1           .or. &
-                                 State_Diag%Archive_AODHygWL2           .or. &
-                                 State_Diag%Archive_AODHygWL3           .or. &
-                                 State_Diag%Archive_AODSOAfromAqIsopWL1 .or. &
-                                 State_Diag%Archive_AODSOAfromAqIsopWL1 .or. &
-                                 State_Diag%Archive_AODSOAfromAqIsopWL1 .or. &
-                                 State_Diag%Archive_AODDust             .or. &
-                                 State_Diag%Archive_AODDustWL1          .or. &
-                                 State_Diag%Archive_AODDustWL2          .or. &
-                                 State_Diag%Archive_AODDustWL3              )
+    State_Diag%Archive_AOD  = ( State_Diag%Archive_AODHygWL1            .or. &
+                                State_Diag%Archive_AODHygWL2            .or. &
+                                State_Diag%Archive_AODHygWL3            .or. &
+                                State_Diag%Archive_AODSOAfromAqIsopWL1  .or. &
+                                State_Diag%Archive_AODSOAfromAqIsopWL1  .or. &
+                                State_Diag%Archive_AODSOAfromAqIsopWL1  .or. &
+                                State_Diag%Archive_AODDust              .or. &
+                                State_Diag%Archive_AODDustWL1           .or. &
+                                State_Diag%Archive_AODDustWL2           .or. &
+                                State_Diag%Archive_AODDustWL3               )
 
-     State_Diag%Archive_AODStrat = ( State_Diag%Archive_AODSLAWL1       .or. &
-                                     State_Diag%Archive_AODSLAWL2       .or. &
-                                     State_Diag%Archive_AODSLAWL3       .or. &
-                                     State_Diag%Archive_AODPSCWL1       .or. &
-                                     State_Diag%Archive_AODPSCWL2       .or. &
-                                     State_Diag%Archive_AODPSCWL3       .or. &
-                                     State_Diag%Archive_AerNumDenSLA    .or. &
-                                     State_Diag%Archive_AerNumDenPSC        )
+    State_Diag%Archive_AODStrat = ( State_Diag%Archive_AODSLAWL1        .or. &
+                                    State_Diag%Archive_AODSLAWL2        .or. &
+                                    State_Diag%Archive_AODSLAWL3        .or. &
+                                    State_Diag%Archive_AODPSCWL1        .or. &
+                                    State_Diag%Archive_AODPSCWL2        .or. &
+                                    State_Diag%Archive_AODPSCWL3        .or. &
+                                    State_Diag%Archive_AerNumDenSLA     .or. &
+                                    State_Diag%Archive_AerNumDenPSC        )
 
-
-     State_Diag%Archive_ConcAboveSfc =                                       &
+    State_Diag%Archive_ConcAboveSfc =                                        &
                                  ( State_Diag%Archive_SpeciesConcALT1  .and. &
                                    State_Diag%Archive_DryDepRaALT1     .and. &
-                                   State_Diag%Archive_DryDepVelForALT1     )
+                                   State_Diag%Archive_DryDepVelForALT1      )
+
+    State_Diag%Archive_KppDiags = ( State_Diag%Archive_KppIntCounts    .or.  &
+                                    State_Diag%Archive_KppJacCounts    .or.  &
+                                    State_Diag%Archive_KppTotSteps     .or.  &
+                                    State_Diag%Archive_KppAccSteps     .or.  &
+                                    State_Diag%Archive_KppRejSteps     .or.  &
+                                    State_Diag%Archive_KppLuDecomps    .or.  &
+                                    State_Diag%Archive_KppSubsts       .or.  &
+                                    State_Diag%Archive_KppSmDecomps    .or.  &
+                                    State_Diag%Archive_KppDiags             )
 
     !=======================================================================
     ! Set arrays used to calculate budget diagnostics, if needed
@@ -6824,11 +7059,18 @@ CONTAINS
        State_Diag%JNoonFrac => NULL()
     ENDIF
 
-    IF ( ASSOCIATED( State_Diag%RxnRates ) ) THEN
-       DEALLOCATE( State_Diag%RxnRates, STAT=RC )
-       CALL GC_CheckVar( 'State_Diag%RxnRates', 2, RC )
+    IF ( ASSOCIATED( State_Diag%RxnRate ) ) THEN
+       DEALLOCATE( State_Diag%RxnRate, STAT=RC )
+       CALL GC_CheckVar( 'State_Diag%RxnRate', 2, RC )
        IF ( RC /= GC_SUCCESS ) RETURN
-       State_Diag%RxnRates => NULL()
+       State_Diag%RxnRate=> NULL()
+    ENDIF
+
+    IF ( ASSOCIATED( State_Diag%OHreactivity ) ) THEN
+       DEALLOCATE( State_Diag%OHreactivity, STAT=RC )
+       CALL GC_CheckVar( 'State_Diag%OHreactivity', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Diag%OHreactivity => NULL()
     ENDIF
 
 #if defined( MODEL_GEOS )
@@ -7381,13 +7623,6 @@ CONTAINS
        CALL GC_CheckVar( 'State_Diag%CH4pseudoFlux', 2, RC )
        IF ( RC /= GC_SUCCESS ) RETURN
        State_Diag%CH4pseudoflux => NULL()
-    ENDIF
-
-    IF ( ASSOCIATED( State_Diag%OHreactivity ) ) THEN
-       DEALLOCATE( State_Diag%OHreactivity, STAT=RC )
-       CALL GC_CheckVar( 'State_Diag%OH_reactivity', 2, RC )
-       IF ( RC /= GC_SUCCESS ) RETURN
-       State_Diag%OHreactivity => NULL()
     ENDIF
 
     IF ( ASSOCIATED( State_Diag%KppError ) ) THEN
@@ -8150,6 +8385,64 @@ CONTAINS
        State_Diag%SpeciesConcALT1 => NULL()
     ENDIF
 
+    IF ( ASSOCIATED( State_Diag%KppIntCounts ) ) THEN
+       DEALLOCATE( State_Diag%KppIntCounts, STAT=RC )
+       CALL GC_CheckVar( 'State_Diag%KppIntCounts', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Diag%KppIntCounts => NULL()
+    ENDIF
+
+    IF ( ASSOCIATED( State_Diag%KppJacCounts ) ) THEN
+       DEALLOCATE( State_Diag%KppJacCounts, STAT=RC )
+       CALL GC_CheckVar( 'State_Diag%KppJacobians', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Diag%KppJacCounts => NULL()
+    ENDIF
+
+    IF ( ASSOCIATED( State_Diag%KppTotSteps ) ) THEN
+       DEALLOCATE( State_Diag%KppTotSteps, STAT=RC )
+       CALL GC_CheckVar( 'State_Diag%KppTotSteps', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Diag%KppTotSteps => NULL()
+    ENDIF
+
+    IF ( ASSOCIATED( State_Diag%KppAccSteps ) ) THEN
+       DEALLOCATE( State_Diag%KppAccSteps, STAT=RC )
+       CALL GC_CheckVar( 'State_Diag%KppAccSteps', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Diag%KppAccSteps => NULL()
+    ENDIF
+
+   IF ( ASSOCIATED( State_Diag%KppRejSteps ) ) THEN
+       DEALLOCATE( State_Diag%KppRejSteps, STAT=RC )
+       CALL GC_CheckVar( 'State_Diag%KppRejSteps', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Diag%KppRejSteps => NULL()
+    ENDIF
+
+    IF ( ASSOCIATED( State_Diag%KppLuDecomps ) ) THEN
+       DEALLOCATE( State_Diag%KppLuDecomps, STAT=RC )
+       CALL GC_CheckVar( 'State_Diag%KppLuDecomps', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Diag%KppLuDecomps => NULL()
+    ENDIF
+
+    IF ( ASSOCIATED( State_Diag%KppSubsts ) ) THEN
+       DEALLOCATE( State_Diag%KppSubsts, STAT=RC )
+       CALL GC_CheckVar( 'State_Diag%KppSubsts', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Diag%KppSubsts => NULL()
+    ENDIF
+
+    IF ( ASSOCIATED( State_Diag%KppSmDecomps ) ) THEN
+       DEALLOCATE( State_Diag%KppSmDecomps, STAT=RC )
+       CALL GC_CheckVar( 'State_Diag%KppSmDecomps', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Diag%KppSmDecomps => NULL()
+    ENDIF
+
+
+
     !-----------------------------------------------------------------------
     ! Template for deallocating more arrays, replace xxx with field name
     !-----------------------------------------------------------------------
@@ -8196,6 +8489,7 @@ CONTAINS
 ! !USES:
 !
     USE Charpak_Mod,         ONLY: StrSplit, To_UpperCase
+    USE DiagList_Mod,        ONLY: IsFullChem
     USE Registry_Params_Mod
 !
 ! !INPUT PARAMETERS:
@@ -8511,26 +8805,34 @@ CONTAINS
        IF ( isUnits   ) Units = '1'
        IF ( isRank    ) Rank  = 2
 
-    ELSE IF ( TRIM( Name_AllCaps ) == 'RXNRATES' ) THEN
-       IF ( isDesc    ) Desc  = 'placeholder'
-       IF ( isUnits   ) Units = 'placeholder'
+    ELSE IF ( TRIM( Name_AllCaps ) == 'RXNRATE' ) THEN
+       IF ( isDesc    ) Desc  = 'KPP equation reaction rates'
+       IF ( isUnits   ) Units = 's-1'
        IF ( isRank    ) Rank  = 3
-       IF ( isTagged  ) TagId = 'ALL'
+       IF ( isTagged  ) TagId = 'RXN'
+
+    ELSE IF ( TRIM( Name_AllCaps ) == 'OHREACTIVITY' ) THEN
+       IF ( isDesc    ) Desc  = 'OH reactivity'
+       IF ( isUnits   ) Units = 's-1'
+       IF ( isRank    ) Rank  = 3
 
     ELSE IF ( TRIM( Name_AllCaps ) == 'UVFLUXDIFFUSE' ) THEN
-       IF ( isDesc    ) Desc  = 'placeholder'
+       IF ( isDesc    ) Desc  = 'Diffuse UV flux in bin'
        IF ( isUnits   ) Units = 'W m-2'
        IF ( isRank    ) Rank  = 3
+       IF ( isTagged  ) TagId = 'UVFLX'
 
     ELSE IF ( TRIM( Name_AllCaps ) == 'UVFLUXDIRECT' ) THEN
-       IF ( isDesc    ) Desc  = 'placeholder'
+       IF ( isDesc    ) Desc  = 'Direct UV flux in bin'
        IF ( isUnits   ) Units = 'W m-2'
        IF ( isRank    ) Rank  = 3
+       IF ( isTagged  ) TagId = 'UVFLX'
 
     ELSEIF ( TRIM( Name_AllCaps ) == 'UVFLUXNET' ) THEN
-       IF ( isDesc    ) Desc  = 'placeholder'
+       IF ( isDesc    ) Desc  = 'Net UV flux in bin'
        IF ( isUnits   ) Units = 'W m-2'
        IF ( isRank    ) Rank  = 3
+       IF ( isTagged  ) TagId = 'UVFLX'
 
     ELSE IF ( TRIM( Name_AllCaps ) == 'ADVFLUXZONAL' ) THEN
        IF ( isDesc    ) Desc  = 'Advection of species in zonal direction'
@@ -8740,11 +9042,6 @@ CONTAINS
        IF ( isUnits   ) Units = 'kg m-2 s-1'
        IF ( isRank    ) Rank  = 2
 
-    ELSE IF ( TRIM( Name_AllCaps ) == 'OH_REACTIVITY' ) THEN
-       IF ( isDesc    ) Desc  = 'OH_reactivity'
-       IF ( isUnits   ) Units = 's-1'
-       IF ( isRank    ) Rank  = 3
-
     ELSE IF ( TRIM( Name_AllCaps ) == 'KPPERROR' ) THEN
        IF ( isDesc    ) Desc  = 'KppError'
        IF ( isUnits   ) Units = '1'
@@ -8780,7 +9077,7 @@ CONTAINS
     ELSE IF ( TRIM(Name_AllCaps) == 'AODHYG' // TRIM(RadWL(1)) // 'NM' ) THEN
        IF ( isDesc    ) Desc  =  'Optical depth for hygroscopic aerosol ' // &
                                  'at ' // TRIM(RadWL(1)) // ' nm'
-       IF ( isUnits   ) Units = 'unitless'
+       IF ( isUnits   ) Units = '1'
        IF ( isRank    ) Rank  =  3
        IF ( isTagged  ) TagId = 'HYG'
 
@@ -9173,11 +9470,6 @@ CONTAINS
        IF ( isUnits   ) Units = 'ug C m-3'
        IF ( isRank    ) Rank  =  3
 
-    ELSE IF ( TRIM( Name_AllCaps ) == 'PM25' ) THEN
-       IF ( isDesc    ) Desc  = 'Particulate matter with radii < 2.5 um'
-       IF ( isUnits   ) Units = 'ug m-3'
-       IF ( isRank    ) Rank  =  3
-
     ELSE IF ( TRIM( Name_AllCaps ) == 'TOTALBIOGENICOA' ) THEN
        IF ( isDesc    ) Desc  = 'Sum of all biogenic organic aerosol (OA:OC=2.1)'
        IF ( isUnits   ) Units = 'ug m-3'
@@ -9191,6 +9483,46 @@ CONTAINS
     ELSE IF ( TRIM( Name_AllCaps ) == 'TOTALOC' ) THEN
        IF ( isDesc    ) Desc  = 'Sum of all organic carbon (OA:OC=2.1)'
        IF ( isUnits   ) Units = 'ug m-3'
+       IF ( isRank    ) Rank  =  3
+
+    ELSE IF ( TRIM( Name_AllCaps ) == 'KPPINTCOUNTS' ) THEN
+       IF ( isDesc    ) Desc  = 'Number of calls to KPP integrator'
+       IF ( isUnits   ) Units = 'count'
+       IF ( isRank    ) Rank  =  3
+
+    ELSE IF ( TRIM( Name_AllCaps ) == 'KPPJACCOUNTS' ) THEN
+       IF ( isDesc    ) Desc  = 'Number of times KPP updated the Jacobian'
+       IF ( isUnits   ) Units = 'count'
+       IF ( isRank    ) Rank  =  3
+
+    ELSE IF ( TRIM( Name_AllCaps ) == 'KPPTOTSTEPS' ) THEN
+       IF ( isDesc    ) Desc  = 'Total number of KPP internal timesteps'
+       IF ( isUnits   ) Units = 'count'
+       IF ( isRank    ) Rank  =  3
+
+    ELSE IF ( TRIM( Name_AllCaps ) == 'KPPACCSTEPS' ) THEN
+       IF ( isDesc    ) Desc  = 'Number of accepted KPP internal timesteps'
+       IF ( isUnits   ) Units = 'count'
+       IF ( isRank    ) Rank  =  3
+
+    ELSE IF ( TRIM( Name_AllCaps ) == 'KPPREJSTEPS' ) THEN
+       IF ( isDesc    ) Desc  = 'Number of rejected KPP internal timesteps'
+       IF ( isUnits   ) Units = 'count'
+       IF ( isRank    ) Rank  =  3
+
+    ELSE IF ( TRIM( Name_AllCaps ) == 'KPPLUDECOMPS' ) THEN
+       IF ( isDesc    ) Desc  = 'Number of KPP LU-decompositions'
+       IF ( isUnits   ) Units = 'count'
+       IF ( isRank    ) Rank  =  3
+
+    ELSE IF ( TRIM( Name_AllCaps ) == 'KPPSUBSTS' ) THEN
+       IF ( isDesc    ) Desc  = 'Number of KPP forward and backward matrix substitutions'
+       IF ( isUnits   ) Units = 'count'
+       IF ( isRank    ) Rank  =  3
+
+    ELSE IF ( TRIM( Name_AllCaps ) == 'KPPSMDECOMPS' ) THEN
+       IF ( isDesc    ) Desc  = 'Number of KPP singular matrix decompositions'
+       IF ( isUnits   ) Units = 'count'
        IF ( isRank    ) Rank  =  3
 
     ELSE IF ( TRIM( Name_AllCaps ) == 'EMISPOPPOCPO' ) THEN
@@ -9354,14 +9686,26 @@ CONTAINS
        IF ( isRank    ) Rank  =  3
 
     ELSE IF ( TRIM( Name_AllCaps ) == 'PRODCOFROMCH4' ) THEN
-       IF ( isDesc    ) Desc  = 'Porduction of CO by CH4'
-       IF ( isUnits   ) Units = 'kg s-1'
+       IF ( isDesc    ) Desc  = 'Production of CO by CH4'
        IF ( isRank    ) Rank  =  3
+       IF ( isUnits   ) THEN
+          IF ( isFullChem ) THEN
+             Units = 'molec cm-3 s-1'
+          ELSE
+             Units = 'kg s-1'
+          ENDIF
+       ENDIF
 
     ELSE IF ( TRIM( Name_AllCaps ) == 'PRODCOFROMNMVOC' ) THEN
        IF ( isDesc    ) Desc  = 'Porduction of CO by NMVOC'
-       IF ( isUnits   ) Units = 'kg s-1'
        IF ( isRank    ) Rank  =  3
+       IF ( isUnits   ) THEN
+          IF ( isFullChem ) THEN
+             Units = 'molec cm-3 s-1'
+          ELSE
+             Units = 'kg s-1'
+          ENDIF
+       ENDIF
 
     ELSE IF ( TRIM( Name_AllCaps ) == 'EMISHG0ANTHRO' ) THEN
        IF ( isDesc    ) Desc  = 'Anthropogenic emissions of Hg0'
@@ -9636,6 +9980,7 @@ CONTAINS
 !
 ! !USES:
 !
+!
 ! !INPUT PARAMETERS:
 !
     LOGICAL,            INTENT(IN)  :: am_I_Root   ! Is this the root CPU?
@@ -9730,10 +10075,14 @@ CONTAINS
           numTags = State_Chm%nLoss
        CASE( 'PHO'     )
           numTags = State_Chm%nPhotol+2  ! NOTE: Extra slots for diagnostics
+       CASE( 'UVFLX'   )
+          numTags = W_
        CASE( 'PRD'     )
           numTags = State_Chm%nProd
        CASE( 'RRTMG'   )
           numTags = nRadFlux
+       CASE( 'RXN'     )
+          numTags = NREACT
        CASE( 'VAR'     )
           numTags = State_Chm%nKppVar
        CASE( 'WET'     )
@@ -9768,7 +10117,7 @@ CONTAINS
     ! Get mapping index
     !=======================================================================
     SELECT CASE( TRIM( tagID ) )
-       CASE( 'ALL', 'ADV', 'DUSTBIN', 'PRD', 'LOS', 'RRTMG' )
+       CASE( 'ALL', 'ADV', 'DUSTBIN', 'PRD', 'LOS', 'RRTMG', 'UVFLX', 'RXN' )
           D = N
        CASE( 'AER'  )
           D = State_Chm%Map_Aero(N)
@@ -9869,6 +10218,55 @@ CONTAINS
        ! RRTMG requested output fluxes
        CASE( 'RRTMG' )
           tagName = RadFlux(D)
+
+       ! KPP equation reaction rates
+       CASE( 'RXN' )
+          WRITE ( Nstr, "(I3.3)" ) D
+          tagName = 'EQ' // TRIM(Nstr)
+
+       ! UVFlux requested output fluxes
+       ! These are at the FAST-JX wavelength bins
+       CASE( 'UVFLX' )
+          SELECT CASE( N )
+             CASE( 1  )
+                tagName = '187nm'
+             CASE( 2  )
+                tagName = '191nm'
+             CASE( 3  )
+                tagName = '193nm'
+             CASE( 4  )
+                tagName = '196nm'
+             CASE( 5  )
+                tagName = '202nm'
+             CASE( 6  )
+                tagName = '208nm'
+             CASE( 7  )
+                tagName = '211nm'
+             CASE( 8  )
+                tagName = '214nm'
+             CASE( 9  )
+                tagName = '261nm'
+             CASE( 10 )
+                tagName = '267nm'
+             CASE( 11 )
+                tagName = '277nm'
+             CASE( 12  )
+                tagName = '295nm'
+             CASE( 13  )
+                tagName = '303nm'
+             CASE( 14  )
+                tagName = '310nm'
+             CASE( 15  )
+                tagName = '316nm'
+             CASE( 16  )
+                tagName = '333nm'
+             CASE( 17  )
+                tagName = '380nm'
+             CASE( 18  )
+                tagName = '574nm'
+             CASE DEFAULT
+                tagName = 'NA'
+          END SELECT
 
        ! Default tag name is the name in the species database
        CASE DEFAULT

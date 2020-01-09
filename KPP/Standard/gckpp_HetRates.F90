@@ -244,6 +244,7 @@ MODULE GCKPP_HETRATES
 !  17 Oct 2018 - C.D. Holmes - Added cloud heterogeneous chemistry (CloudHet);
 !                              Gamma updates for NOx species
 !  13 Dec 2018 - E. McDuffie - Report gammaN2O5 as a State Chem parameter
+!  04 Nov 2019 - C.D. Holmes - Bug fixes for gammaN2O5 (RH dependence)
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -982,9 +983,7 @@ MODULE GCKPP_HETRATES
 ! !DESCRIPTION: Function CloudHet calculates the loss frequency (1/s) of gas
 !  species due to heterogeneous chemistry on clouds in a partially cloudy grid
 !  cell. The function uses the "entrainment limited uptake" equations of
-!  Holmes et al. (2018).
-!  Both liquid and ice water clouds are treated.
-!
+!  Holmes et al. (2018). Both liquid and ice water clouds are treated.
 !\\
 !\\
 ! !INTERFACE:
@@ -1508,10 +1507,11 @@ MODULE GCKPP_HETRATES
 ! !REMARKS:
 !
 ! !REVISION HISTORY:
-!  29 Mar 2016 - R. Yantosca - Added ProTeX header
-!  01 Apr 2016 - R. Yantosca - Define N, XSTKCF, ADJUSTEDRATE locally
-!  01 Apr 2016 - R. Yantosca - Replace KII_KI with DO_EDUCT local variable
+!  29 Mar 2016 - R. Yantosca  - Added ProTeX header
+!  01 Apr 2016 - R. Yantosca  - Define N, XSTKCF, ADJUSTEDRATE locally
+!  01 Apr 2016 - R. Yantosca  - Replace KII_KI with DO_EDUCT local variable
 !  23 Aug 2018 - C. D. Holmes - Updated Gamma values
+!  06 Nov 2019 - R. Yantosca  - Force flexible precision with _fp
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1539,32 +1539,33 @@ MODULE GCKPP_HETRATES
          select case (N)
             case (1:7)
                ! dust
-               xstkcf = 0.01
+               xstkcf = 0.01_fp
             case (8)
                ! sulfate
-               if ( relhum < 0.4 ) then
-                  xstkcf = 0.001
+               if ( relhum < 40.0_fp ) then
+                  xstkcf = 0.001_fp
                else
-                  xstkcf = 0.002
+                  xstkcf = 0.002_fp
                endif
             case (9)
                ! BC
-               if ( relhum < 0.5 ) then
-                  xstkcf = 2e-4
+               if ( relhum < 50.0_fp ) then
+                  xstkcf = 2e-4_fp
                else
-                  xstkcf = 1e-3
+                  xstkcf = 1e-3_fp
                endif
             case (10)
                ! OC
-               xstkcf = 0.005
+               xstkcf = 0.005_fp
             case (11:12)
                ! sea salt
-               if ( relhum < 0.4 ) then
-                  xstkcf = 0.05
-               elseif ( relhum > 0.7 ) then
-                  xstkcf = 0.002
+               if ( relhum < 40.0_fp ) then
+                  xstkcf = 0.05_fp
+               elseif ( relhum > 70.0_fp ) then
+                  xstkcf = 0.002_fp
                else
-                  xstkcf = 0.05 + (0.002 - 0.05) * (relhum-0.4)/(0.7-0.4)
+                  xstkcf = 0.05_fp + (0.002_fp - 0.05_fp)                    &
+                         * (relhum - 40.0_fp) / (70.0_fp - 40.0_fp)
                endif
          end select
 
@@ -1662,12 +1663,12 @@ MODULE GCKPP_HETRATES
                xstkcf = 1e-6_fp
             case (11:12)
                ! sea salt
-               if ( relhum < 0.4 ) then
+               if ( relhum < 40 ) then
                   xstkcf = 1e-8_fp
-               elseif ( relhum > 0.7 ) then
+               elseif ( relhum > 70 ) then
                   xstkcf = 1e-4_fp
                else
-                  xstkcf = 1e-8_fp + (1e-4_fp-1e-8_fp) * (relhum-0.4)/(0.7-0.4)
+                  xstkcf = 1e-8_fp + (1e-4_fp-1e-8_fp) * (relhum-40)/(70-40)
                endif
          end select
 
@@ -2035,7 +2036,7 @@ MODULE GCKPP_HETRATES
 !
 ! !IROUTINE: N2O5_InorgOrg
 !
-! !DESCRIPTION: Function N2O5_inorg_org computes the GAMMA reaction probability
+! !DESCRIPTION: Function N2O5\_inorg\_org computes the GAMMA reaction probability
 !     for N2O5 loss in inorganic (sulfate-nitrate-ammonium-sea salt) aerosols
 !     with organic coatings, based on the recommendation of McDuffie (2018) JGR.
 !     The inorganic core is based on Bertram and Thornton ACP (2009).
@@ -2067,7 +2068,7 @@ MODULE GCKPP_HETRATES
       real(fp), intent(in) :: Cl       ! aerosol chloride concentration
                                        !  [molecule/cm3(air)
       real(fp), intent(in) :: T        ! air temperature [K]
-      real(fp), intent(in) :: RH       ! relative humidity [fraction, 0-1]
+      real(fp), intent(in) :: RH       ! relative humidity [%]
 !
 ! !RETURN VALUE:
 !
@@ -2122,8 +2123,8 @@ MODULE GCKPP_HETRATES
       ! Total H2O (organic + inorganic), cm3(H2O)/cm3(air)
       H2Ototal = H2Oinorg + H2Oorg
 
-      ! Ratio of organic to total (organic+inorganic) volumes when dry, unitless
-      volRatioDry = safe_div((volOrg - H2Oorg), (volTotal - H2Ototal), 0e+0_fp)
+      ! Ratio of inorganic to total (organic+inorganic) volumes when dry, unitless
+      volRatioDry = safe_div((volInorg - H2Oinorg), (volTotal - H2Ototal), 0e+0_fp)
 
       ! Particle radius, cm
       ! Derived from spherical geometry
@@ -2248,13 +2249,13 @@ MODULE GCKPP_HETRATES
 !
 ! !IROUTINE: ClNO2_BT
 !
-! !DESCRIPTION: Function ClNO2_BT computes the PHI production yield of ClNO2
-!     from N2O5 loss in sulfate-nitrate-ammonium (SNA) aerosols based on the
-!     recommendation of Bertram and Thornton (2009) ACP
-!     In this implementation, we assume that SNA and sea salt aerosol are externally mixed,
-!     so [Cl-] = 10% SALA in SNA. We do this because the surface area of sea salt (coarse and fine)
-!     is calculated separately from the surface area of SNA
-!
+! !DESCRIPTION: Function ClNO2\_BT computes the PHI production yield of ClNO2
+!  from N2O5 loss in sulfate-nitrate-ammonium (SNA) aerosols based on the
+!  recommendation of Bertram and Thornton (2009) ACP.
+!  In this implementation, we assume that SNA and sea salt aerosol are
+!  externally mixed, so [Cl-] = 10% SALA in SNA. We do this because the
+!  surface area of sea salt (coarse and fine) is calculated separately from
+!  the surface area of SNA.
 !\\
 !\\
 ! !INTERFACE:
@@ -2282,11 +2283,8 @@ MODULE GCKPP_HETRATES
 !
 ! !DEFINED PARAMETERS:
 !
-!      ! Parameters from Bertram and Thornton (2009) ACP
-       REAL(fp), parameter :: k2k3  = 1e+0_fp / 4.5e+2_fp
-
-!------------------------------------------------------------------------------
-
+      ! Parameters from Bertram and Thornton (2009) ACP
+      REAL(fp), parameter :: k2k3  = 1e+0_fp / 4.5e+2_fp
 
       ! Initialize
       PHI     = 0.0_fp
@@ -6031,7 +6029,7 @@ MODULE GCKPP_HETRATES
 !
       INTEGER,   INTENT(IN) :: AEROTYPE  ! Denoting aerosol type (cf FAST_JX)
       REAL(fp),  INTENT(IN) :: TEMP      ! Temperature [K]
-      REAL(fp),  INTENT(IN) :: RH        ! Relative humidity [1]
+      REAL(fp),  INTENT(IN) :: RH        ! Relative humidity [%]
 !
 ! !RETURN VALUE:
 !
@@ -6143,13 +6141,13 @@ MODULE GCKPP_HETRATES
          CASE ( 11, 12 )
 
             ! IUPAC and Thornton and Abbatt (2005)
-            if (relhum < 0.4) then
+            if (RH_P < 40) then
                gamma = 0.005e0_fp
-            elseif (relhum > 0.7) then
+            elseif (RH_P > 70) then
                gamma = 0.02e0_fp
             else
-               gamma = 0.005e0_fp + (0.02e0_fp - 0.05e0_fp) * &
-                    ( relhum - 0.4e0_fp ) / ( 0.7e0_fp - 0.4e0_fp )
+               gamma = 0.005e0_fp + (0.02e0_fp - 0.005e0_fp) * &
+                    ( RH_P - 40e0_fp ) / ( 70e0_fp - 40e0_fp )
             endif
 
          !----------------

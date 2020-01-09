@@ -5,8 +5,8 @@
 !
 ! !MODULE: wetscav_mod.F
 !
-! !DESCRIPTION: Module WETSCAV\_MOD contains routines and variables used in
-!  the wet scavenging of species in cloud updrafts, rainout, and washout.
+! !DESCRIPTION: Module WETSCAV\_MOD contains routines and variables used in 
+!  the wet scavenging of species in cloud updrafts, rainout, and washout. 
 !\\
 !\\
 ! !INTERFACE:
@@ -20,10 +20,11 @@
       IMPLICIT NONE
       PRIVATE
 !
-#if defined( APM )
+#ifdef APM
       ! NOTE: This should really go into State_CHM!! (bmy, 6/17/19)
       REAL(fp), PUBLIC, ALLOCATABLE, TARGET :: PSO4_SO2APM2(:,:,:)
 #endif
+!
 ! !PUBLIC MEMBER FUNCTIONS:
 !
       PUBLIC  :: CLEANUP_WETSCAV
@@ -34,16 +35,17 @@
       PUBLIC  :: WASHOUT
       PUBLIC  :: LS_K_RAIN
       PUBLIC  :: LS_F_PRIME
+      PUBLIC  :: CONV_F_PRIME
 !
 ! !PRIVATE MEMBER FUNCTIONS:
 !
       PRIVATE :: COMPUTE_L2G
-      PRIVATE :: CONV_F_PRIME
       PRIVATE :: E_ICE
       PRIVATE :: RAINOUT
       PRIVATE :: GET_RAINFRAC
       PRIVATE :: SAFETY
       PRIVATE :: WASHFRAC_FINE_AEROSOL
+      PRIVATE :: WASHFRAC_FINE_AEROSOLEW
       PRIVATE :: WASHFRAC_COARSE_AEROSOL
       PRIVATE :: WASHFRAC_LIQ_GAS
       PRIVATE :: WASHFRAC_HNO3
@@ -57,122 +59,21 @@
 !        chemical tracer model driven by assimilated meteorological fields",
 !        JGR, Vol 106, pp 12109-12128, 2001.
 !  (2 ) D.J. Jacob, H. Liu, C. Mari, and R. M. Yantosca, "Harvard wet
-!        deposition scheme for GMI", Harvard Atmospheric Chemistry Modeling
+!        deposition scheme for GMI", Harvard Atmospheric Chemistry Modeling 
 !        Group, March 2000.
 !  (3 ) Chin, M., D.J. Jacob, G.M. Gardner, M.S. Foreman-Fowler, and P.A.
 !        Spiro, "A global three-dimensional model of tropospheric sulfate",
 !        J. Geophys. Res., 101, 18667-18690, 1996.
 !  (4 ) Balkanski, Y  D.J. Jacob, G.M. Gardner, W.C. Graustein, and K.K.
 !        Turekian, "Transport and Residence Times of Tropospheric Aerosols
-!        from a Global Three-Dimensional Simulation of 210Pb", JGR, Vol 98,
+!        from a Global Three-Dimensional Simulation of 210Pb", JGR, Vol 98, 
 !        (D11) pp 20573-20586, 1993.
 !  (5 ) Giorgi, F, & W.L. Chaimedes, "Rainout Lifetimes of Highly Soluble
 !        Aerosols and Gases as Inferred from Simulations With a General
 !        Circulation Model", JGR, Vol 86 (D13) pp 14367-14376, 1986.
 !
 ! !REVISION HISTORY:
-!  (1 ) Now trap allocation errors with routine ALLOC_ERR. (bmy, 7/11/00)
-!  (2 ) Moved routine MAKE_QQ here from "dao_mod.f" (bmy, 10/12/00)
-!  (3 ) Reordered arguments in INIT_PRECIP (bmy, 10/12/00)
-!  (4 ) Updated comments (bmy, 9/4/01)
-!  (5 ) Bug fix in MAKE_QQ: BXHEIGHT is sized IIPAR,JJPAR,LLPAR (bmy, 10/4/01)
-!  (6 ) Removed obsolete, commented-out code from 10/01 (bmy, 11/26/01)
-!  (7 ) Now divide module header into MODULE PRIVATE, MODULE VARIABLES, and
-!        MODULE ROUTINES sections.  Updated comments (bmy, 5/28/02)
-!  (8 ) Now zero allocatable arrays (bmy, 8/5/02)
-!  (9 ) Bug fix: ND39 diagnostic now closes the budget.  Also bundled several
-!        standalone routines into this module.  Now references F90 module
-!        "tracerid_mod.f".  Also set NSOLMAX=10 since we now have sulfate
-!        tracers for wetdep.   Now prevent out-of-bounds errors in routine
-!        WETDEP.  Added GET_WETDEP_NMAX function to return max # of soluble
-!        tracers for allocating diagnostic arrays.  Added functions
-!        GET_WETDEP_NSOL and GET_WETDEP_IDWETD.  Now init H2O2s and SO2s
-!        to the initial H2O2 and SO2 from STT.  Updated comments.
-!        (qli, bmy, 1/14/03)
-!  (10) Improvements for SO2/SO4 scavenging (rjp, bmy, 3/23/03)
-!  (11) Now references "time_mod.f".  Added driver routine DO_WETDEP to
-!        remove cumbersome calling sequence from MAIN program.  Also declared
-!        WETDEP and MAKE_QQ PRIVATE to this module. (bmy, 3/27/03)
-!  (11) Add parallelization to routine WETDEP (bmy, 3/17/04)
-!  (12) Added carbon and dust aerosol tracers (rjp, tdf, bmy, 4/5/04)
-!  (13) Added seasalt aerosol tracers (rjp, bec, bmy, 4/20/04)
-!  (14) Added secondary organic aerosol tracers (rjp, bmy, 7/13/04)
-!  (15) Now references "logical_mod.f" and "tracer_mod.f".  Now move all
-!        internal routines to the module and pass arguments explicitly in
-!        order to facilitate parallelization on the Altix. (bmy, 7/20/04)
-!  (16) Updated for mercury aerosol tracers (eck, bmy, 12/9/04)
-!  (17) Updated for AS, AHS, LET, NH4aq, SO4aq.  Also now pass Hg2 wetdep loss
-!        to "ocean_mercury_mod.f". (cas, sas, bmy, 1/20/05)
-!  (18) Bug fix to avoid numerical blowup in WETDEP.  Now use analytical
-!        function for E_ICE(T). (bmy, 3/7/05)
-!  (19) Added SO4s, NITs.  Increased NSOLMAX to 31.  Also block out
-!        parallel loop in WETDEP for SGI MIPS compiler. (bec, bmy, 5/5/05)
-!  (20) Now make sure all USE statements are USE, ONLY (bmy, 10/3/05)
-!  (21) Bug fixes: do not over-deplete H2O2s.  Also include updates for
-!        tagged Hg simulation. (dkh, rjp, eck, cdh, bmy, 1/6/06)
-!  (22) Now wet deposit SOG4, SOA4. Remove unnecessary variables in WETDEP.
-!        (dkh, bmy, 5/18/06)
-!  (23) Bug fixes in COMPUTE_F (bmy, 7/26/06)
-!  (24) Resize DSTT array in WETDEP to save memory.  Added fixes for GEOS-5
-!        wet deposition per Hongyu Liu's suggestions. (bmy, 3/5/08)
-!  (25) Add wet scavenging of GLYX, MGLY, GLYC, SOAG, SOAM (tmf, 1/7/09)
-!  (26) Effective Henry's law constant and coefficient from
-!       Sander, R, 1999, Compilation of Henry's Law Constants for
-!          Inorganic and Organic Species of Potential Importance in
-!          Environmental Chemistry.
-!          http://www.mpch-mainz.mpg.de/~sander/res/henry.html
-!       (tmf, 1/7/09)
-!  (27) Remove support for SGI compiler.  Bug fix in RAINOUT. (bmy, 7/20/09)
-!  (28) Update mercury simulation. (ccc, 5/17/10)
-!  (29) Add LGTMM as condition to output AD39. (ccc, 11/18/09)
-!  (30) Add snow scavenging, different washout/rainout ratio
-!       (wqq, ccc, 7/13/10)
-!  13 Aug 2010 - R. Yantosca - Add modifications for MERRA (treat like GEOS-5)
-!  16 Sep 2010 - R. Yantosca - Added ProteX headers
-!  20 Sep 2010 - H. Amos, R. Yantosca - Implement new algorithms for MERRA
-!  08 Oct 2010 - H. Amos     - WASHFRAC_LIQ_GAS is now a subroutine
-!  08 Oct 2010 - H. Amos     - Various other modifications in WETDEP_MERRA
-!  01 Aug 2011 - H. Amos     - Bug fix for function WASHFRAC_LIQ_GAS
-!  01 Aug 2011 - H. Amos     - Updated comments
-!  09 Feb 2012 - R. Yantosca - Add modifications for GEOS-5.7.x
-!  21 Jun 2012 - R. Yantosca - Declare H2O2s, SO2s as TARGETs for pointers
-!  23 Apr 2013 - R. Yantosca - Bug fix, eliminate white space from #if block
-!  23 Apr 2013 - R. Yantosca - Remove LTOMAS logical, since we now invoke TOMAS
-!                              with either TOMAS=yes or TOMAS40=yes
-!  13 Aug 2013 - M. Sulprizio- Add modifications for updated SOA and SOA +
-!                              semivolatile POA simulations (H. Pye)
-!  12 Sep 2013 - M. Sulprizio- Add modifications for acid uptake on dust
-!                              aerosols (T.D. Fairlie)
-!  24 Nov 2014 - M. Yannetti - Added PRECISION_MOD
-!  12 Feb 2015 - C. Keller   - Added GET_F and GET_VUD. VUD is now stored in
-!                              State_Met. In an ESMF environment, it's values
-!                              are directly taken from the GEOS-5 model. In
-!                              the traditional GEOS-Chem, the updraft velocity
-!                              is still calculated in the old manner (5 m/s
-!                              over water, 10 m/s over land/ice).
-!  23 Jun 2015 - M. Sulprizio- Add impaction scavenging for hydrophobic BC and
-!                              homogeneous IN removal from Qiaoqiao Wang
-!  08 Jul 2015 - E. Lundgren - Add marine organic aerosols (B.Gantt, M.Johnson)
-!  03 Sep 2015 - R. Yantosca - Remove NSOLMAX, we now get the # of wetdep
-!                              species from State_Chm%nWetDep
-!  03 Sep 2015 - R. Yantosca - INIT_WETSCAV now just allocates arrays;
-!                              SETUP_WETSCAV now just sets up quantities
-!  03 Sep 2015 - R. Yantosca - Remove WETDEPID routine, it's not needed
-!  22 Sep 2015 - R. Yantosca - Re-introduce GET_WETDEP_NSOL routine
-!  25 Sep 2015 - R. Yantosca - Use species database to collapse down routines
-!                              COMPUTE_F, RAINOUT, WASHOUT
-!  16 Jun 2016 - L. Hu       - Replaced IDTXXX with Ind_('XXX')
-!  20 Jun 2016 - R. Yantosca - Now define species ID's only in the INIT phase
-!  20 Jun 2016 - R. Yantosca - Renamed species ID's IDTxxxx to id_XXXX
-!  06 Jul 2016 - R. Yantosca - Removed GET_WETDEP_NSOL and GET_WETDEP_IDWETD,
-!                              these are now replaced by State_Chm fields
-!  17 Mar 2017 - R. Yantosca - Finally remove NSOL and IDWETD; they're unused
-!  24 Aug 2017 - M. Sulprizio- Remove support for GCAP, GEOS-4, GEOS-5 and MERRA
-!                              and rename routine WETDEP_MERRA to WETDEP (the
-!                              old WETDEP routine for GEOS-5 met was removed)
-!  13 Nov 2017 - R. Yantosca - Added arrays for State_Diag diagnostics
-!  11 Oct 2018 - M. Sulprizio- Move H2O2s and SO2s to State_Chm and rename as
-!                              H2O2AfterChem and SO2AfterChem
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -181,10 +82,6 @@
 !
       ! TINY number
       REAL(fp), PARAMETER           :: TINY_FP = TINY(1.0_fp)
-
-      ! Use condensed water content (L+W) =1.0e-6 cm3/cm3 (= 1.0e-3 kg/m3).
-      ! which was recommended by Qiaoqiao Wang et al (2014).
-      REAL(fp), PARAMETER           :: COND_WATER_CONTENT = 1.0e-6_fp
 !
 ! !LOCAL VARIABLES:
 !
@@ -251,7 +148,7 @@
       USE State_Diag_Mod,  ONLY : DgnState
       USE State_Grid_Mod,  ONLY : GrdState
       USE State_Met_Mod,   ONLY : MetState
-#if defined( USE_TEND )
+#ifdef USE_TEND
       USE TENDENCIES_MOD
 #endif
       USE TIME_MOD,       ONLY : GET_TS_DYN
@@ -275,23 +172,7 @@
 !
 ! !REVISION HISTORY:
 !  27 Mar 2003 - R. Yantosca - Initial version
-!  (1 ) Now references LPRT from "logical_mod.f" (bmy, 7/20/04)
-!  (2 ) Don't do rainout/washout for conv precip for GEOS-5 (hyl, bmy, 3/5/08)
-!  13 Aug 2010 - R. Yantosca - Treat GEOS-5 like MERRA
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
-!  20 Sep 2010 - R. Yantosca - Rewrote #if block structure for clarity
-!  09 Feb 2012 - R. Yantosca - Treat GEOS-5.7.x in the same way as MERRA
-!  25 Mar 2013 - R. Yantosca - Now accept am_I_Root, Input_Opt, State_Chm, RC
-!  02 Jul 2013 - R. Yantosca - Bug fix: add State_Chm to WETDEP calls for
-!                              met other than MERRA, GEOS-5.7 or GEOS-5
-!  26 Sep 2013 - R. Yantosca - Renamed GEOS_57 Cpp switch to GEOS_FP
-!  08 Aug 2015 - E. Lundgren - Tracer units are now input as [kg/kg]
-!  12 Aug 2015 - R. Yantosca - Add support for MERRA2 meteorology
-!  29 Apr 2016 - R. Yantosca - Don't initialize pointers in declaration stmts
-!  19 Jul 2016 - R. Yantosca - Now bracket tendency calls with #ifdef USE_TEND
-!  09 Nov 2017 - R. Yantosca - Now accept State_Diag as an argument
-!  09 Nov 2017 - R. Yantosca - Return error condition to calling program
-!  27 Aug 2018 - E. Lundgren - Implement budget diagnostics
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -347,7 +228,7 @@
       !=================================================================
       ! Archive species concentrations for tendencies (ckeller,7/15/2015)
       !=================================================================
-      CALL TEND_STAGE1( am_I_Root, Input_Opt, State_Chm,
+      CALL TEND_STAGE1( am_I_Root, Input_Opt, State_Chm, State_Grid,
      &                  State_Met, 'WETD',    RC )
 
       ! Trap potential errors
@@ -382,6 +263,7 @@
       ! (Always assume large-scale precip)
       !------------------------------------------
       CALL MAKE_QQ( am_I_Root  = am_I_Root,
+     &              State_Chm  = State_Chm,
      &              State_Grid = State_Grid,
      &              State_Met  = State_Met,
      &              LS         =.TRUE.,
@@ -420,7 +302,7 @@
       ! Debug print
       IF ( doPrt ) CALL DEBUG_MSG( '### DO_WETDEP: after LS wetdep' )
 
-#if defined( USE_TEND )
+#ifdef USE_TEND
       !=================================================================
       ! Calculate tendencies and write to diagnostics
       ! (ckeller,7/15/2015)
@@ -487,17 +369,20 @@
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE MAKE_QQ( am_I_Root, State_Grid, State_Met, LS, RC )
+      SUBROUTINE MAKE_QQ( am_I_Root, State_Chm, State_Grid,
+     &                    State_Met, LS,        RC          )
 !
 ! !USES:
 !
       USE ErrCode_Mod
+      USE State_Chm_Mod,  ONLY : ChmState
       USE State_Grid_Mod, ONLY : GrdState
       USE State_Met_Mod,  ONLY : MetState
 !
 ! !INPUT PARAMETERS:
 !
       LOGICAL,        INTENT(IN)  :: am_I_Root  ! Are we on the root CPU
+      TYPE(ChmState), INTENT(IN)  :: State_Chm  ! Chemistry State object
       TYPE(GrdState), INTENT(IN)  :: State_Grid ! Grid State object
       TYPE(MetState), INTENT(IN)  :: State_Met  ! Meteorology State object
       LOGICAL,        INTENT(IN)  :: LS         ! =T, denotes large scale precip
@@ -528,7 +413,7 @@
 !   ------------+-------------+--------------- = -------------
 !    kg air * s | 1000 kg H2O |    m^3 air        m^3 air * s
 !
-!  and [m^3 H2O/m3 air] = [cm^3 H2O/cm3 air] because the same conversion
+!  and [m^3 H2O/m3 air] = [cm^3 H2O/cm3 air] because the same conversion 
 !  factor from m^3 -> cm^3 is in both the numerator and the denominator.
 !                                                                             .
 !  Unit conversion for PDOWN:
@@ -551,40 +436,7 @@
 !
 ! !REVISION HISTORY:
 !  29 Feb 2000 - H. Liu, R. Yantosca - Initial version
-!  (1 ) Now we partition MOISTQ into large-scale and convective parts, using
-!        total precipitation PREACC and convective precipitation PRECON (both
-!        are vertical integral amounts). The precipitation field at altitudes
-!        (PDOWN) is also made (hyl, djj, 10/17/98).
-!  (2 ) MAKE_QQ is written in Fixed-Form Fortran 90. (bmy, 4/2/99)!
-!  (3 ) AIRDEN, MOISTQ, QQ, and PDOWN are dimensioned (LLPAR,IIPAR,JJPAR)
-!       in order to maximize loop efficiency when processing an (I,J)
-!       column layer by layer. (bmy, 3/14/00)
-!  (4 ) MOISTQ is originally [g H2O/kg air/day], and is converted in
-!        READ_A6 to [kg H2O/kg air/s]. (bmy, 3/14/00)
-!  (5 ) Now reference PREACC, PRECON from "dao_mod.f" instead of from
-!        common block header file "CMN_PRECIP" (bmy, 6/26/00)
-!  (6 ) Now pass BXHEIGHT as an argument.  Also added to "dao_mod.f".
-!        (bmy, 6/26/00)
-!  (7 ) Moved from "dao_mod.f" to "wetscav_mod.f".  Also made PREACC
-!        and PRECON into arguments. (bmy, 10/12/00)
-!  (8 ) Updated comments (bmy, 9/4/01)
-!  (9 ) BXHEIGHT is now sized (IIPAR,JJPAR,LLPAR) (bmy, 10/4/01)
-!  (10) Removed obsolete, commented-out code from 10/01 (bmy, 11/26/01)
-!  (11) Now reference met field arrays directly from "dao_mod.f" (bmy, 11/8/02)
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
-!  16 Sep 2010 - R. Yantosca - Compute QQ and PDOWN from MERRA met fields
-!  09 Feb 2012 - R. Yantosca - Added modifications for GEOS-5.7.x met fields
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  26 Sep 2013 - R. Yantosca - Renamed GEOS_57 Cpp switch to GEOS_FP
-!  06 Nov 2014 - R. Yantosca - Now use State_Met%AIRDEN(I,J,L)
-!  06 Nov 2014 - R. Yantosca - Now use State_Met%MOISTQ(I,J,L)
-!  29 Apr 2015 - E. Lundgren - Now use State_Met%MAIRDEN instead of AIRDEN
-!                              since AIRDEN is now dry air density and MAIRDEN
-!                              is moist air density, needed for use with MOISTQ
-!  12 Aug 2015 - R. Yantosca - Add support for MERRA2 meteorology
-!  09 Nov 2017 - R. Yantosca - Move allocations to INIT_WETSCAV
-!  10 Feb 2019 - M. Sulprizio- Fix loop so that L is outermost loops
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -611,17 +463,29 @@
          ! [cm3 H2O/cm3 air/s]
          QQ(L,I,J)     = ( State_Met%DQRLSAN(I,J,L)                 )
      &                 * ( State_Met%MAIRDEN(I,J,L)     / 1000.0_fp )
+#ifdef LUO_WETDEP
+         ! Luo et al scheme: save QQ to State_Chm for further use
+         State_Chm%QQ3D(I,J,L) = QQ(L,I,J)
+#endif
 
          ! Rate of re-evaporation in grid box (I,J,L)
          ! [cm3 H2O/cm3 air/s]
          REEVAP(L,I,J) = ( State_Met%REEVAPLS(I,J,L)                )
      &                 * ( State_Met%AIRDEN(I,J,L)      / 1000.0_fp )
 
+         ! Column precipitation [cm3 H2O/cm2 air/s]
+#ifdef LUO_WETDEP
+         ! Luo et al scheme: Use level L
+         PDOWN(L,I,J)  = ( ( State_Met%PFLLSAN(I,J,L) / 1000.0_fp )
+     &                 +   ( State_Met%PFILSAN(I,J,L) /  917.0_fp ) )
+     &                 * 100.0_fp
 
-            ! Column precipitation [cm3 H2O/cm2 air/s]
+#else
+         ! Default scheme: Use level L+1
          PDOWN(L,I,J)  = ( ( State_Met%PFLLSAN(I,J,L+1) / 1000.0_fp )
      &                 +   ( State_Met%PFILSAN(I,J,L+1) /  917.0_fp ) )
      &                 * 100.0_fp
+#endif
 
       ENDDO
       ENDDO
@@ -637,7 +501,7 @@
 !
 ! !IROUTINE: e_ice
 !
-! !DESCRIPTION: Subroutine E\_ICE computes Eice(T), the saturation vapor
+! !DESCRIPTION: Subroutine E\_ICE computes Eice(T), the saturation vapor 
 !  pressure of ice at a given Celsius temperature.
 !\\
 !\\
@@ -659,8 +523,7 @@
 !
 ! !REVISION HISTORY:
 !  08 Feb 2005 - R. Yantosca - Initial version
-!  (1 ) Now use the same analytic function as the Goddard CTM (bmy, 2/8/05)
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -723,12 +586,7 @@
 !
 ! !REVISION HISTORY:
 !  23 Feb 2000 - R. Yantosca - Initial version
-!  (1 ) Bundled into "wetscav_mod.f" (bmy, 11/8/02)
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
-!  10-Jan-2011 - H. Amos - Corrected the units on KStar298 from moles/atm
-!                          to M/atm
-!  15-May-2013 - F. Paulot - Fix R constant
-!  08 Dec 2015 - R. Yantosca - Now use functions from henry_mod.F
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -787,7 +645,7 @@
       USE State_Chm_Mod,      ONLY : ChmState
       USE State_Grid_Mod,     ONLY : GrdState
       USE State_Met_Mod,      ONLY : MetState
-#if defined( TOMAS )
+#ifdef TOMAS
       USE Tomas_Mod,          ONLY : GetFraction
 #endif
 !
@@ -811,92 +669,7 @@
 !
 ! !REVISION HISTORY:
 !  23 Feb 2000 - H. Liu, R. Yantosca - Initial version
-!  (1 ) Currently works computes scavenging fractions for either full
-!        chemistry simulation (NSRCX == 3) or Rn-Pb-Be chemistry simulation
-!        (NSRCX == 1).  Set the scavenging fraction to zero for other
-!        simulations which do not carry soluble tracers. (bmy, 3/2/00)
-!  (2 ) Need to call INIT_SCAV to initialize the Vud, C_H2O, CLDLIQ,
-!        and CLDICE fields once per timestep. (bmy, 2/23/00)
-!  (3 ) For aerosols only: now apply Eq. 2 for all temperatures.  Also
-!        use the distance between the grid box centers in Eq. 2.  Updated
-!        comments and made some cosmetic changes (hyl, bmy, 6/18/01)
-!  (4 ) Remove IREF, JREF -- these are obsolete.  T is now dimensioned
-!        (IIPAR,JJPAR,LLPAR).  T(IREF,JREF,L) is now T(I,J,L). (bmy, 9/27/01)
-!  (5 ) Removed obsolete code from 9/01 (bmy, 10/23/01)
-!  (6 ) Fix 2 bugs for aerosol scavenging in Rn-Pb-Be simulation:
-!        (a) set F(:,:,1) = 0 since we don't do any scavenging there.
-!        (b) DO L = 2, LLPAR to avoid any subscript range out of bounds
-!        errors (rjp, hyl, bmy, 1/10/02)
-!  (7 ) Now set F=0 in the first level for all tracers.  Also now
-!        compute the distance between grid box centers and use that in
-!        in Eq. 10 from Jacob et al, 2000 to compute F. (hyl, bmy, 1/24/02)
-!  (8 ) Eliminated obsolete code from 1/02 (bmy, 2/27/02)
-!  (9 ) Now reference T from "dao_mod.f" instead of from "CMN".  Also reference
-!        BXHEIGHT from "dao_mod.f" instead of from "CMN_NOX".  Now bundled
-!        into "wetscav_mod.f".  Now references IDTHNO3, IDTH2O2, etc, from
-!        F90 module "tracerid_mod.f".  Added internal routines F_AEROSOL
-!        and GET_ISOL.  Rewritten so that we don't duplicate code for
-!        different chemistry simulations. (bmy, 1/17/03)
-!  (10) Now compute F for SO2 in the same way for both fullchem and offline
-!        simulations (rjp, bmy, 3/23/03)
-!  (11) Added slots for carbon aerosol & dust tracers.  Now modified internal
-!        routine GET_ISOL so it's not hardwired anymore. (rjp, bmy, 4/5/04)
-!  (12) Added slots for sea salt aerosol tracers (rjp, bec, bmy, 4/20/04)
-!  (13) Added slots for secondary organic aerosol tracers (rjp, bmy, 7/13/04)
-!  (14) Remove reference to CMN, it's not needed.  Made internal routine
-!        F_AEROSOL a module procedure rather than an internal routine to
-!        COMPUTE_F in order to facilitate parallelization on the Altix.  Also
-!        now pass all arguments explicitly to F_AEROSOL. (bmy, 7/20/04)
-!  (15) Now wet scavenge mercury aerosol tracers (eck, bmy, 12/9/04)
-!  (16) Updated for AS, AHS, LET, NH4aq, SO4aq.  Also condensed the IF
-!        statement by combining branches for aerosols. (cas, bmy, 12/20/04)
-!  (17) Updated for SO4s, NITs (bec, bmy, 4/25/05)
-!  (18) Now make sure all USE statements are USE, ONLY (bmy, 10/3/05)
-!  (19) Bug fix: Now do not over-deplete H2O2s.  Also change Henry's law
-!        constant for Hg2 to 1.0d+14. Now use functions IS_Hg2 and IS_HgP to
-!        determine if a tracer is an Hg2 or HgP tagged tracer.
-!        (dkh, rjp, eck, cdh, bmy, 1/6/06)
-!  (20) Updated for SOG4 and SOA4 (dkh, bmy, 5/18/06)
-!  (21) Bug fix: now use separate conversion factors for H2O2 and NH3.
-!        (havala, bmy, 7/26/06)
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
-!  10-Jan-2011 - H.Amos      - Changed Hg2 Henry's law constant from 1.0d14 (no
-!                              citation) to 1.4d6 M/atm (HgCl2, Lindqvist &
-!                              Rhode, 1985). Henry's law constant in
-!                              wetscav_mod.f is now consistent with what's used
-!                              in mercury_mod.f
-!  27 Sep 2011 - H. Amos     - remove LHg_WETDasHNO3 logical, it's obsolete
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  06 Mar 2013 - H. Amos     - merge C. Friedman's POP code
-!  31 May 2013 - R. Yantosca - Now accept State_Chm, and pass it to TOMAS code
-!  13 Aug 2013 - M. Sulprizio- Add modifications for updated SOA and SOA +
-!                              semivolatile POA simulations (H. Pye)
-!  12 Sep 2013 - M. Sulprizio- Add modifications for acid uptake on dust
-!                              aerosols (T.D. Fairlie)
-!  18 Apr 2014 - R. Yantosca - Now make the F argument an assumed-shape array
-!                              so that we can pass a pointer array slice to it
-!  25 Jun 2014 - R. Yantosca - Now accept Input_Opt via the arg list
-!  19 Dec 2014 - M. Sulprizio- Add bug fixes for CONV_H2O2 and CONV_NH3 from
-!                              Duncan Fairlie. The square root term should be
-!                              inverted to be consistent with Mari et al (2000).
-!  04 Jun 2015 - E. Lundgren - Now accept am_I_Root and RC as arguments
-!  23 Jun 2015 - M. Sulprizio- Add impaction scavenging for hydrophobic BC and
-!                              homogeneous IN removal from Qiaoqiao Wang
-!  04 Sep 2015 - R. Yantosca - Use species database to radically simplify
-!                              the structure of this routine.
-!  24 Sep 2015 - E. Lundgren - Convert kg/kg total air <-> kg for TOMAS
-!  25 Sep 2015 - R. Yantosca - Move the computation of the Ki rate (Eq. 1 from
-!                              Jacob et al 2000) into routine COMPUTE_Ki
-!  25 Sep 2015 - R. Yantosca - Remove T pointer, it's not needed here
-!  30 Sep 2015 - R. Yantosca - Now use ThisSpc%WD_Is_HNO3 and ThisSpc%WD_Is_SO2
-!                              to flag the special cases of HNO3 & SO2 wetdep
-!  05 Oct 2015 - R. Yantosca - Need to make ThisSpc !$OMP THREADPRIVATE
-!  06 Oct 2015 - R. Yantosca - Add missing variables for TOMAS
-!  16 Oct 2015 - E. Lundgren - Consolidate remaining embedded ifelse blocks
-!  01 Jul 2016 - R. Yantosca - Now rename species DB object ThisSpc to SpcInfo
-!  07 Jul 2016 - R. Yantosca - Now set ISOL = -1 if not a wetdep species
-!  07 Jul 2016 - R. Yantosca - Remove pointer nullification from declarations
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -906,7 +679,7 @@
       ! Scalars
       INTEGER                  :: I, J, L
       REAL(fp)                 :: SO2LOSS,   Ki
-#if defined( TOMAS )
+#ifdef TOMAS
       REAL(fp)                 :: SOLFRAC,   XFRAC
 #endif
 
@@ -966,9 +739,14 @@
       !=================================================================
       IF ( SpcInfo%WD_Is_SO2 ) THEN
 
-         ! Compute fraction of SO2 scavenged
-         CALL F_AEROSOL( KC, KcScale, Input_Opt, State_Grid, State_Met,
-     &                   F )
+#ifdef LUO_WETDEP
+         ! Luo et al scheme: Assume no SO2 is scavenged
+         F = 0.0_fp
+#else
+         ! Default scheme: Compute fraction of SO2 scavenged
+         CALL F_AEROSOL( KC,         KcScale,   Input_Opt,
+     &                   State_Grid, State_Met, F          )
+#endif
 
          !--------------------------------------------------------------
          ! Coupled full chemistry/aerosol simulation:
@@ -1064,7 +842,7 @@
       !-----------------------------------------------------------
       ELSE IF ( SpcInfo%MP_SizeResAer ) THEN
 
-#if defined( TOMAS )
+#ifdef TOMAS
          ! Get the fraction of species scavenged in updrafts
          ! NOTE: The surface layer F(:,:,1) will be returned
          ! as zero, to shut off scavenging at the surface
@@ -1091,7 +869,7 @@
       !-----------------------------------------------------------
       ELSE IF ( SpcInfo%MP_SizeResNum ) THEN
 
-#if defined( TOMAS )
+#ifdef TOMAS
          ! Get the fraction of species scavenged in updrafts
          ! NOTE: The surface layer F(:,:,1) will be returned
          ! as zero, to shut off scavenging at the surface
@@ -1188,9 +966,7 @@
 !
 ! !REVISION HISTORY:
 !  25 Sep 2015 - R. Yantosca - Initial version
-!  08 Dec 2015 - R. Yantosca - Make K0, CR, pKa 8-byte variables for
-!                              compatibility w/ CALC_KH, CALC_HEFF routines
-!  01 Jul 2016 - R. Yantosca - Now rename species DB object ThisSpc to SpcInfo
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1297,15 +1073,7 @@
 !
 ! !REVISION HISTORY:
 !  07 Nov 2002 - R. Yantosca - Initial version
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  29 May 2013 - R. Yantosca - Segregate TOMAS-specific code with #ifdefs
-!  10 Nov 2014 - C. Keller   - Now also apply TINY check in ESMF environment.
-!  23 Jun 2015 - M. Sulprizio- Add impaction scavenging for hydrophobic BC and
-!                              homogeneous IN removal from Qiaoqiao Wang
-!  25 Sep 2015 - R. Yantosca - Rewrite this routine to avoid testing on the
-!                              tracer number.  Remove the N argument.
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1320,7 +1088,7 @@
       ! F_AEROSOL begins here!
       !
       ! Aerosol species are 100% in the cloud condensate phase, so
-      ! we set K = Kc, and compute F accordingly (cf Jacob et al 2000 )
+      ! we set K = Kc, and compute F accordingly (cf Jacob et al 2000 )    
       !=================================================================
 
       ! Turn off scavenging in the first level by setting F = 0
@@ -1411,67 +1179,7 @@
 !
 ! !REVISION HISTORY:
 !  28 Feb 2000 - R. Yantosca - Initial version
-!  (1 ) Currently works for either full chemistry simulation (NSRCX == 3)
-!        or Rn-Pb-Be chemistry simulation (NSRCX == 1).  Other simulations
-!        do not carry soluble tracer, so set RAINFRAC = 0. (bmy, 2/28/00)
-!  (2 ) Need to call INIT_SCAV to initialize the Vud, C_H2O, CLDLIQ,
-!        and CLDICE fields once per dynamic timestep. (bmy, 2/28/00)
-!  (3 ) K_RAIN, the rainout rate constant, and F, the areal fraction of the
-!        grid box undergoing precipitiation, are computed according to
-!        Giorgi & Chaimedes, as described in Jacob et al, 2000.
-!  (4 ) Now no longer suppress scavenging of HNO3 and aerosol below 258K.
-!        Updated comments, cosmetic changes.  Now set TK = T(I,J,L) since
-!        T is now sized (IIPAR,JJPAR,LLPAR) in "CMN". (djj, hyl, bmy, 1/24/02)
-!  (5 ) Eliminated obsolete code (bmy, 2/27/02)
-!  (6 ) Now reference T from "dao_mod.f".  Updated comments.  Now bundled
-!        into "wetscav_mod.f". Now refererences "tracerid_mod.f".  Also
-!        removed reference to CMN since we don't need NSRCX. (bmy, 11/8/02)
-!  (7 ) Now updated for carbon & dust aerosol tracers (rjp, bmy, 4/5/04)
-!  (8 ) Now updated for seasalt aerosol tracers (rjp, bec, bmy, 4/20/04)
-!  (9 ) Now updated for secondary aerosol tracers (rjp, bmy, 7/13/04)
-!  (10) Now treat rainout of mercury aerosol tracers (eck, bmy, 12/9/04)
-!  (11) Updated for AS, AHS, LET, NH4aq, SO4aq.  Also condensed the IF
-!        statement by grouping blocks together. (cas, bmy, 12/20/04)
-!  (12) Updated for SO4s, NITs (bec, bmy, 4/25/05)
-!  (13) Now make sure all USE statements are USE, ONLY (bmy, 10/3/05)
-!  (14) Change Henry's law constant for Hg2 to 1.0d+14.  Now use functions
-!        IS_Hg2 and IS_HgP to determine if the tracer is a tagged Hg0 or
-!        HgP tracer. (eck, cdh, bmy, 1/6/06)
-!  (15) Updated for SOG4 and SOA4 (dkh, bmy, 5/18/06)
-!  (16) For GEOS-5, suppress rainout when T < 258K (hyl, bmy, 3/5/08)
-!  (17) Bug fix: need to use separate conversion parameters for H2O2 and
-!        NH3.  This was the same fix as in COMPUTE_F but until now we had
-!        overlooked this. (havala, bmy, 7/20/09)
-!  25 Aug 2010 - R. Yantosca - Treat MERRA in the same way as GEOS-5
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
-!  27 Sep 2011 - H. Amos     - remove LHg_WETDasHNO3 logical, it's obsolete
-!  09 Feb 2012 - R. Yantosca - Treat GEOS-5.7.x in the same way as MERRA
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  13 Aug 2013 - M. Sulprizio- Add modifications for updated SOA and SOA +
-!                              semivolatile POA simulations (H. Pye)
-!  12 Sep 2013 - M. Sulprizio- Add modifications for acid uptake on dust
-!                              aerosols (T.D. Fairlie)
-!  26 Sep 2013 - R. Yantosca - Renamed GEOS_57 Cpp switch to GEOS_FP
-!  25 Aug 2014 - M. Sulprizio- Now accept Input_Opt as an argument
-!  19 Dec 2014 - M. Sulprizio- Add bug fixes for CONV_H2O2 and CONV_NH3 from
-!                              Duncan Fairlie. The square root term should be
-!                              inverted to be consistent with Mari et al (2000).
-!  23 Jun 2015 - M. Sulprizio- Add impaction scavenging for hydrophobic BC and
-!                              homogeneous IN removal from Qiaoqiao Wang
-!  08 Jul 2015 - E. Lundgren - Add marine organic aerosols (B.Gantt, M.Johnson)
-!  23 Sep 2015 - R. Yantosca - Use the species database to eliminate many
-!                              IF blocks to simplify the code logic
-!  25 Sep 2015 - R. Yantosca - Now call routine COMPUTE_Ki to compute the
-!                              rate of scavenging (Eq. 1, Jacob et al 2000)
-!  25 Sep 2015 - R. Yantosca - Now define THREADPRIVATE pointers
-!  28 Sep 2015 - R. Yantosca - Needed to add special case for HNO3
-!  30 Sep 2015 - R. Yantosca - Now use ThisSpc%WD_Is_HNO3 and ThisSpc%WD_Is_SO2
-!                              to flag the special cases of HNO3 & SO2 wetdep
-!  16 Oct 2015 - E. Lundgren - Use ThisSpc%WD_Is_H2SO4 to treat H2SO4 as
-!                              aerosol for wetdep (for microphysics)
-!  01 Jul 2016 - R. Yantosca - Now rename species DB object ThisSpc to SpcInfo
-!  07 Jul 2016 - R. Yantosca - Now remove pointer threadprivate declarations
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1521,12 +1229,16 @@
          ! Update SO2 and H2O2
          IF ( SO2s(I,J,L) > TINY_FP ) THEN
 
-            ! Treat SO2 as an aerosol
-            RAINFRAC = GET_RAINFRAC( K_RAIN, F, DT )
-
-            ! Apply temperature-dependent rainout efficiencies
+#ifdef LUO_WETDEP
+            ! Luo et al scheme: Assume zero rainout fraction for SO2
+            RAINFRAC = 0.0_fp
+#else
+            ! Default scheme: Treat SO2 as an aerosol
+            ! Then apply temperature-dependent rainout efficiencies
             ! This accounts for impaction scavenging of certain aerosols
+            RAINFRAC = GET_RAINFRAC( K_RAIN, F, DT )
             CALL APPLY_RAINOUT_EFF( p_T, SpcInfo, RAINFRAC )
+#endif
 
             ! Limit RAINFRAC
             SO2LOSS      = MIN( SO2s(I,J,L), H2O2s(I,J,L) )
@@ -1632,6 +1344,7 @@
 !
 ! !REVISION HISTORY:
 !  06 Jan 2015 - R. Yantosca - Initial version
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1687,10 +1400,7 @@
 !
 ! !REVISION HISTORY:
 !  08 Nov 2002 - R. Yantosca - Initial version
-!  (1 ) Now move internal routines GET_RAINFRAC to the module and pass all
-!        arguments explicitly.  This facilitates parallelization on the
-!        Altix platform (bmy, 7/20/04)
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1730,12 +1440,12 @@
       USE State_Chm_Mod,  ONLY : ChmState
       USE State_Grid_Mod, ONLY : GrdState
       USE State_Met_Mod,  ONLY : MetState
-#if defined( APM )
+#ifdef APM
       USE APM_INIT_MOD,   ONLY : APMIDS
       USE APM_INIT_MOD,   ONLY : RDRY, RSALT, RDST, DENDST
       USE APM_DRIV_MOD,   ONLY : GFTOT3D, DENWET3D, MWSIZE3D
 #endif
-#if defined( TOMAS )
+#ifdef TOMAS
       USE ERROR_MOD
       USE TOMAS_MOD,      ONLY : IBINS,    ICOMP
       USE UnitConv_Mod
@@ -1750,7 +1460,7 @@
       INTEGER,        INTENT(IN)    :: N          ! Species number
       REAL(fp),       INTENT(IN)    :: BXHEIGHT   ! Grid box height [m]
       REAL(fp),       INTENT(IN)    :: TK         ! Temperature [K]
-      REAL(fp),       INTENT(IN)    :: PP         ! Precip rate thru bottom
+      REAL(fp),       INTENT(IN)    :: PP         ! Precip rate thru bottom 
                                                   !  of grid (I,J,L)
                                                   !  [cm3 H2O/cm2 air/s]
       REAL(fp),       INTENT(IN)    :: DT         ! Timestep [s]
@@ -1783,78 +1493,7 @@
 !
 ! !REVISION HISTORY:
 !  28 Feb 2000 - R. Yantosca - Initial version
-!  (1 ) Currently works for either full chemistry simulation (NSRCX == 3)
-!        or Rn-Pb-Be chemistry simulation (NSRCX == 1).  Other simulations
-!        do not carry soluble tracers, so set WASHFRAC = 0.
-!  (2 ) K_WASH, the rainout rate constant, and F, the areal fraction of the
-!        grid box undergoing precipitiation, are computed according to
-!        Giorgi & Chaimedes, as described in Jacob et al, 2000.
-!  (3 ) Washout is only done for T >= 268 K, when the cloud condensate is
-!        in the liquid phase.
-!  (4 ) T(I+I0,J+J0,L) is now T(I,J,L).  Removed IREF, JREF -- these are
-!        obsolete.  Updated comments. (bmy, 9/27/01)
-!  (5 ) Removed obsolete commented out code from 9/01 (bmy, 10/24/01)
-!  (6 ) Now reference BXHEIGHT, T from "dao_mod.f".  Also remove reference
-!        to "CMN_NOX".  Updated comments.  Now bundled into "wetscav_mod.f".
-!        Now also references "tracerid_mod.f".  Added internal routines
-!        WASHFRAC_AEROSOL and WASHFRAC_LIQ_GAS.  Also removed reference to
-!        CMN since we don't need to use NSRCX here. (bmy, 11/6/02)
-!  (7 ) Updated for carbon aerosol and dust tracers (rjp, bmy, 4/5/04)
-!  (8 ) Updated for seasalt aerosol tracers (rjp, bec, bmy, 4/20/04)
-!  (9 ) Updated for secondary organic aerosol tracers (rjp, bmy, 7/13/04)
-!  (10) Now move internal routines WASHFRAC_AEROSOL and WASHFRAC_LIQ_GAS
-!        to the module and pass all arguments explicitly.  This facilitates
-!        parallelization on the Altix platform (bmy, 7/20/04)
-!  (11) Now handle washout of mercury aerosol tracers (eck, bmy, 12/9/04)
-!  (13) Updated for AS, AHS, LET, NH4aq, SO4aq.  Also condensed the IF
-!        statement by grouping blocks together (cas, bmy, 12/20/04)
-!  (14) Updated for SO4s, NITs (bec, bmy, 4/25/05)
-!  (15) Now make sure all USE statements are USE, ONLY (bmy, 10/3/05)
-!  (16) Bug fix: Deplete H2O2s the same as SO2s.  Also change Henry's law
-!        constant for Hg2 to 1.0d+14. Now use functions IS_Hg2 and IS_HgP to
-!        determine if a tracer is a tagged Hg0 or HgP tracer.
-!        (dkh, rjp, eck, cdh, bmy, 1/6/06)
-!  (17) Updated for SOG4 and SOA4 (bmy, 5/18/06)
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
-!  30 Sep 2010 - H. Amos     - WASHFRAC_LIQ_GAS now a subroutine (was an
-!                              external function)
-!  14 Oct 2010 - H. Amos     - Remove dependence on I, J. That means removing
-!                              I, J as input arguments and adding T, BXHEIGHT,
-!                              H2O2s, and SO4s and input arguments.
-!  16 Aug 2011 - H. Amos     - move K_WASH to WASHFRAC_AEROSOL, WASHFRAC_HNO3,
-!                              and WASHFRAC_LIQ_GAS
-!  16 Aug 2011 - H. Amos     - Replace logical AER with KIN. Serves the same
-!                              purpose in the code, but emphasizes to the user
-!                              that the difference in washout isn't whether or
-!                              not the tracer is an aerosol, it's whether or not
-!                              washout is modeled as a kinetic vs equilibrium
-!                              process.
-!  27 Sep 2011 - H. Amos     - remove LHg2_WETDasHNO3 logical, it's obsolete
-!  20 Jan 2012 - H. Amos     - WASHFRAC for aerosol is now either computed by
-!                              WASHFRAC_FINE_AEROSOL or WASHFRAC_COARSE_AEROSOL
-!  31 May 2013 - R. Yantosca - Now accept State_Chm, and pass it to TOMAS code
-!  13 Aug 2013 - M. Sulprizio- Add modifications for updated SOA and SOA +
-!                              semivolatile POA simulations (H. Pye)
-!  12 Sep 2013 - M. Sulprizio- Add modifications for acid uptake on dust
-!                              aerosols (T.D. Fairlie)
-!  27 Sep 2013 - M. Sulprizio- DST2-DST4 are now considered coarse mode aerosol
-!                              following the recommendation of T.D. Fairlie.
-!                              NITd, SO4d, and DALK are similarly updated.
-!  25 Aug 2014 - M. Sulprizio- Now accept Input_Opt as an argument
-!  12 May 2015 - E. Lundgren - Change tracer units from v/v -> kg for TOMAS if
-!                              not already in kg (ie. called from convection)
-!  04 Jun 2015 - E. Lundgren - Now accept am_I_Root and RC as arguments
-!  23 Jun 2015 - E. Lundgren - Adjust 5/12/15 TOMAS bug fix to convert
-!                              kg/kg total air <-> kg for new convection units
-!  08 Jul 2015 - E. Lundgren - Add marine organic aerosols (B.Gantt, M.Johnson)
-!  22 Sep 2015 - E. Lundgren - Add kg/m2 <-> kg conversion for TOMAS
-!  30 Sep 2015 - R. Yantosca - Now use ThisSpc%WD_Is_HNO3 and ThisSpc%WD_Is_SO2
-!                              to flag the special cases of HNO3 & SO2 wetdep
-!  16 Oct 2015 - E. Lundgren - Use ThisSpc%WD_Is_H2SO4 to treat H2SO4 as aerosol
-!                              for wetdep, and consolidate ifelse blocks
-!  27 Jul 2016 - E. Lundgren - Now expect dry mixing ratio not total
-!  22 Dec 2016 - R. Yantosca - Bug fix: K0, CR, pKa have to be REAL(f8)
-!  09 Nov 2017 - R. Yantosca - Return error condition to calling program
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1862,10 +1501,10 @@
 ! !LOCAL VARIABLES:
 !
       ! Scalars
-#if defined( APM )
+#ifdef APM
       REAL(fp)               :: RIN
 #endif
-#if defined( TOMAS )
+#ifdef TOMAS
       LOGICAL                :: UNITCHANGE_KGKG ! flag for STT units kg/kg
       LOGICAL                :: UNITCHANGE_KGM2 ! flag for STT units kg/m2
 #endif
@@ -1891,7 +1530,7 @@
       ErrMsg  = ''
       ThisLoc = ' -> at Washout (in module GeosCore/wetscav_mod.F)'
 
-#if defined( TOMAS )
+#ifdef TOMAS
       !-----------------------------------------------------------------
       ! TOMAS MICROPHYSICS ONLY
       !
@@ -1972,7 +1611,7 @@
          WASHFRAC = WASHFRAC_FINE_AEROSOL( DT, F, PP, TK )
 
          ! Use the wet-scavenging following [Chin et al, 1996] such
-         ! that a soluble fraction of SO2 is limited by the availability
+         ! that a soluble fraction of SO2 is limited by the availability 
          ! of H2O2 in the precipitating grid box.  Then scavenge the
          ! soluble SO2 at the same rate as sulfate.
          IF ( TK >= 268e+0_fp .AND. SO2s > TINY_FP ) THEN
@@ -2026,7 +1665,7 @@
       ! NOTE: treat H2SO4 as an aerosol for wetdep in TOMAS
       !-----------------------------------------------------------------
       ELSE IF ( SpcInfo%MP_SizeResAer .or. SpcInfo%MP_SizeResNum ) THEN
-#if defined( APM )
+#ifdef APM
          ! Washout is a kinetic process
          KIN      = .TRUE.
 
@@ -2053,7 +1692,7 @@
          CALL WASHFRAC_APMSIZE_AEROSOL
      &       (RIN, DT, F, PP, TK, WASHFRAC)
 #endif
-#if defined( TOMAS )
+#ifdef TOMAS
          ! Washout is a kinetic process
          KIN      = .TRUE.
 
@@ -2082,11 +1721,24 @@
          KIN      = .TRUE.
 
          ! Compute washout fraction
+#ifdef LUO_WETDEP
+         ! Luo et al scheme: Compute washout fraction.  If the efficiency
+         ! for T > 258 K is less than .999, treat it as a fine aerosol;
+         ! otherwise treat it as "coarse" aerosol.
+         IF ( SpcInfo%WD_RainoutEff(3) < 0.999_fp ) THEN
+            WASHFRAC = WASHFRAC_FINE_AEROSOL( DT, F, PP, TK )
+         ELSE
+            WASHFRAC = WASHFRAC_FINE_AEROSOLEW( DT, F, PP, TK )
+         ENDIF
+#else
+         ! Default scheme: Compute washout fraction, but always
+         ! assume that it is for fine aerosol.
          WASHFRAC = WASHFRAC_FINE_AEROSOL( DT, F, PP, TK )
+#endif
 
       ENDIF
 
-#if defined( TOMAS )
+#ifdef TOMAS
       !-----------------------------------------------------------------
       ! TOMAS MICROPHYSICS ONLY
       ! Convert State_Chm%Species units back to original units
@@ -2166,20 +1818,7 @@
 !
 ! !REVISION HISTORY:
 !  08 Nov 2002 - R. Yantosca - Initial version
-!  (1 ) WASHFRAC_AEROSOL used to be an internal function to subroutine WASHOUT.
-!        This caused NaN's in the parallel loop on Altix, so we moved it to
-!        the module and now pass Iall arguments explicitly (bmy, 7/20/04)
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
-!  21 Jan 2011 - J. Fisher & Q. Wang - Update to account for time-dependent
-!        shift in aerosol size distribution that slows washout as a rain
-!        event proceeds (see e.g. Feng et al., 2007, 2009).
-!  16 Aug 2011 - H Amos      - Remove K_WASH from input list, make a defined
-!                              parameter.
-!  20 Jan 2012 - H Amos      - rename WASHFRAC_FINE_AEROSOL to distinguish
-!                              this function from WASHFRAC_COARSE_AEROSOL
-!  04 Sep 2013 - R. Yantosca - Bug fix: Prevent div-by-zero if F=0.  Because F
-!                              multiplies the whole expression for WASHFRAC,
-!                              WASHFRAC=0 whenever F=0 anyway.
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -2226,6 +1865,99 @@
 !------------------------------------------------------------------------------
 !BOP
 !
+! !IROUTINE: washfrac_fine_aerosolew
+!
+! !DESCRIPTION: Function WASHFRAC\_FINE\_AEROSOLEW returns the fraction of
+!  soluble aerosol species lost to washout.
+!\\
+!\\
+! !INTERFACE:
+!
+      FUNCTION WASHFRAC_FINE_AEROSOLEW( DT, F, PP, TK )
+     &         RESULT( WASHFRAC )
+!
+! !USES:
+!
+!
+! !INPUT PARAMETERS:
+!
+      REAL(fp), INTENT(IN) :: DT        ! Timestep of washout event [s]
+      REAL(fp), INTENT(IN) :: F         ! Fraction of grid box that is
+                                        !  precipitating [unitless]
+      REAL(fp), INTENT(IN) :: PP        ! Precip rate thru bottom of grid
+                                        !  box (I,J,L)  [cm3 H2O/cm2 air/s]
+      REAL(fp), INTENT(IN) :: TK        ! Temperature in grid box [K]
+!
+! !RETURN VALUE:
+!
+      REAL(fp)             :: WASHFRAC  ! Fraction of soluble species
+                                        !  lost to washout [1]
+!
+! !REVISION HISTORY:
+!  08 Nov 2002 - R. Yantosca - Initial version
+!  See the Git history with the gitk browser!
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETER:
+!
+      ! Washout rate constant for aerosols: aP^b (p: mm h^-1)
+      ! K_WASH for aerosols in accumulation mode (qq,10/11/2011)
+      REAL(fp), PARAMETER :: K_WASH = 1.06e-3_fp
+#ifdef LUO_WETDEP
+      REAL(fp)            :: RATE
+#endif
+
+      !=================================================================
+      ! WASHFRAC_FINE_AEROSOLEW begins here!
+      !=================================================================
+      IF ( ( TK >= 268.0_fp ) .OR. ITS_A_POPS_SIM ) THEN
+
+         !---------------------------------
+         ! T >= 268K (or POPS simulation)
+         !---------------------------------
+         IF ( F > 0.0_fp ) THEN
+#ifdef LUO_WETDEP
+            ! Luo et al scheme: New formulation for washout fraction
+            RATE = 10.e+0_fp**(274.35758e+0_fp+
+     &             332839.59273_fp*(log10(0.5e-6_fp))**(-4)+
+     &             226656.57259_fp*(log10(0.5e-6_fp))**(-3)+
+     &             58005.91340_fp*(log10(0.5e-6_fp))**(-2)+
+     &             6588.38582_fp/(log10(0.5e-6_fp))+
+     &             0.244984_fp*
+     &             SQRT(MIN(20.e+0_fp,(PP*36000.e+0_fp/F))))
+            WASHFRAC = F * (1e+0_fp - EXP(-RATE * DT))
+#else
+            ! Default scheme
+            WASHFRAC = F*(1.0_fp - EXP(-0.92_fp * (PP / F*3.6e+4_fp)
+     &                ** 0.79_fp * DT / 3.6e+3_fp ))
+#endif
+         ELSE
+            WASHFRAC = 0e+0_fp
+         ENDIF
+
+      ELSE
+
+         !---------------------------------
+         ! T < 268K
+         !---------------------------------
+         IF ( F > 0.0_fp ) THEN
+            WASHFRAC = F *(1e+0_fp - EXP( -2.6e+1_fp*K_WASH *
+     &              (PP / F*3.6e+4_fp )**0.96e+0_fp * DT / 3.6e+3_fp ))
+         ELSE
+            WASHFRAC = 0e+0_fp
+         ENDIF
+
+      ENDIF
+
+      END FUNCTION WASHFRAC_FINE_AEROSOLEW
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: washfrac_coarse_aerosol
 !
 ! !DESCRIPTION: Function WASHFRAC\_COARSE\_AEROSOL returns the fraction of
@@ -2256,17 +1988,7 @@
 !
 ! !REVISION HISTORY:
 !  08 Nov 2002 - R. Yantosca - Initial version
-!  (1 ) WASHFRAC_AEROSOL used to be an internal function to subroutine WASHOUT.
-!        This caused NaN's in the parallel loop on Altix, so we moved it to
-!        the module and now pass Iall arguments explicitly (bmy, 7/20/04)
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
-!  16 Aug 2011 - H Amos      - Remove K_WASH from input list, make a defined
-!                              parameter.
-!  20 Jan 2012 - H Amos      - WASHFRAC_COARSE_AEROSOL created to handle
-!                              SALC and DST4
-!  04 Sep 2013 - R. Yantosca - Bug fix: Prevent div-by-zero if F=0.  Because F
-!                              multiplies the whole expression for WASHFRAC,
-!                              WASHFRAC=0 whenever F=0 anyway.
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -2275,7 +1997,7 @@
       ! WASHFRAC_COARSE_AEROSOL begins here!
       !=================================================================
 
-      IF ( TK >= 268e+0_fp .OR. ITS_A_POPS_SIM ) THEN
+      IF ( TK >= 268.0_fp .OR. ITS_A_POPS_SIM ) THEN
 
          !---------------------------------
          ! T >= 268K (or POPS simulation)
@@ -2303,7 +2025,7 @@
 
       END FUNCTION WASHFRAC_COARSE_AEROSOL
 !EOC
-#if defined( TOMAS )
+#ifdef TOMAS
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
 !------------------------------------------------------------------------------
@@ -2357,11 +2079,7 @@
       INTEGER,        INTENT(OUT)   :: RC         ! Success or failure?
 !
 ! !REVISION HISTORY:
-!  31 May 2013 - R. Yantosca - Now accept State_Met, State_Chm as arguments
-!  04 Sep 2013 - R. Yantosca - Bug fix: Prevent div-by-zero if F=0.  Because F
-!                              multiplies the whole expression for WASHFRAC,
-!                              WASHFRAC=0 whenever F=0 anyway.
-!  24 Sep 2015 - E. Lundgren - Function is now a subroutine and outputs RC
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -2460,35 +2178,46 @@
 
 !
 ! !REVISION HISTORY:
-!  13 Aug 2011, H Amos: Initial version, modeled after WASHFRAC_AEROSOL.
-!                       Seperate function created to emphasize that the new,
-!                       updated washout coefficients from Feng et al (2007;
-!                       2009) should only be applied to aerosol species. It
-!                       was a coincidence before that the original washout
-!                       coefficients for aerosols and HNO3 were the same.
-!  16 Aug 2011, H Amos: Remove K_WASH from input list, now a defined parameter
-!  04 Sep 2013 - R. Yantosca - Bug fix: Prevent div-by-zero if F=0.  Because F
-!                              multiplies the whole expression for WASHFRAC,
-!                              WASHFRAC=0 whenever F=0 anyway.
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
 !
-! !DEFINED PARAMETER:
+! !DEFINED PARAMETERS:
 !
       REAL(fp), PARAMETER :: K_WASH = 1.0_fp  ! First order washout rate
                                               ! constant [cm^-1].
+#ifdef MODEL_GEOS
+      ! For online GEOS model only, apply for T >= 240 K (cf. Eric Fleming)
+      REAL(fp), PARAMETER :: TK_THRESHOLD = 240.0_fp
+#else
+      ! Otherwise set temperature threshold T >= 268 K
+      REAL(fp), PARAMETER :: TK_THRESHOLD = 268.0_fp
+#endif
+!
+! !LOCAL VARIABLES:
+!
+#ifdef LUO_WETDEP
+      REAL(fp)            :: RATE
+#endif
 
       !=================================================================
       ! WASHFRAC_HNO3 begins here!
       !=================================================================
-      IF ( TK >= 268e+0_fp  ) THEN
+      IF ( TK >= TK_THRESHOLD ) THEN
 
          !------------------------
          ! T >= 268K: Do washout
          !------------------------
          IF ( F > 0e+0_fp ) THEN
-            WASHFRAC = F * (1e+0_fp - EXP(-K_WASH * (PP / F) * DT))
+#ifdef LUO_WETDEP
+            ! Luo et al scheme: New formulation for washfrac
+            RATE = 2.e+0_fp*((PP/F)**(0.62e+0_fp))
+            WASHFRAC = F * ( 1e+0_fp - EXP( -RATE * DT ) )
+#else
+            ! Default scheme
+            WASHFRAC = F * ( 1e+0_fp - EXP( -K_WASH * (PP / F) * DT) )
+#endif
          ELSE
             WASHFRAC = 0e+0_fp
          ENDIF
@@ -2496,14 +2225,14 @@
       ELSE
 
          !------------------------
-         ! T < 268K: No washout
+         ! T < threshold: No washout
          !------------------------
          WASHFRAC = 0e+0_fp
 
       ENDIF
 
       END FUNCTION WASHFRAC_HNO3
-#if defined( APM )
+#ifdef APM
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
 !------------------------------------------------------------------------------
@@ -2734,17 +2463,7 @@
 !
 ! !REVISION HISTORY:
 !  20 Jul 2004 - R. Yantosca - Initial version
-!  (1 ) WASHFRAC_LIQ_GAS used to be an internal function to subroutine WASHOUT.
-!        This caused NaN's in the parallel loop on Altix, so we moved it to
-!        the module and now pass all arguments explicitly (bmy, 7/20/04)
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
-!  10 Jan 2011 - H. Amos     - Remove AER from the argument list
-!  03 Jun 2011 - H. Amos     - convert from a function to a subroutine and
-!                              add AER to the argument list
-!  16 Aug 2011 - H. Amos     - remove K_WASH from input list, now a defined
-!                              parameter
-!  16 Aug 2911 - H. Amos     - rename AER logical KIN to emphasize that washout
-!                              is either a kinetic or equilibrium process
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -2755,7 +2474,7 @@
 !
 ! !DEFINED PARAMETERS
 !
-      REAL(fp), PARAMETER :: K_WASH = 1e+0_fp  ! First order washout rate
+      REAL(fp), PARAMETER :: K_WASH = 1.0_fp   ! First order washout rate 
                                                ! constant [cm^-1].
 
       !=================================================================
@@ -2767,7 +2486,7 @@
       KIN = .FALSE.
 
       ! Suppress washout below 268 K
-      IF ( TK >= 268e+0_fp ) THEN
+      IF ( TK >= 268.0_fp ) THEN
 
          !------------------------
          ! T >= 268K: Do washout
@@ -2814,7 +2533,7 @@
 ! !IROUTINE: wetdep
 !
 ! !DESCRIPTION: Subroutine WETDEP computes the downward mass flux of
-!  species due to washout and rainout of aerosols and soluble species in a
+!  species due to washout and rainout of aerosols and soluble species in a 
 !  column.  This subroutine implements an algorithm in which the
 !  precipitation fields come directly from the met archive.
 !\\
@@ -2827,9 +2546,11 @@
 !
 ! !USES:
 !
+#ifdef BPCH_DIAG
       USE DEPO_MERCURY_MOD, ONLY : ADD_Hg2_WD
       USE DEPO_MERCURY_MOD, ONLY : ADD_HgP_WD
       USE DEPO_MERCURY_MOD, ONLY : ADD_Hg2_SNOWPACK
+#endif
       USE ErrCode_Mod
       USE ERROR_MOD
       USE Input_Opt_Mod,    ONLY : OptInput
@@ -2901,7 +2622,7 @@
 !  completely removed from grid box (I,J,NZ).  There is no evaporation
 !  and "resuspension" of aerosols during a rainout event.
 !                                                                             .
-!  For large-scale (a.k.a. stratiform) precipitation, the first order rate
+!  For large-scale (a.k.a. stratiform) precipitation, the first order rate 
 !  constant for rainout in the grid box (I,J,L=NZ) (cf. Eq. 12, Jacob
 !  et al, 2000) is given by:
 !                                                                             .
@@ -2910,7 +2631,7 @@
 !                         L + W
 !                                                                             .
 !  and the areal fraction of grid box (I,J,L=NZ) that is actually
-!  experiencing large-scale precipitation (cf. Eq. 11, Jacob et al, 2000)
+!  experiencing large-scale precipitation (cf. Eq. 11, Jacob et al, 2000) 
 !  is given by:
 !                                                                             .
 !                         Q
@@ -2960,42 +2681,12 @@
 !                                                                             .
 !  Washout:
 !  ========
-!  Washout occurs when we have evaporation (or no precipitation at all) at
+!  Washout occurs when we have evaporation (or no precipitation at all) at 
 !  grid box (I,J,L), but have rain coming down from grid box (I,J,L+1).
 !                                                                             .
 ! !REVISION HISTORY:
 !  20 Sep 2010 - R. Yantosca - Initial version, based on WETDEP
-!  28 Sep 2010 - H. Amos     - Now define Q, QDOWN directly from MERRA met
-!  08 Oct 2010 - R. Yantosca - Adjusted OpenMP do loop
-!  09-Dec-2010 - H. Amos     - Added PDOWN(L+1) > 0 to criterion for IS_WASHOUT
-!  09-Dec-2010 - H. Amos     - SAFETY now prints PDOWN(L+1) instead of PDOWN(L)
-!  31-Dec-2010 - H. Amos     - Clean up code, remove obsolete code
-!  31-Dec-2010 - H. Amos     - Added comments
-!  27 May 2011 - R. Yantosca - Now pass F_RAINOUT to DO_WASHOUT_ONLY
-!  25 Aug 2014 - M. Sulprizio- Now accept Input_Opt as an argument
-!  01 Apr 2015 - L. Zhang    - Don't do wetdep in nested-grid buffer zone
-!  02 Apr 2015 - E. Lundgren - Move tracer unit conversion from kg/kg to kg
-!                              to within this routine
-!  04 Jun 2015 - E. Lundgren - Now accept am_I_Root and RC as arguments
-!  09 Jun 2015 - R. Yantosca - Now deposit Hg2, HgP to snowpack regardless of
-!                              whether the dynamic ocean is used
-!  04 Mar 2016 - C. Keller   - Added option to scale convective fraction of
-!                              large-scale precip.
-!  22 Apr 2016 - R. Yantosca - Now get Is_Hg2, Is_HgP from species database
-!  25 Apr 2016 - R. Yantosca - Now get the Hg category # from species database
-!  29 Apr 2016 - R. Yantosca - Don't initialize pointers in declaration stmts
-!  30 Jun 2016 - R. Yantosca - Remove instances of STT.  Now get the advected
-!                              species ID from State_Chm%Map_Advect.
-!  30 Jun 2016 - R. Yantosca - Replace STT with Spc and DSTT with DSpc
-!  01 Jul 2016 - R. Yantosca - Now rename species DB object ThisSpc to SpcInfo
-!  05 Jul 2016 - R. Yantosca - Now replace IDWETD with State_Chm%Map_Wetdep
-!  05 Aug 2016 - R. Yantosca - Remove temporary tracer-removal code
-!  05 Aug 2016 - R. Yantosca - Remove reference to Spc, it's not needed
-!  17 Mar 2017 - R. Yantosca - Replace NSOL with State_Chm%nWetDep
-!  24 Aug 2017 - M. Sulprizio- Rename routine from WETDEP_MERRA to WETDEP
-!  28 Sep 2017 - E. Lundgren - Simplify unit conversions using wrapper routine
-!  09 Nov 2017 - R. Yantosca - Now accept State_Diag as an argument
-!  09 Nov 2017 - R. Yantosca - Return error condition to calling program
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -3019,7 +2710,7 @@
       REAL(fp)               :: F_RAINOUT,     F_WASHOUT
       REAL(fp)               :: DEP_HG
       REAL(fp)               :: CNVSCL
-      CHARACTER(LEN=63)      :: OrigUnit
+      REAL(fp)               :: COND_WATER_CONTENT
 
       ! Arrays
       ! DSpc is the accumulator array of rained-out
@@ -3030,6 +2721,7 @@
      &                               State_Grid%NY)
 
       ! Strings
+      CHARACTER(LEN=63)      :: OrigUnit
       CHARACTER(LEN=255)     :: ErrMsg, ErrorMsg, ThisLoc
 
       ! Pointers
@@ -3106,6 +2798,7 @@
 !$OMP+PRIVATE( F_RAINOUT,   F_WASHOUT,  K_RAIN,      Q          )
 !$OMP+PRIVATE( QDOWN,       IS_RAINOUT, IS_WASHOUT,  N          )
 !$OMP+PRIVATE( DEP_HG,      SpcInfo,    Hg_Cat,      EC         )
+!$OMP+PRIVATE( COND_WATER_CONTENT )
 !$OMP+SCHEDULE( DYNAMIC )
       DO J = 1, State_Grid%NY
       DO I = 1, State_Grid%NX
@@ -3133,31 +2826,47 @@
          ENDDO
 
          !==============================================================
-         ! (3)  R a i n o u t   F r o m   T o p   L a y e r  (L = State_Grid%NZ)
+         ! (3)  R a i n o u t   F r o m   T o p   L a y e r
+         ! (L = State_Grid%NZ)
          !==============================================================
 
          ! Zero variables for this level
-         ERRMSG      = 'RAINOUT: Top of atm'
-         F           = 0e+0_fp
-         F_PRIME     = 0e+0_fp
-         F_RAINOUT   = 0e+0_fp
-         F_WASHOUT   = 0e+0_fp
-         K_RAIN      = 0e+0_fp
-         Q           = 0e+0_fp
+         ERRMSG             = 'RAINOUT: Top of atm'
+         F                  = 0.0_fp
+         F_PRIME            = 0.0_fp
+         F_RAINOUT          = 0.0_fp
+         F_WASHOUT          = 0.0_fp
+         K_RAIN             = 0.0_fp
+         Q                  = 0.0_fp
+         COND_WATER_CONTENT = 0.0_fp
 
          ! Start at the top of the atmosphere
          L = State_Grid%NZ
 
          ! If precip forms at (I,J,L), assume it all rains out
-         IF ( QQ(L,I,J) > 0e+0_fp ) THEN
+         IF ( QQ(L,I,J) > 0.0_fp ) THEN
 
             ! Q is the new precip that is forming within grid box (I,J,L)
             Q = QQ(L,I,J)
 
-            ! Compute K_RAIN and F_RAINOUT for large-scale
-            ! precipitation (cf. Eqs. 11-13, Jacob et al, 2000)
-            K_RAIN  = LS_K_RAIN( Q )
-            F_RAINOUT = LS_F_PRIME( Q, K_RAIN )
+#ifdef LUO_WETDEP
+            ! Luo et al scheme: Compute the condensed water
+            ! content instead of using a constant value.
+            ! Then compute K_RAIN and F_RAINOUT for LS precip.
+            COND_WATER_CONTENT = MAX(1.e-30_fp,(QQ(L,I,J)*DT+
+     &      State_Met%QL(I,J,L)*State_Met%AIRDEN(I,J,L)*1e-3_fp))
+            K_RAIN    = LS_K_RAIN( QQ(L,I,J), COND_WATER_CONTENT )
+            F_RAINOUT = MAX( 1.e-4_fp, State_Met%CLDF(I,J,L) )
+            F_RAINOUT = F_RAINOUT * MIN(1.e+0_fp,
+     &                  QQ(L,I,J) / ( COND_WATER_CONTENT * K_RAIN) )
+#else
+            ! Default scheme: Compute K_RAIN and F_RAINOUT for LS
+            ! precipitation (cf. Eqs. 11-13, Jacob et al, 2000).
+            ! Use COND_WATER_CONTENT = 1e-6 [cm3/cm3], which
+            ! was recommended by Qiaoqiao Wang et al [2014].
+            K_RAIN    = LS_K_RAIN(  Q,         1.0e-6_fp  )
+            F_RAINOUT = LS_F_PRIME( Q, K_RAIN, 1.0e-6_fp  )
+#endif
 
             ! Set F = F_RAINOUT, since there is no FTOP at L = State_Grid%NZ
             F = F_RAINOUT
@@ -3170,7 +2879,7 @@
 
             ! Only compute rainout if F > 0.
             ! This helps to eliminate unnecessary CPU cycles.
-            IF ( F > 0e+0_fp ) THEN
+            IF ( F > 0.0_fp ) THEN
                CALL DO_RAINOUT_ONLY( am_I_Root  = am_I_Root,
      &                               LS         = LS,
      &                               I          = I,
@@ -3206,7 +2915,11 @@
          ! (4)  R a i n o u t   a n d   W a s h o u t
          !      i n   t h e   M i d d l e   L e v e l s
          !==============================================================
+#ifdef LUO_WETDEP
+         DO L = State_Grid%NZ-1, 1, -1
+#else
          DO L = State_Grid%NZ-1, 2, -1
+#endif
 
             ! Zero variables for each level
             F           = 0e+0_fp
@@ -3220,12 +2933,24 @@
             ! If there is new precip forming w/in the grid box ...
             IF ( QQ(L,I,J) > 0e+0_fp ) THEN
 
-               ! Compute K_RAIN and F_RAINOUT for large-scale
-               ! precipitation (cf. Eqs. 11-13, Jacob et al, 2000)
-               ! F_RAINOUT is the fraction of grid box (I,J,L)
-               ! experiencing rainout.
-               K_RAIN  = LS_K_RAIN( QQ(L,I,J) )
-               F_PRIME = LS_F_PRIME( QQ(L,I,J), K_RAIN )
+#ifdef LUO_WETDEP
+               ! Luo et al scheme: Compute the condensed water
+               ! content instead of using a defined constant value.
+               ! Then compute K_RAIN and F_PRIME for LS precip.
+               COND_WATER_CONTENT = MAX(1.e-30_fp,(QQ(L,I,J)*DT+
+     &         State_Met%QL(I,J,L)*State_Met%AIRDEN(I,J,L)*1e-3_fp))
+               K_RAIN  = LS_K_RAIN( QQ(L,I,J), COND_WATER_CONTENT )
+               F_PRIME = MAX(1.e-4_fp,State_Met%CLDF(I,J,L))
+               F_PRIME = F_PRIME*MIN(1.e+0_fp,
+     &                   QQ(L,I,J) / ( K_RAIN * COND_WATER_CONTENT ) )
+#else
+               ! Default scheme: Compute K_RAIN and F_RAINOUT for LS
+               ! precipitation (cf. Eqs. 11-13, Jacob et al, 2000).
+               ! Use COND_WATER_CONTENT = 1e-6 [cm3/cm3], which
+               ! was recommended by Qiaoqiao Wang et al [2014].
+               K_RAIN  = LS_K_RAIN(  QQ(L,I,J),         1.0e-6_fp )
+               F_PRIME = LS_F_PRIME( QQ(L,I,J), K_RAIN, 1.0e-6_fp )
+#endif
 
             ELSE
 
@@ -3260,7 +2985,7 @@
             IF ( F_WASHOUT > 0e+0_fp ) THEN
 
                ! QDOWN is the precip leaving thru the bottom of box (I,J,L)
-               ! Q     is the precip that is evaporating within box (I,J,L)
+               ! Q     is the precip that is evaporating within box (I,J,L) 
                QDOWN = PDOWN(L,I,J)
                Q     = REEVAP(L,I,J)
 	       Q     = MAX( Q, 0e+0_fp ) ! Negative values are unphysical
@@ -3277,7 +3002,7 @@
                   ! precipitation (field REEVAPLS).
                   ! So the assumption below is not required. ** VPS (6/21/16)
 
-                  ! The amount of precipitating water entering from above
+                  ! The amount of precipitating water entering from above 
                   ! which evaporates. If there is rainout (new precip
                   ! forming) then we have no way to estimate this, so assume
                   ! zero for now. Consequently there will be no resuspended
@@ -3341,7 +3066,13 @@
 
             ENDIF
 
+#ifdef LUO_WETDEP
+            ! Luo scheme: avoid double washout
+            IF ( IS_WASHOUT .AND. L > 1 ) THEN
+#else
+            ! Default scheme
             IF ( IS_WASHOUT ) THEN
+#endif
 
                !--------------------------------------------------------
                ! WASHOUT ONLY
@@ -3387,7 +3118,7 @@
             ! then  set F, the effective area of precipitation in grid
             ! box (I,J,L), to zero.
             !
-            ! Also, all of the previously rained-out species that is now
+            ! Also, all of the previously rained-out species that is now 
             ! coming down from grid box (I,J,L+1) will evaporate and
             ! re-enter the atmosphere in the gas phase in grid box
             ! (I,J,L).  This is called "resuspension".
@@ -3454,9 +3185,14 @@
             ! QDOWN is the precip leaving thru the bottom of box (I,J,L+1)
             QDOWN = PDOWN(L+1,I,J)
 
-            ! Since no precipitation is forming within grid box (I,J,L),
-            ! F' = 0, and F = MAX( F', FTOP ) reduces to F = FTOP.
+#ifdef LUO_WETDEP
+            ! Luo et al scheme: Only consider washout
+            F = F_WASHOUT
+#else
+            ! Default scheme: Since no precip is forming within grid box 
+            ! (I,J,L), F' = 0, and F = MAX( F', FTOP ) reduces to F = FTOP.
             F = FTOP
+#endif
 
             ! Only compute washout if F > 0.
             IF ( F > 0e+0_fp ) THEN
@@ -3487,6 +3223,7 @@
             ENDIF
          ENDIF
 
+#ifdef BPCH_DIAG
          !==============================================================
          ! (8)  M e r c u r y   S i m u l a t i o n   O n l y
          !
@@ -3544,6 +3281,7 @@
             ENDDO
 
          ENDIF
+#endif
 
       ENDDO
       ENDDO
@@ -3581,26 +3319,27 @@
 !\\
 ! !INTERFACE:
 !
-      FUNCTION LS_K_RAIN( Q ) RESULT( K_RAIN )
+      FUNCTION LS_K_RAIN( Q, COND_WATER ) RESULT( K_RAIN )
 !
 ! !INPUT PARAMETERS:
 !
-      REAL(fp), INTENT(IN) :: Q        ! Rate of precipitation formation
-                                       !  [cm3 H2O/cm3 air/s]
-!
+      REAL(fp), INTENT(IN) :: Q           ! Rate of precipitation formation 
+                                          !  [cm3 H2O/cm3 air/s]
+      REAL(fp), INTENT(IN) :: COND_WATER  ! Condensed water content
+!                                         !  [cm3 H2O/cm3 air/s]
 ! !RETURN VALUE:
 !
-      REAL(fp)             :: K_RAIN   ! 1st order rainout rate constant [1/s]
+      REAL(fp)             :: K_RAIN      ! 1st order rate constant [1/s]
 !
 ! !REVISION HISTORY:
 !  18 Mar 2004 - R. Yantosca - Initial version
-!  (1 ) Now made into a MODULE routine since we cannot call internal routines
-!        from w/in a parallel loop.  Updated comments. (bmy, 3/18/04)
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
-!  23 Oct 2015 - R. Yantosca - Now use parameter COND_WATER_CONTENT
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
+!
+! !DEFINED VARIABLES:
+!
       !==================================================================
       ! LS_K_RAIN begins here!
       !==================================================================
@@ -3610,7 +3349,7 @@
       ! (2) COND_WATER_CONTENT = L + W [cm3/cm3], the condensed water
       !                          content (liquid + ice)  in the cloud,
       !                          (cf. Jacob et al 2000, Eq. 12)
-      K_RAIN = 1.0e-4_fp + ( Q / COND_WATER_CONTENT )
+      K_RAIN = 1.0e-4_fp + ( Q / COND_WATER )
 
       END FUNCTION LS_K_RAIN
 !EOC
@@ -3622,43 +3361,45 @@
 ! !IROUTINE: ls_f_prime
 !
 ! !DESCRIPTION: Function LS\_F\_PRIME computes F', the fraction of the
-!  grid box that is precipitating during large scale (a.k.a. stratiform)
+!  grid box that is precipitating during large scale (a.k.a. stratiform) 
 !  precipitation.
 !\\
 !\\
 ! !INTERFACE:
 !
-      FUNCTION LS_F_PRIME( Q, K_RAIN ) RESULT( F_PRIME )
+      FUNCTION LS_F_PRIME( Q, K_RAIN, COND_WATER ) RESULT( F_PRIME )
 !
 ! !INPUT PARAMETERS:
 !
-      REAL(fp), INTENT(IN) :: Q        ! Rate of precipitation formation
-                                       !  [cm3 H2O/cm3 air/s]
-      REAL(fp), INTENT(IN) :: K_RAIN   ! 1st order rainout rate constant [1/s]
+      REAL(fp), INTENT(IN) :: Q           ! Rate of precipitation formation 
+                                          !  [cm3 H2O/cm3 air/s]
+      REAL(fp), INTENT(IN) :: K_RAIN      ! 1st order rate constant [1/s]
+      REAL(fp), INTENT(IN) :: COND_WATER  ! Condensed water content
+                                          !  [cm3 H2O/cm3 air/s]
 !
 ! !REMARKS:
 !
-      REAL(fp)             :: F_PRIME  ! Fraction of grid box undergoing
-                                       !  large-scale precipitation [unitless]
+      REAL(fp)             :: F_PRIME     ! Fraction of grid box undergoing 
+                                          !  large-scale precipitation [1]
 !
 ! !REVISION HISTORY:
 !  18 Mar 2004 - R. Yantosca - Initial version
-!  (1 ) Now made into a MODULE routine since we cannot call internal routines
-!        from w/in a parallel loop.  Updated comments. (bmy, 3/18/04)
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
-!  23 Oct 2015 - R. Yantosca - Now use COND_WATER_CONTENT parameter
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
+!
+! !LOCAL VARIABLES:
+!
       !=================================================================
       ! LS_F_PRIME begins here!
       !=================================================================
 
       ! Compute F', the area of the grid box undergoing precipitation
-      ! COND_WATER_CONTENT = L + W [cm3/cm3], the condensed water
-      !                      content (liquid + ice)  in the cloud
-      !                      (cf. Jacob et al 2000, Eq. 12)
-      F_PRIME = Q / ( K_RAIN * COND_WATER_CONTENT )
+      ! COND_WATER = L + W [cm3/cm3], the condensed water
+      !              content (liquid + ice)  in the cloud
+      !              (cf. Jacob et al 2000, Eq. 12)
+      F_PRIME = Q / ( K_RAIN * COND_WATER )
 
       END FUNCTION LS_F_PRIME
 !EOC
@@ -3679,21 +3420,19 @@
 !
 ! !INPUT PARAMETERS:
 !
-      REAL(fp), INTENT(IN) :: Q         ! Rate of precipitation formation
-                                      !  [cm3 H2O/cm3 air/s]
+      REAL(fp), INTENT(IN) :: Q         ! Rate of precipitation formation 
+                                        !  [cm3 H2O/cm3 air/s]
       REAL(fp), INTENT(IN) :: K_RAIN    ! 1st order rainout rate constant [1/s]
       REAL(fp), INTENT(IN) :: DT        ! Wet deposition timestep [s]
 !
 ! !RETURN VALUE:
 !
       REAL(fp)             :: F_PRIME   ! Frac. of grid box undergoing
-                                      !  convective precipitation [unitless]
+                                        !  convective precipitation [1]
 !
 ! !REVISION HISTORY:
 !  18 Mar 2004 - R. Yantosca - Initial version
-!  (1 ) Now made into a MODULE routine since we cannot call internal routines
-!        from w/in a parallel loop.  Updated comments. (bmy, 3/18/04)
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -3739,14 +3478,6 @@
 !
 ! !USES:
 !
-#if defined( BPCH_DIAG )
-      USE CMN_DIAG_MOD                                 ! Diagnostic flags
-      USE DIAG_MOD,       ONLY : AD16                  ! ND16 diag array
-      USE DIAG_MOD,       ONLY : AD17                  ! ND17 diag array
-      USE DIAG_MOD,       ONLY : AD39                  ! ND39 diag array
-      USE DIAG_MOD,       ONLY : CT16                  ! ND16 diag counter
-      USE DIAG_MOD,       ONLY : CT17                  ! ND17 diag counter
-#endif
       USE ErrCode_Mod
       USE ERROR_MOD,      ONLY : IT_IS_NAN             ! Test for NaN
       USE GET_NDEP_MOD,   ONLY : SOIL_WETDEP           ! Wet deposited species
@@ -3755,17 +3486,14 @@
       USE State_Diag_Mod, ONLY : DgnState              ! Diag State object
       USE State_Grid_Mod, ONLY : GrdState              ! Grid State object
       USE State_Met_Mod,  ONLY : MetState              ! Met State object
-#if defined( TOMAS )
+#ifdef TOMAS
       USE TOMAS_MOD,      ONLY : IBINS, ICOMP, AQOXID
       USE TOMAS_MOD,      ONLY : GETFRACTION
-#if defined( BPCH_DIAG )
-      USE DIAG_MOD,       ONLY : AD05
-#endif
 #endif
 !
 ! !INPUT PARAMETERS:
 !
-      LOGICAL,          INTENT(IN)    :: am_I_Root     ! Are we on root CPU?
+      LOGICAL,          INTENT(IN)    :: am_I_Root     ! Are we on root CPU?    
       LOGICAL,          INTENT(IN)    :: LS            ! =T denotes LS precip
       INTEGER,          INTENT(IN)    :: I             ! Longitude index
       INTEGER,          INTENT(IN)    :: J             ! Latitude index
@@ -3788,29 +3516,21 @@
 !
 ! !OUTPUT PARAMETERS:
 !
-      INTEGER,          INTENT(OUT)   :: RC            ! Success or failure?
+      INTEGER,          INTENT(OUT)   :: RC            ! Success or failure?    
 !
 ! !REMARKS:
 !  An IF statement in WETDEP decides if this rainout is to be done (and thus
 !  if this routine will be called.  The criteria for rainout is:
 !                                                                             .
 !     There is rainout if there is new precip formation in the grid box
-!     (i.e. DQRLSAN(I,J,L) > 0) and the fraction of the grid box experiencing
-!     rainout (i.e. F_RAINOUT) is greater than or equal to the fraction of
+!     (i.e. DQRLSAN(I,J,L) > 0) and the fraction of the grid box experiencing 
+!     rainout (i.e. F_RAINOUT) is greater than or equal to the fraction of 
 !     the grid box directly overhead experiencing precip (i.e. FTOP).
 !        -- Helen Amos (9/10/10)
 !
 ! !REVISION HISTORY:
 !  16 Sep 2010 - R. Yantosca - Initial version
-!  25 Aug 2014 - M. Sulprizio- Now accept Input_Opt as an argument
-!  22 Sep 2015 - E. Lundgren - Input STT is now in kg/m2 (prev kg)
-!  24 Sep 2015 - E. Lundgren - Now pass am_I_Root and RC as arguments
-!  29 Sep 2015 - E. Lundgren - Now pass State_Chm as argument and use
-!                              local pointer for STT array [kg/m2]
-!  30 Jun 2016 - R. Yantosca - Replace STT with Spc and DSTT with DSpc
-!  05 Jul 2016 - R. Yantosca - Now replace IDWETD with State_Chm%Map_WetDep
-!  09 Nov 2017 - R. Yantosca - Now accept State_Diag as an argument
-!  09 Nov 2017 - R. Yantosca - Return error condition to calling program
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -3827,7 +3547,7 @@
       ! Pointers
       REAL(fp), POINTER  :: Spc(:,:,:,:)
 
-#if defined( TOMAS )
+#ifdef TOMAS
       ! Scavenging fraction of 30-bin aerosols (win, 7/16/09)
       REAL(fp)           :: TOM_SC_FRACTION(IBINS)
       REAL(fp)           :: SOLFRAC, XFRAC
@@ -3845,23 +3565,6 @@
 
       ! Point to the chemical species array [kg/m2]
       Spc => State_Chm%Species
-
-#if defined( BPCH_DIAG )
-      !-----------------------------------------------------------------
-      ! ND16 (bpch) diagnostic
-      !-----------------------------------------------------------------
-
-      ! ND16 diagnostic...save F
-      IF ( ND16 > 0 .and. L <= LD16 ) THEN
-         AD16(I,J,L,IDX) = AD16(I,J,L,IDX) + F_RAINOUT
-         CT16(I,J,L,IDX) = CT16(I,J,L,IDX) + 1
-      ENDIF
-
-      ! ND17 diagnostic...increment counter
-      IF ( ND17 > 0 .and. L <= LD17 ) THEN
-         CT17(I,J,L,IDX) = CT17(I,J,L,IDX) + 1
-      ENDIF
-#endif
 
       !-----------------------------------------------------------------
       ! HISTORY (aka netCDF diagnostics)
@@ -3905,7 +3608,7 @@
             RETURN
          ENDIF
 
-#if defined( TOMAS )
+#ifdef TOMAS
          IF ( id_NK1 > 0 ) THEN
             IF ( N >= id_NK1 .and. N < id_NK1 + IBINS ) THEN
 
@@ -3925,6 +3628,15 @@
              ENDIF
           ENDIF
 #endif
+
+#ifdef LUO_WETDEP
+          ! Luo et al scheme: Attenuate the rainout fraction
+          ! of SO4 by the quantity PSO4s.
+          IF ( N == id_SO4 ) THEN
+             RAINFRAC = RAINFRAC * EXP( -State_Chm%PSO4s(I,J,L) )
+          ENDIF
+#endif
+
          ! WETLOSS is the amount of species in grid box per unit area
          ! (I,J,L) that is lost to rainout [kg/m2]
          WETLOSS = Spc(I,J,L,N) * RAINFRAC
@@ -3942,7 +3654,7 @@
 
          ELSE
 
-            ! Add to DSpc the species lost to rainout in grid box
+            ! Add to DSpc the species lost to rainout in grid box        
             ! (I,J,L) plus the species lost to rainout from grid box
             ! (I,J,L+1), which has by now precipitated down into
             ! grid box (I,J,L).  DSpc will continue to accumulate
@@ -3951,26 +3663,6 @@
             DSpc(NW,L,I,J) = DSpc(NW,L+1,I,J) + WETLOSS
 
          ENDIF
-
-#if defined( BPCH_DIAG )
-         !--------------------------------------------------------------
-         ! ND17 and ND39 (bpch) diagnostics
-         !--------------------------------------------------------------
-
-         ! ND17 diagnostic...rainout fractions [unitless]
-         IF ( ND17 > 0 .and. L <= LD17 ) THEN
-            AD17(I,J,L,NW,IDX) =
-     &           AD17(I,J,L,NW,IDX) + RAINFRAC / F_RAINOUT
-         ENDIF
-
-         ! ND39 diag -- save rainout losses in [kg/s]
-         ! NOTE: eventually change this to kg/m2/s (ewl, 11/16/15)
-         ! Add LGTMM in condition for AD39 (ccc, 11/18/09)
-         IF ( ( ND39 > 0 .or. LGTMM ) .and. L <= LD39 ) THEN
-            AD39(I,J,L,NW) = AD39(I,J,L,NW) + WETLOSS / DT
-     &                       * State_Grid%Area_M2(I,J)
-         ENDIF
-#endif
 
          !--------------------------------------------------------------
          ! HISTORY (aka netCDF diagnostics)
@@ -4066,17 +3758,6 @@
 !
 ! !USES:
 !
-#if defined( BPCH_DIAG )
-      USE CMN_DIAG_MOD
-      USE DIAG_MOD,       ONLY : AD05
-      USE DIAG_MOD,       ONLY : AD16                  ! ND16 diag array
-      USE DIAG_MOD,       ONLY : AD17                  ! ND17 diag array
-      USE DIAG_MOD,       ONLY : AD18                  ! ND18 diag array
-      USE DIAG_MOD,       ONLY : AD39                  ! ND39 diag array
-      USE DIAG_MOD,       ONLY : CT16                  ! ND16 diag counter
-      USE DIAG_MOD,       ONLY : CT17                  ! ND17 diag counter
-      USE DIAG_MOD,       ONLY : CT18                  ! ND18 diag counter
-#endif
       USE ErrCode_Mod
       USE ERROR_MOD
       USE GET_NDEP_MOD,   ONLY : SOIL_WETDEP           ! Wet deposited species
@@ -4085,7 +3766,7 @@
       USE State_Diag_Mod, ONLY : DgnState              ! Diagnostic State object
       USE State_Grid_Mod, ONLY : GrdState              ! Grid State object
       USE State_Met_Mod,  ONLY : MetState              ! Met State object
-#if defined( TOMAS )
+#ifdef TOMAS
       USE TOMAS_MOD,      ONLY : IBINS, ICOMP, AQOXID
 #endif
 !
@@ -4184,37 +3865,7 @@
 !
 ! !REVISION HISTORY:
 !  16 Sep 2010 - R. Yantosca - Initial version
-!  20 Sep 2010 - R. Yantosca - Update definition of ALPHA if we are doing
-!                              partial re-evaporation.
-!  28 Sep 2010 - H. Amos     - Now check for NaN's with function IT_IS_NAN
-!  31 Dec 2010 - H. Amos     - new variable, TK, for temperature
-!  26 May 2011 - R. Yantosca - Bug fix: Only apply the error trap for the
-!                              condition WASHFRAC < 1d-3 for MERRA met
-!  25 May 2011 - Q. Wang     - new variable, TF, for total precip fraction
-!  25 May 2011 - Q. Wang     - Also pass F_RAINOUT via the arg list
-!  25 May 2011 - Q. Wang     - Correct the washfrac to make sure that washout
-!                              is applied the area of F_washout instead of
-!                              total area of (F_washout+F_rainout)
-!  27 May 2011 - R. Yantosca - Added comments, readjusted IF statements to
-!                              avoid floating-point problems
-!  16 Aug 2011 - H. Amos     - Replace logical AER with KIN to emphasize that
-!                              washout is either modeled as a kinetic process
-!                              or an equilibrium process
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  26 Sep 2013 - R. Yantosca - Renamed GEOS_57 Cpp switch to GEOS_FP
-!  25 Aug 2014 - M. Sulprizio- Now accept Input_Opt as an argument
-!  04 Feb 2015 - M. Sulprizio- Fix calculation of WETLOSS for non-aerosol
-!                              tracers (C. Friedman)
-!  20 May 2015 - M. Sulprizio- Remove WASHFRAC < 1D-3 error trap for MERRA
-!                              following recommendation by Viral Shah
-!  04 Jun 2015 - E. Lundgren - Now accept am_I_Root and RC as arguments
-!  22 Sep 2015 - E. Lundgren - Incoming tracer units are now [kg/m2]
-!  29 Sep 2015 - E. Lundgren - Now use local pointer for STT array [kg/m2]
-!  30 Jun 2016 - R. Yantosca - Replace STT with Spc and DSTT with DSpc
-!  05 Jul 2016 - R. Yantosca - Replace IDWETD with State_Chm%Map_WetDep
-!  09 Nov 2017 - R. Yantosca - Now accept State_Diag as an argument
-!  09 Nov 2017 - R. Yantosca - Return error condition to calling program
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -4236,7 +3887,7 @@
       ! from the Chemistry State (State_Chm) object [kg/m2] (ewl, 9/29/15)
       REAL(fp), POINTER  :: Spc(:,:,:,:)
 
-#if defined( TOMAS )
+#ifdef TOMAS
       REAL(fp)           :: REEVAPSO2  !(win, 7/16/09)
       INTEGER            :: KMIN       !(win, 7/16/09)
 #endif
@@ -4253,23 +3904,6 @@
 
       ! Point to the chemical species array [kg/m2]
       Spc => State_Chm%Species
-
-#if defined( BPCH_DIAG )
-      !-----------------------------------------------------------------
-      ! ND16 (bpch) diagnostic
-      !-----------------------------------------------------------------
-
-      ! ND16 diagnostic...save F (fraction of grid box raining)
-      IF ( ND16 > 0e+0_fp .and. L <= LD16 ) THEN
-         AD16(I,J,L,IDX) = AD16(I,J,L,IDX) + F_WASHOUT
-         CT16(I,J,L,IDX) = CT16(I,J,L,IDX) + 1
-      ENDIF
-
-      ! ND18 diagnostic...increment counter
-      IF ( ND18 > 0 .and. L <= LD18 ) THEN
-         CT18(I,J,L,IDX) = CT18(I,J,L,IDX) + 1
-      ENDIF
-#endif
 
       !-----------------------------------------------------------------
       ! HISTORY (aka netCDF diagnostics)
@@ -4338,12 +3972,12 @@
          ! Check if WASHFRAC = NaN or WASHFRAC < 0.1 %
          !
          ! If WASHFRAC = NaN, then DSpc = NaN and SAFETY trips because
-         ! species concentrations must be finite.WASHFRAC = NaN when F = 0.
+         ! species concentrations must be finite.WASHFRAC = NaN when F = 0. 
          ! When less than 0.1% of a soluble species is available for washout
          ! DSpc < 0 and SAFETY trips.  (Helen Amos, 20100928)
          !
          ! Viral Shah wrote:
-         !  The condition requiring that the WASHFRAC>1D-3 or any number
+         !  The condition requiring that the WASHFRAC>1D-3 or any number 
          !  greater than 0 for washout to occur, prevents the partial
          !  resuspension of the dissolved mass falling from above, and leads
          !  to an overestimate in the wet deposited mass... I recommend that
@@ -4355,14 +3989,14 @@
             CYCLE
          ENDIF
 
-         ! Adjust WASHFRAC accordingly for aerosols.  NOTE: TF is always
+         ! Adjust WASHFRAC accordingly for aerosols.  NOTE: TF is always 
          ! > 0 since DO_WASHOUT_ONLY is only called if F_WASHOUT > 0.
          ! We will never get a div-by-zero error here. (bmy, 5/27/11)
          IF ( KIN ) THEN
            WASHFRAC = WASHFRAC / TF * F_WASHOUT
          ENDIF
 
-         !==============================================================
+         !==============================================================      
          ! Washout of aerosol species --
          ! this is modeled as a kinetic process
          !==============================================================
@@ -4402,7 +4036,7 @@
                Spc(I,J,L,id_SO4) = Spc(I,J,L,id_SO4)
      &                           + GAINED * 96e+0_fp / 64e+0_fp
 
-#if defined( APM )
+#ifdef APM
                PSO4_SO2APM2(I,J,L) = PSO4_SO2APM2(I,J,L)
      &                             + GAINED * 96e+0_fp / 64e+0_fp
 #endif
@@ -4411,42 +4045,34 @@
      &                                          ( 1e+0_fp - WASHFRAC )
 
 
-#if defined( TOMAS )
+#ifdef TOMAS
 !added for TOMAS (win, 7/16/09)
-#if defined( BPCH_DIAG )
-            ! Save the amout of SO4 [kg S/m2] added via aqueous
-            ! chem to ND05(6) diagnostic assuming it's all
-            ! by reacting with H2O2 (win, 7/16/09)
-            IF ( ND05 > 0 .and. L <= LD05 )
-     &         AD05(I,J,L,6) = AD05(I,J,L,6) +
-     &         ( GAINED * 32e+0_fp / 64e+0_fp )
-#endif
 
             ! Re-evaporated portion get distributed onto
             ! size-resolved sulfate by AQOXID (win, 7/16/09)
             IF ( GAINED > 0e+0_fp ) THEN
                IF ( LS ) THEN
 ! JKodros (6/2/15 - allow for different TOMAS bin lengths)
-# if  defined( TOMAS12)
+#if defined( TOMAS12 )
                   KMIN = 5
-# elif  defined( TOMAS15)
+#elif defined( TOMAS15 )
                   KMIN = 8
-# elif  defined( TOMAS30)
+#elif defined( TOMAS30 )
                   KMIN = 10
-# else
+#else
                   KMIN = 20
-# endif
+#endif
 
                ELSE
-# if  defined( TOMAS12)
+#if defined( TOMAS12 )
                   KMIN = 3
-# elif  defined( TOMAS15)
+#elif defined( TOMAS15 )
                   KMIN = 6
-# elif  defined( TOMAS30)
+#elif defined( TOMAS30 )
                   KMIN = 6
-# else
+#else
                   KMIN = 16
-# endif
+#endif
                ENDIF
 
                ! ***NOTE*** Species concentration units are currently in
@@ -4487,18 +4113,6 @@
             ELSE
                DSpc(NW,L,I,J) = DSpc(NW,L+1,I,J) + WETLOSS
             ENDIF
-
-#if defined( BPCH_DIAG )
-            !-----------------------------------------------------------
-            ! ND18 (bpch) diagnostic
-            !-----------------------------------------------------------
-
-            ! ND18 diagnostic...divide washout fraction by F
-            IF ( ND18 > 0 .and. L <= LD18 ) THEN
-               AD18(I,J,L,NW,IDX) =
-     &         AD18(I,J,L,NW,IDX) + ( WASHFRAC / F_WASHOUT )
-            ENDIF
-#endif
 
             !-----------------------------------------------------------
             ! HISTORY (aka netCDF diagnostics)
@@ -4550,19 +4164,6 @@
                DSpc(NW,L,I,J) = DSpc(NW,L+1,I,J) + WETLOSS
             ENDIF
 
-#if defined( BPCH_DIAG )
-            !-----------------------------------------------------------
-            ! ND18 (bpch) diagnostic
-            !-----------------------------------------------------------
-
-            ! ND18 diagnostic...we don't have to divide the
-            ! washout fraction by F since this is accounted for.
-            IF ( ND18 > 0 .and. L <= LD18 ) THEN
-               AD18(I,J,L,NW,IDX) =
-     &         AD18(I,J,L,NW,IDX) + WASHFRAC
-            ENDIF
-#endif
-
             !-----------------------------------------------------------
             ! HISTORY (aka netCDF diagnostics)
             !
@@ -4580,21 +4181,6 @@
             ENDIF
 
          ENDIF
-
-#if defined( BPCH_DIAG )
-         !--------------------------------------------------------------
-         ! ND39 (bpch) diagnostic
-         !--------------------------------------------------------------
-
-         ! ND39 diag -- save washout losses in [kg/s]
-         ! NOTE: Eventually this will be [kg/m2/s] (ewl, 11/16/15)
-         ! Add LGTMM in condition for AD39 (ccc, 11/18/09)
-         IF ( ( ND39 > 0 .or. LGTMM ) .and. L <= LD39 ) THEN
-            AD39(I,J,L,NW) = AD39(I,J,L,NW) + WETLOSS / DT
-     &                       * State_Grid%Area_M2(I,J)
-
-         ENDIF
-#endif
 
          !--------------------------------------------------------------
          ! HISTORY (aka netCDF diagnostics)
@@ -4679,17 +4265,6 @@
 !
 ! !USES:
 !
-#if defined( BPCH_DIAG )
-      USE CMN_DIAG_MOD
-      USE DIAG_MOD,       ONLY : AD05
-      USE DIAG_MOD,       ONLY : AD16                  ! ND16 diag array
-      USE DIAG_MOD,       ONLY : AD17                  ! ND17 diag array
-      USE DIAG_MOD,       ONLY : AD18                  ! ND18 diag array
-      USE DIAG_MOD,       ONLY : AD39                  ! ND39 diag array
-      USE DIAG_MOD,       ONLY : CT16                  ! ND16 diag counter
-      USE DIAG_MOD,       ONLY : CT17                  ! ND17 diag counter
-      USE DIAG_MOD,       ONLY : CT18                  ! ND18 diag counter
-#endif
       USE ErrCode_Mod
       USE Error_Mod,      ONLY : It_Is_Nan
       USE GET_NDEP_MOD,   ONLY : SOIL_WETDEP           ! Wet deposited species
@@ -4698,7 +4273,7 @@
       USE State_Diag_Mod, ONLY : DgnState
       USE State_Grid_Mod, ONLY : GrdState
       USE State_Met_Mod,  ONLY : MetState
-#if defined( TOMAS )
+#ifdef TOMAS
       USE TOMAS_MOD,      ONLY : IBINS, ICOMP, AQOXID
 #endif
 !
@@ -4720,7 +4295,7 @@
 !
       TYPE(ChmState),   INTENT(INOUT) :: State_Chm     ! Chemistry State object
       TYPE(DgnState),   INTENT(INOUT) :: State_Diag    ! Diagnostic State object
-      REAL(fp),         INTENT(INOUT) :: DSpc(:,:,:,:) ! Accumulator array
+      REAL(fp),         INTENT(INOUT) :: DSpc(:,:,:,:) ! Accumulator array 
                                                        ! [kg/m2]
 !
 ! !OUTPUT PARAMETERS:
@@ -4729,14 +4304,7 @@
 !
 ! !REVISION HISTORY:
 !  16 Sep 2010 - R. Yantosca - Initial version
-!  22 Sep 2015 - E. Lundgren - Incoming tracer units are now kg/m2 (prev kg)
-!  24 Sep 2015 - E. Lundgren - Now pass am_I_Root and RC as arguments and
-!                              local pointer for STT array [kg/m2]
-!  30 Sep 2015 - E. Lundgren - Now pass Input_Opt for use in TOMAS AQOXID
-!  30 Jun 2016 - R. Yantosca - Replace STT with Spc and DSTT with DSpc
-!  05 Jul 2016 - R. Yantosca - Replace IDWETD with State_Chm%Map_WetDep
-!  09 Nov 2017 - R. Yantosca - Now accept State_Diag as an argument
-!  09 Nov 2017 - R. Yantosca - Return error condition to calling program
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -4753,7 +4321,7 @@
       ! Pointers
       REAL(fp), POINTER  :: Spc(:,:,:,:)
 
-#if defined( TOMAS )
+#ifdef TOMAS
       REAL(fp)           :: REEVAPSO2  !(win, 7/16/09)
       INTEGER            :: KMIN       !(win, 7/16/09)
 #endif
@@ -4788,12 +4356,12 @@
             Spc(I,J,L,id_SO4) = Spc(I,J,L,id_SO4)
      &                        - ( WETLOSS * 96e+0_fp / 64e+0_fp )
 
-#if defined( APM )
+#ifdef APM
             PSO4_SO2APM2(I,J,L) = PSO4_SO2APM2(I,J,L)
      &                          - ( WETLOSS * 96e+0_fp / 64e+0_fp )
 #endif
 
-#if defined( TOMAS )
+#ifdef TOMAS
 !added for TOMAS (win, 7/16/09)
                      ! Save the amout of SO4 [kg S] added via aqueous
                      ! chem to ND05(6) diagnostic assuming it's all
@@ -4813,26 +4381,26 @@
                      IF ( ABS(WETLOSS) > 0e+0_fp ) THEN
                         IF ( LS ) THEN
 ! JKodros (6/2/15) - Allow for different TOMAS bin lengths
-# if  defined( TOMAS12)
+#if defined( TOMAS12 )
                            KMIN = 5
-# elif  defined( TOMAS15)
+#elif defined( TOMAS15 )
                            KMIN = 8
-# elif  defined( TOMAS30)
+#elif defined( TOMAS30 )
                            KIMIN = 10
-# else
+#else
                            KMIN = 20
-# endif
+#endif
 
                         ELSE
-# if  defined( TOMAS12)
+#if defined( TOMAS12 )
                            KMIN = 3
-# elif  defined( TOMAS15)
+#elif defined( TOMAS15 )
                            KMIN = 6
-# elif  defined( TOMAS30)
+#elif defined( TOMAS30 )
                            KIMIN = 6
-# else
+#else
                            KMIN = 16
-# endif
+#endif
                         ENDIF
 
                ! ***NOTE*** Species concentration units are currently in
@@ -4867,21 +4435,6 @@
          ! There is nothing rained out/washed out in grid box
          ! (I,J,L), so set DSpc at grid box (I,J,L) to zero.
          DSpc(NW,L,I,J) = 0e+0_fp
-
-#if defined( BPCH_DIAG )
-         !--------------------------------------------------------------
-         ! ND39 (bpch) diagnostic
-         !--------------------------------------------------------------
-
-         ! ND39 diag -- save rainout losses in [kg/s]
-         ! NOTE: Eventually this will be [kg/m2/s] (ewl, 11/16/15)
-         ! Add LGTMM in condition for AD39 (ccc, 11/18/09)
-         IF ( ( ND39 > 0 .or. LGTMM ) .and. L <= LD39 ) THEN
-            AD39(I,J,L,NW) = AD39(I,J,L,NW) + ( WETLOSS / DT )
-     &                       * State_Grid%Area_M2(I,J)
-
-         ENDIF
-#endif
 
          !--------------------------------------------------------------
          ! HISTORY (aka netCDF diagnostics)
@@ -4966,16 +4519,6 @@
 !
 ! !USES:
 !
-#if defined( BPCH_DIAG )
-      USE CMN_DIAG_MOD
-      USE DIAG_MOD,       ONLY : AD16                  ! ND16 diag array
-      USE DIAG_MOD,       ONLY : AD17                  ! ND17 diag array
-      USE DIAG_MOD,       ONLY : AD18                  ! ND18 diag array
-      USE DIAG_MOD,       ONLY : AD39                  ! ND39 diag array
-      USE DIAG_MOD,       ONLY : CT16                  ! ND16 diag counter
-      USE DIAG_MOD,       ONLY : CT17                  ! ND17 diag counter
-      USE DIAG_MOD,       ONLY : CT18                  ! ND18 diag counter
-#endif
       USE ErrCode_Mod
       USE ERROR_MOD,      ONLY : IT_IS_NAN             ! Test for NaN
       USE GET_NDEP_MOD,   ONLY : SOIL_WETDEP           ! Wet deposited species
@@ -5020,16 +4563,7 @@
 !
 ! !REVISION HISTORY:
 !  16 Sep 2010 - R. Yantosca - Initial version
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  25 Aug 2014 - M. Sulprizio- Now accept Input_Opt as an argument
-!  04 Jun 2015 - E. Lundgren - Now accept am_I_Root and RC as arguments
-!  22 Sep 2015 - E. Lundgren - Tracer units are now kg/m2 (prev kg)
-!  29 Sep 2015 - E. Lundgren - Now use local pointer for STT array [kg/m2]
-!  30 Jun 2016 - R. Yantosca - Replace STT with Spc and DSTT with DSpc
-!  05 Jul 2016 - R. Yantosca - Now replace IDWETD with State_Chm%Map_Wetdep
-!  09 Nov 2017 - R. Yantosca - Now accept State_Diag as an argument
-!  09 Nov 2017 - R. Yantosca - Return error condition to calling program
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5059,23 +4593,6 @@
 
       ! Point to the chemical species array [kg/m2]
       Spc => State_Chm%Species
-
-#if defined( BPCH_DIAG )
-      !-----------------------------------------------------------------
-      ! ND16 (bpch) diagnostic
-      !-----------------------------------------------------------------
-
-      ! ND16 diagnostic...save F
-      IF ( ND16 > 0 .and. L <= LD16 ) THEN
-         AD16(I,J,L,IDX) = AD16(I,J,L,IDX) + F
-         CT16(I,J,L,IDX) = CT16(I,J,L,IDX) + 1
-      ENDIF
-
-      ! ND18 diagnostic...increment counter
-      IF ( ND18 > 0 .and. L <= LD18 ) THEN
-         CT18(I,J,L,IDX) = CT18(I,J,L,IDX) + 1
-      ENDIF
-#endif
 
       !-----------------------------------------------------------------
       ! HISTORY (aka netCDF diagnostics)
@@ -5143,34 +4660,6 @@
          ! Add washout losses in grid box (I,J,L=1) to DSpc [kg/m2]
          ! (added cdh, 4/14/2009)
          DSpc(NW,L,I,J) = DSpc(NW,L+1,I,J) + WETLOSS
-
-#if defined( BPCH_DIAG )
-         !--------------------------------------------------------------
-         ! ND18 and ND39 (bpch) diagnostics
-         !--------------------------------------------------------------
-
-         ! ND18 diagnostic...LS and conv washout fractions [unitless]
-         IF ( ND18 > 0 .and. L <= LD18 ) THEN
-
-            ! Only divide WASHFRAC by F for aerosols, since
-            ! for non-aerosols this is already accounted for
-            IF ( KIN ) THEN
-               TMP = WASHFRAC / F
-            ELSE
-               TMP = WASHFRAC
-            ENDIF
-
-            AD18(I,J,L,NW,IDX) = AD18(I,J,L,NW,IDX) + TMP
-         ENDIF
-
-         ! ND39 diag -- save washout loss in [kg/s]
-         ! NOTE: Eventually this will be [kg/m2/s] (ewl, 11/16/15)
-         ! Add LGTMM in condition for AD39 (ccc, 11/18/09)
-         IF ( ( ND39 > 0 .or. LGTMM ) .and. L <= LD39 ) THEN
-            AD39(I,J,L,NW) = AD39(I,J,L,NW) + WETLOSS / DT
-     &                       * State_Grid%Area_M2(I,J)
-         ENDIF
-#endif
 
          !--------------------------------------------------------------
          ! HISTORY (aka netCDF diagnostics)
@@ -5279,7 +4768,7 @@
 !
 ! !IROUTINE: safety
 !
-! !DESCRIPTION: Subroutine SAFETY stops the run with debug output and an
+! !DESCRIPTION: Subroutine SAFETY stops the run with debug output and an 
 !  error message if negative species are found.
 !\\
 !\\
@@ -5328,9 +4817,7 @@
 !
 ! !REVISION HISTORY:
 !  18 Mar 2004 - R. Yantosca - Initial version
-!  (1 ) Now made into a MODULE routine since we cannot call internal routines
-!        from w/in a parallel loop.  Updated comments. (bmy, 3/18/04)
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5409,16 +4896,11 @@
 !
 ! !RETURN VALUE:
 !
-      REAL(fp)                   :: VUD    ! Vertical updraft velocity in m/s.
+      REAL(fp)                   :: VUD    ! Vertical updraft velocity in m/s. 
 !
 ! !REVISION HISTORY:
 !  12 Feb 2015 - C. Keller   - Initial version
-!  26 Feb 2015 - E. Lundgren - Remove dependency on pressure_mod since not used.
-!  27 Jun 2016 - C. Keller   - Use VUD_DEFINED instead of ESMF_ compiler switch.
-!  13 Mar 2017 - C. Keller   - Bug fix: make sure VUD_DEFINED is updated after
-!                              defining VUD.
-!  01 Jun 2017 - C. Keller   - Set VUD_DEFINED only if UPDVVEL has valid values.
-!  05 Jun 2018 - C. Keller   - Add flag for online VUD calculation
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5438,7 +4920,7 @@
       ! Use vertical updraft velocity from State_Met
       ! Convert hPa/s to m/s here
       !=================================================================
-#if defined( MODEL_GEOS )
+#ifdef MODEL_GEOS
       IF ( Input_Opt%UseOnlineVUD ) THEN
          IF ( ASSOCIATED( State_Met%UPDVVEL ) ) THEN
             IF ( State_Met%DELP(I,J,L)    > TINY_FP .AND.
@@ -5520,9 +5002,7 @@
 !
 ! !REVISION HISTORY:
 !  12 Feb 2015 - C. Keller   - Initial version
-!  26 Feb 2015 - E. Lundgren - Remove dependency on pressure_mod since not used.
-!  25 Jun 2015 - M. Sulprizio- Now pass FF as an optional argument for aerosols
-!  25 Sep 2015 - R. Yantosca - Remove FF; we scale Kc in F_AEROSOL now.
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5592,18 +5072,8 @@
       INTEGER,        INTENT(OUT) :: RC          ! Success or failure?
 !
 ! !REVISION HISTORY:
-!  03 Sep 2015 - R. Yantosca - Split off from the old INIT_WETSCAV.  We now
-!                              just allocate arrays here.  Arrays are assigned
-!                              values from State_Met in SETUP_WETSCAV.
-!  03 Sep 2015 - R. Yantosca - Also initialize IDWETD here; this makes routine
-!                              WETDEPID obsolete, so we can remove it.
-!  22 Sep 2015 - R. Yantosca - Bug fix: only define the IDWETD array if
-!                              wetdep or drydep is turned on.  Also only
-!                              print info if wetdep is turned on.
-!  29 Apr 2016 - R. Yantosca - Don't initialize pointers in declaration stmts
-!  20 Jun 2016 - R. Yantosca - Now define species IDs in the init phase
-!  09 Nov 2017 - R. Yantosca - Now accept State_Diag as an argument
-!  09 Nov 2017 - R. Yantosca - Return error condition to calling program
+!  03 Sep 2015 - R. Yantosca - Split off from the old INIT_WETSCAV
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5642,7 +5112,7 @@
       id_SO4   = Ind_('SO4'  )
       id_H2O2  = Ind_('H2O2' )
 
-#if defined( APM )
+#ifdef APM
       ! NOTE: This should really go into State_Chm! (bmy, 6/17/19)
       ALLOCATE( PSO4_SO2APM2( State_Grid%NX,
      &                        State_Grid%NY,
@@ -5676,7 +5146,7 @@
      &             STAT=RC )
          CALL GC_CheckVar( 'wetscav_mod.F:REEVAP', 0, RC )
          IF ( RC /= GC_SUCCESS ) RETURN
-         REEVAP = 0d0
+         REEVAP = 0e+0_fp
 
          ! Allocate C_H2O on first call
          ALLOCATE( C_H2O( State_Grid%NX, State_Grid%NY, State_Grid%NZ),
@@ -5818,51 +5288,7 @@
 !
 ! !REVISION HISTORY:
 !  23 Feb 2000 - R. Yantosca - Initial version
-!  (1 ) References "e_ice.f" -- routine to compute Eice(T).
-!  (2 ) Vud, CLDLIQ, CLDICE, C_H2O are all independent of tracer, so we
-!        can compute them once per timestep, before calling the cloud
-!        convection and wet deposition routines.
-!  (3 ) Set C_H2O = 0 below -120 Celsius.  E_ICE(T) has a lower limit of
-!        -120 Celsius, so temperatures lower than this will cause a stop
-!        with an error message. (bmy, 6/15/00)
-!  (4 ) Replace {IJL}GLOB with IIPAR,JJPAR,LLPAR.  Also rename PW to P.
-!        Remove IREF, JREF, these are obsolete.  Now reference IS_WATER
-!        from "dao_mod.f" to determine water boxes.
-!  (5 ) Removed obsolete code from 9/01.  Updated comments and made
-!        cosmetic changes. (bmy, 10/24/01)
-!  (6 ) Now use routine GET_PCENTER from "pressure_mod.f" to compute the
-!        pressure at the midpoint of grid box (I,J,L).  Also removed P and
-!        SIG from the argument list (dsa, bdf, bmy, 8/20/02)
-!  (7 ) Now reference T from "dao_mod.f".  Updated comments.  Now allocate
-!        Vud, C_H2O, CLDLIQ and CLDICE here on the first call.  Now references
-!        ALLOC_ERR from "error_mod.f".  Now set H2O2s and SO2s to the initial
-!        values from for the first call to COMPUTE_F .  Now call WETDEPID
-!        on the first call to initialize the wetdep index array. (bmy, 1/27/03)
-!  (8 ) Now references STT from "tracer_mod.f".  Also now we call WETDEPID
-!        from "input_mod.f" (bmy, 7/20/04)
-!  (9 ) Now references new function E_ICE, which is an analytic function of
-!        Kelvin temperature instead of Celsius. (bmy, 3/7/05)
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
-!  18 Oct 2012 - R. Yantosca - Removed DEVEL from #ifdef statement, now use
-!                              EXTERNAL_GRID || EXTERNAL_FORCING
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  26 Feb 2015 - E. Lundgren - Replace GET_PCENTER with State_Met%PMID_DRY.
-!                              Remove dependency on pressure_mod.
-!  28 Apr 2015 - E. Lundgren - Change PMID_DRY to PMID for Dalton's Law.
-!  13 Aug 2015 - E. Lundgren - Incoming tracer units are now kg/kg dry air
-!  03 Sep 2015 - R. Yantosca - Now allocate IDWETD
-!  03 Sep 2015 - R. Yantosca - Now move array allocation into INIT_WETSCAV
-!  22 Sep 2015 - R. Yantosca - Bug fix: now initialize H2O2s and SO2s on
-!                              the first call.  This was done in INIT_WETSCAV,
-!                              but that is now called before the restart file
-!                              is read from disk.
-!  23 Sep 2015 - R. Yantosca - Now accept State_Chm as an argument
-!  29 Apr 2016 - R. Yantosca - Don't initialize pointers in declaration stmts
-!  23 Jun 2016 - R. Yantosca - Remove reference to tracerid_mod.F
-!  30 Jun 2016 - R. Yantosca - Remove instances of STT and State_Chm%TRACERS
-!  04 Jul 2016 - M. Yannetti - Replace TCVV with species db MW and phys constant
-!  05 Aug 2016 - R. Yantosca - Remove temporary tracer-removal code
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5901,7 +5327,29 @@
             TK => State_Met%T(I,J,L)
             PL => State_Met%PMID(I,J,L)
 
+#ifdef LUO_WETDEP
             !--------------------------------------------------------------
+            ! Luo et al scheme:
+            ! Compute CLDLIQ directly from met fields
+            !--------------------------------------------------------------
+            IF ( TK >= 268.0_fp ) THEN
+               CLDLIQ(I,J,L) = (State_Met%QL(I,J,L)+
+     &                          State_Met%QI(I,J,L))*
+     &                          State_Met%AIRDEN(I,J,L) * 1e-3_fp
+
+            ELSE IF ( TK > 248.0_fp .and. TK < 268.0_fp ) THEN
+               CLDLIQ(I,J,L) = (State_Met%QL(I,J,L)+
+     &                          State_Met%QI(I,J,L))*
+     &                          State_Met%AIRDEN(I,J,L) * 1e-3_fp
+     &                       * ((TK - 248.0_fp) / 20.0_fp )
+
+            ELSE
+               CLDLIQ(I,J,L) = 0.0_fp
+
+            ENDIF
+#else
+            !--------------------------------------------------------------
+            ! Default scheme:
             ! CLDLIQ, the cloud liquid water content [cm3 H2O/cm3 air],
             ! is a function of the local Kelvin temperature:
             ! Tunable parameter and use 1e-6 here (qq,10/14/2011)
@@ -5920,13 +5368,32 @@
                CLDLIQ(I,J,L) = 0.0_fp
 
             ENDIF
+#endif
 
+            CLDLIQ(I,J,L) = MAX(CLDLIQ(I,J,L),0.0_fp)
+
+#ifdef LUO_WETDEP
             !--------------------------------------------------------------
+            ! Luo et al scheme:
+            ! ompute CLDICE from met fields
+            !--------------------------------------------------------------
+            CLDICE(I,J,L) = (State_Met%QL(I,J,L)+
+     &                       State_Met%QI(I,J,L))*
+     &                       State_Met%AIRDEN(I,J,L) * 1e-3_fp
+     &                     - CLDLIQ(I,J,L)
+
+#else
+            !--------------------------------------------------------------
+            ! Default scheme:
             ! CLDICE, the cloud ice content [cm3 ice/cm3 air] is given by:
             !
             !    CLDICE = 1.0e-6 - CLDLIQ
             !--------------------------------------------------------------
             CLDICE(I,J,L) = 1e-6_fp - CLDLIQ(I,J,L)
+#endif
+
+            ! Avoid negatives
+            CLDICE(I,J,L) = MAX( CLDICE(I,J,L), 0.0_fp )
 
             !--------------------------------------------------------------
             ! C_H2O is given by Dalton's Law as:
@@ -5938,7 +5405,7 @@
             ! and   Tk(I,J,L) is the Kelvin temp. of grid box (I,J,L).
             !
             ! and   Eice( Tk(I,J,L) ) is the saturation vapor pressure
-            !       of ice [hPa] at temperature Tk(I,J,L) -- computed in
+            !       of ice [hPa] at temperature Tk(I,J,L) -- computed in 
             !       routine E_ICE above.
             !--------------------------------------------------------------
             IF ( PL <= TINY_FP ) THEN
@@ -5961,7 +5428,7 @@
       ! We need to initialize the H2O2s and SO2s arrays to the values
       ! of State_Chm%Species for H2O2 and SO2.  This only needs to be
       ! done the first time this routine is called (which happens after
-      ! the restart file is read from disk). If State_Chm%H2O2AftreChem
+      ! the restart file is read from disk). If State_Chm%H2O2AfterChem
       ! or State_Chm%SO2AfterChem are already populated from the restart
       ! restart file then do not overwrite. (ewl, 11/13/19)
       !====================================================================
@@ -6023,10 +5490,7 @@
 !
 ! !REVISION HISTORY:
 !  23 Feb 2000 - R. Yantosca - Initial version
-!  16 Sep 2010 - R. Yantosca - Added ProTeX headers
-!  03 Sep 2015 - R. Yantosca - Now deallocate IDWETD
-!  17 Mar 2017 - R. Yantosca - Now remove IDWETD, it's obsolete
-!  09 Nov 2017 - R. Yantosca - Return error condition to calling program
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -6055,11 +5519,13 @@
       IF ( RC /= GC_SUCCESS ) RETURN
 
 #if defined ( APM )
+      ! THIS NEEDS TO GO INTO STATE_CHM EVENTUALLY
       IF (ALLOCATED(PSO4_SO2APM2)) DEALLOCATE(PSO4_SO2APM2,STAT=RC)
       CALL GC_CheckVar( 'wetscav_mod.F:PSO4_SO2APM2', 2, RC )
       IF ( RC /= GC_SUCCESS ) RETURN
 
 #endif
+
       IF ( ALLOCATED( REEVAP ) ) DEALLOCATE( REEVAP, STAT=RC )
       CALL GC_CheckVar( 'wetscav_mod.F:REEVAP', 2, RC )
       IF ( RC /= GC_SUCCESS ) RETURN

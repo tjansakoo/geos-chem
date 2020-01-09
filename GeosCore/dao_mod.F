@@ -1194,6 +1194,11 @@
       ! Assume success
       RC = GC_SUCCESS
 
+      ! Return if option not set
+#if defined( MODEL_GEOS )
+      IF ( .NOT. Input_Opt%LCAPTROP ) RETURN
+#endif
+
       ! Loop over grid boxes on this PET
       DO J = 1, State_Grid%NY
       DO I = 1, State_Grid%NX

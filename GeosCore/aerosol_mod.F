@@ -123,7 +123,7 @@
 !  (7 ) Now set OCF=2.1 in AEROSOL_CONC for consistency w/ carbon_mod.f
 !       (tmf, 2/10/09)
 !  (8 ) Add WTAREA and WERADIUS for dicarbonyl SOA production.
-!       WTAREA is the same as TAREA, but excludes dry dust, BCPO and OCPO;
+!       WTAREA is the same as TAREA, but excludes dry dust, BCPO and OCPO; 
 !       use same units as TAREA.
 !       WERADIUS is same as ERADIUS, but excludes dry dust, BCPO and OCPO;
 !       use same units as ERADIUS. (tmf, 3/2/09)
@@ -417,30 +417,22 @@
       ! Get spatial and seasonally varying OM/OC from Philip et al. (2014)
       ! or use default global mean values recommended by Aerosols WG
       !=================================================================
-      IF ( Input_Opt%LOMOC ) THEN
 
-         ! Get pointer to OM/OC for current month from HEMCO
-         MONTH = GET_MONTH()
-         IF      ( MONTH == 12 .or. MONTH == 1  .or. MONTH == 2  ) THEN
-            FieldName = 'OMOC_DJF'
-         ELSE IF ( MONTH == 3  .or. MONTH == 4  .or. MONTH == 5  ) THEN
-            FieldName = 'OMOC_MAM'
-         ELSE IF ( MONTH == 6  .or. MONTH == 7  .or. MONTH == 8  ) THEN
-            FieldName = 'OMOC_JJA'
-         ELSE IF ( MONTH == 9  .or. MONTH == 10 .or. MONTH == 11 ) THEN
-            FieldName = 'OMOC_SON'
-         ENDIF
-         CALL HCO_GetPtr( am_I_Root, HcoState, FIELDNAME, OMOC, RC,
-     &                    FOUND=FND )
+      ! Attempt to get pointer to OM/OC for current month from HEMCO
+      MONTH = GET_MONTH()
+      IF      ( MONTH == 12 .or. MONTH == 1  .or. MONTH == 2  ) THEN
+         FieldName = 'OMOC_DJF'
+      ELSE IF ( MONTH == 3  .or. MONTH == 4  .or. MONTH == 5  ) THEN
+         FieldName = 'OMOC_MAM'
+      ELSE IF ( MONTH == 6  .or. MONTH == 7  .or. MONTH == 8  ) THEN
+         FieldName = 'OMOC_JJA'
+      ELSE IF ( MONTH == 9  .or. MONTH == 10 .or. MONTH == 11 ) THEN
+         FieldName = 'OMOC_SON'
+      ENDIF
+      CALL HCO_GetPtr( am_I_Root, HcoState, FIELDNAME, OMOC, RC,
+     &                 FOUND=FND )
 
-         ! Trap potential errors
-         IF ( RC /= HCO_SUCCESS .OR. .NOT. FND ) THEN
-            ErrMsg= 'Cannot find seasonal OM/OC field ' //
-     &             TRIM(FIELDNAME) // '. Please add a corresponding ' //
-     &            'entry to the HEMCO configuration file.'
-            CALL GC_Error( ErrMsg, RC, ThisLoc )
-            RETURN
-         ENDIF
+      IF ( RC == HCO_SUCCESS .AND. FND ) THEN
 
          ! Set OM/OC using spatially and seasonally varying data from
          ! Philip et al. (2014)
@@ -537,7 +529,7 @@
          ! Now assume that all sulfate, ammonium, and nitrate are
          ! hydrophilic but sooner or later we can pass only hydrophilic
          ! aerosols from the thermodynamic calculations for this
-         ! purpose.  This dumping should be done before calling INITGAS,
+         ! purpose.  This dumping should be done before calling INITGAS, 
          ! which converts the unit of Spc from kg/box to molec/cm3.
          !
          ! Units of SO4_NH4_NIT are [kg/m3].  (rjp, bmy, 3/23/03)
@@ -997,8 +989,11 @@
          ! Compute PM2.5 concentration [kg/m3]
          !
          ! PM25 = 1.33 (NH4 + NIT  + SO4) + BCPI + BCPO +
-         !        2.10 (OCPO + 1.16 OCPI) + 1.16 SOA    +
-         !        DST1 + 0.38 DST2 + 1.86 SALA + SOAGX + SOAMG
+         !        2.10 (OCPO + 1.16 OCPI) + 1.16 SOA*   +
+         !        DST1 + 0.38 DST2 + 1.86 SALA
+         !
+         !   * If using simple  SOA, SOA = SOAS;
+         !     If using complex SOA, SOA = TSOA + ASOA + ISOAAQ
          !
          ! NOTES:
          ! - We apply growth factors at 35% RH (computed above):
@@ -1172,10 +1167,6 @@
       USE TIME_MOD,       ONLY : SYSTEM_TIMESTAMP
       USE UCX_MOD,        ONLY : GET_STRAT_OPT
       USE UCX_MOD,        ONLY : NDENS_AER
-#if defined( BPCH_DIAG ) || defined( MODEL_GEOS )
-      USE CMN_DIAG_MOD
-      USE DIAG_MOD,       ONLY : AD21
-#endif
       USE Species_Mod,        ONLY : Species
 
       IMPLICIT NONE
@@ -1192,7 +1183,7 @@
                                                    !  = 0: AOD computed
                                                    !       at 999 nm
                                                    !  = 1: AOD computed
-                                                   !       at wavelength set
+                                                   !       at wavelength set 
                                                    !       in Radiation Menu
 !
 ! !INPUT/OUTPUT PARAMETERS:
@@ -1374,9 +1365,6 @@
       REAL(fp), POINTER   :: WTAREA(:,:,:,:)
 
       ! For diagnostics
-#if defined( BPCH_DIAG ) || defined( MODEL_GEOS )
-      INTEGER             :: IOUT, IISOPAOD, IAERAQVOL
-#endif
       LOGICAL                :: IsWL1
       LOGICAL                :: IsWL2
       LOGICAL                :: IsWL3
@@ -1421,14 +1409,6 @@
       WERADIUS            => State_Chm%WetAeroRadi ! Wet Aerosol Radius [cm]
       WTAREA              => State_Chm%WetAeroArea ! Wet Aerosol Area [cm2/cm3]
 
-#if defined( BPCH_DIAG ) || defined( MODEL_GEOS )
-      IF ( Input_Opt%ND21 > 0 ) THEN
-         ! Define certain bpch ND21 diagnostic indexes
-         IISOPAOD  = 5 + 5*NRHAER + 3*NDUST + 3*NSTRATAER + 1
-         IAERAQVOL = 5 + 5*NRHAER + 3*NDUST + 3*NSTRATAER + 2
-      ENDIF
-#endif
-
       ! Initialize the mapping between hygroscopic species in the
       ! species database and the species order in NRHAER
       IF ( FIRST ) THEN
@@ -1441,7 +1421,7 @@
             ! Point to the Species Database entry for species N
             SpcInfo => State_Chm%SpcData(N)%Info
 
-            ! Set the mapping to the local ordering of aerosol densities
+            ! Set the mapping to the local ordering of aerosol densities 
             ! in RDAER
             SELECT CASE ( TRIM(SpcInfo%Name) )
                CASE ( 'SO4' )
@@ -1960,22 +1940,6 @@
             ! Skip stratospheric aerosols
             IF ((IIWV.EQ.1).and.(ISTRAT.le.0)) THEN
 
-#if defined( BPCH_DIAG ) || defined( MODEL_GEOS )
-               !----------------------------------------------------
-               ! ND21 bpch diagnostics computed here:
-               !  #7  Hygroscopic growth of SO4                [unitless]
-               !  #10 Hygroscopic growth of Black Carbon       [unitless]
-               !  #13 Hygroscopic growth of Organic Carbon     [unitless]
-               !  #16 Hygroscopic growth of Sea Salt (accum)   [unitless]
-               !  #19 Hygroscopic growth of Sea Salt (coarse)  [unitless]
-               !save increase in AOD resulting from water uptake
-               IF( Input_Opt%ND21 > 0 .AND. L <= Input_Opt%LD21
-     &             .AND.ODSWITCH.EQ.1) THEN
-                  AD21(I,J,L,7+3*(N-1)) = AD21(I,J,L,7+3*(N-1)) +
-     &                                    SCALEOD
-               ENDIF
-#endif
-
                !----------------------------------------------------
                ! Netcdf diagnostics computed here:
                !  Hygroscopic growth of SO4                [unitless]
@@ -2021,7 +1985,7 @@
                ! Wet dust WTAREA and WERADIUS are archived in dust_mod.f.
                !========================================================
 
-               ! For SO4-NIT-NH4 aerosol, re-calculate the wet effective
+               ! For SO4-NIT-NH4 aerosol, re-calculate the wet effective 
                ! radius using the water content from ISORROPIA.
                ! This new effective radius will be used for surface area
                ! used in heterogeneous chemistry. We don't use this
@@ -2101,23 +2065,6 @@
      &                                       DRYAREA )
                ENDIF !Hydrophobic aerosol surface area
 
-#if defined( BPCH_DIAG ) || defined( MODEL_GEOS )
-               !----------------------------------------------------
-               ! ND21 bpch diagnostics computed here:
-               !  #59  Aqueous aerosol volume ( (RADIUS*AREA)/3 )
-               IF ( Input_Opt%ND21 > 0 .AND. N .EQ. 1 ) THEN
-                  ! Initialize:
-                  TAERVOL = 0d0
-
-                  ! Compute:
-                  TAERVOL = ( ERADIUS(I,J,L,NDUST+N) *
-     &                        TAREA(I,J,L, N+NDUST) ) / 3.D0
-
-                  ! Add to diagnostic:
-                  AD21(I,J,L,IAERAQVOL) = AD21(I,J,L,IAERAQVOL)+TAERVOL
-               ENDIF
-#endif
-
                !----------------------------------------------------
                ! Netcdf diagnostics computed here:
                !  Aqueous aerosol volume
@@ -2146,11 +2093,6 @@
 
             ! Index for combination of aerosol type and RH
             N = NRHAER + ISTRAT
-
-#if defined( BPCH_DIAG ) || defined( MODEL_GEOS )
-            ! For ND21
-            IOUT = 5 + 2*NRHAER + 3*(NDUST+NRHAER) + (ISTRAT-1)*3
-#endif
 
             ! Assume ISTRAT == 1 is strat liquid aerosol and
             ! ISTRAT == 2 is polar strat cloud
@@ -2191,32 +2133,6 @@
                   ERADIUS(I,J,L,NDUST+N)  = RAER
                   WERADIUS(I,J,L,NDUST+N) = RAER
                ENDIF
-
-#if defined( BPCH_DIAG ) || defined( MODEL_GEOS )
-               IF ( Input_Opt%ND21.GT.0.AND.L.LE.Input_Opt%LD21 ) THEN
-
-                  !----------------------------------------------------
-                  ! ND21 bpch diagnostics computed here:
-                  !  #53 Strat aerosol liquid surface area (if ISTRAT == 1)
-                  !  #56 Polar strat cloud surface area (if ISTRAT == 2)
-                  ! Store SAD
-                  AD21(I,J,L,IOUT+2) = AD21(I,J,L,IOUT+2) + SADSTRAT
-
-                  IF ( ODSWITCH .EQ. 1 ) THEN
-                     !----------------------------------------------------
-                     ! ND21 bpch diagnostics computed here:
-                     !  #52: Strat. liquid aerosol optical depth     [unitless]
-                     !  #54: Strat. liquid aerosol number density    [#/cm3   ]
-                     !  #55: Strat. particulate aerosol opt. depth   [unitless]
-                     !  #57: Strat. particulate aerosol num. density [#/cm3   ]
-                     ! NOTE: 1st wavelength only in bpch diagnostics
-                     AD21(I,J,L,IOUT+1) = AD21(I,J,L,IOUT+1) +
-     &                                    ODAER(I,J,L,IWVSELECT(1,1),N)
-                     AD21(I,J,L,IOUT+3) = AD21(I,J,L,IOUT+3) +
-     &                                    NDENS_AER(I,J,L,ISTRAT)*1.d-6
-                  ENDIF
-               ENDIF
-#endif
 
                !----------------------------------------------------
                ! Netcdf diagnostics computed here:
@@ -2289,117 +2205,6 @@
       ! NOTE: The cloud optical depths are actually recorded at
       !       1000 nm, but vary little with wavelength.
       !==============================================================
-#if defined( BPCH_DIAG ) || defined( MODEL_GEOS )
-      IF ( Input_Opt%ND21 > 0 .and. ODSWITCH .EQ. 1 ) THEN
-!$OMP PARALLEL DO
-!$OMP+DEFAULT( SHARED )
-!$OMP+PRIVATE( I, J, L, N, W, LINTERP, IOUT )
-!$OMP+SCHEDULE( DYNAMIC )
-         ! Loop over hygroscopic aerosols
-         DO N = 1, NRHAER
-
-            ! Loop over wavelengths in input.geos radiation menu
-            DO W = 1, Input_Opt%NWVSELECT
-
-               !no interpolation required if these are the same
-               IF (IWVSELECT(1,W).EQ.IWVSELECT(2,W)) THEN
-                  LINTERP=.FALSE.
-               ELSE
-                  LINTERP=.TRUE.
-               ENDIF
-
-               ! Determine subscripts for ND21
-               ! Store first wavelength in usual position and any
-               ! subsequent wavelengths at end
-               ! There are always 5 entries first, but separation then
-               ! depends on W.
-               SELECT CASE(W)
-                  CASE(1)
-                     IOUT = 5 + (3*(N-1)) + 1
-                  CASE(2)
-                     IOUT = 5 + (3*NRHAER) + (  NDUST) + N
-                  CASE(3)
-                     IOUT = 5 + (4*NRHAER) + (2*NDUST) + N
-                  CASE DEFAULT
-                     IOUT = 5 + (3*(N-1)) + 1
-               END SELECT
-
-               ! loop over grid boxes
-               DO L = 1, Input_Opt%LD21
-               DO J = 1, State_Grid%NY
-               DO I = 1, State_Grid%NX
-
-                  !----------------------------------------------------
-                  ! ND21 bpch diagnostics computed here:
-                  !  #6  Sulfate Optical Depth (lambda1 nm)       [.]
-                  !  #9  Black Carbon Optical Depth (lambda1 nm)  [.]
-                  !  #12 Organic Carbon Optical Depth (lambda1 nm)[.]
-                  !  #15 Sea Salt (accum) Opt Depth (lambda1 nm)  [.]
-                  !  #18 Sea Salt (coarse) Opt Depth(lambda1 nm)  [.]
-                  !  #28-32: Optical depths for lambda2 nm
-                  !  #40-44: Optical depths for lambda3 mn
-                  IF ( .not. LINTERP ) THEN
-                     AD21(I,J,L,IOUT) = AD21(I,J,L,IOUT) +
-     &                                  ODAER(I,J,L,IWVSELECT(1,W),N)
-                  ELSE
-                     ! Interpolated using angstrom exponent between
-                     ! Closest available wavelengths
-                     ! (coefs pre-calculated in CALC_AOD (RD_AOD.F)
-                     ! catch any zero values before interpolation
-                     IF ((ODAER(I,J,L,IWVSELECT(2,W),N).GT.0).AND.
-     &                   (ODAER(I,J,L,IWVSELECT(1,W),N).GT.0)) THEN
-                        AD21(I,J,L,IOUT) = AD21(I,J,L,IOUT) +
-     &                   ODAER(I,J,L,IWVSELECT(2,W),N)*ACOEF_WV(W)**
-     &                   (BCOEF_WV(W)*LOG(ODAER(I,J,L,IWVSELECT(1,W),N)/
-     &                   ODAER(I,J,L,IWVSELECT(2,W),N)))
-                     ENDIF
-                  ENDIF
-
-                  !----------------------------------------------------
-                  ! ND21 bpch diagnostics computed here:
-                  !  #58: SOA from Aqueous Isoprene AOD [unitless]
-                  IF ( ( N == 3 ) .and. Is_ComplexSOA ) THEN
-                     AD21(I,J,L,IISOPAOD) = AD21(I,J,L,IISOPAOD) +
-     &                                      ISOPOD(I,J,L,IWVSELECT(1,W))
-                  ENDIF
-
-               ENDDO
-               ENDDO
-               ENDDO
-
-            ENDDO ! end loop over wavelengths
-
-            !------------------------------------
-            ! Aerosol Surface Areas [cm2/cm3]
-            !------------------------------------
-            !-----------------------------------------------------
-            ! ND21 bpch diagnostics computed here:
-            !  #8  Sulfate Surface Area                      [cm2/cm3 ]
-            !  #11 Black Carbon (hydrophilic) Surface Area   [cm2/cm3 ]
-            !  #14 Organic Carbon (hydrophilic) Surface Area [cm2/cm3 ]
-            !  #17 Sea Salt (accum) Surface Area             [cm2/cm3 ]
-            !  #20 Sea Salt (coarse) Surface Area            [cm2/cm3 ]
-            DO L = 1, Input_Opt%LD21
-            DO J = 1, State_Grid%NY
-            DO I = 1, State_Grid%NX
-
-               ! Get 3-D grid box indices
-               IOUT = 5 + (3*(N-1)) + 3
-
-               ! Add aerosol surface areas
-               AD21(I,J,L,IOUT) = AD21(I,J,L,IOUT) +
-     &                            TAREA(I,J,L,N+NDUST)
-
-            ENDDO
-            ENDDO
-            ENDDO
-
-         ENDDO ! end loop over hygroscopic aerosols
-!$OMP END PARALLEL DO
-
-      ENDIF
-#endif
-
       IF ( State_Diag%Archive_AOD .and. ODSWITCH .EQ. 1 ) THEN
          ! Loop over aerosol types (dust handled in dust_mod.f)
 !$OMP PARALLEL DO

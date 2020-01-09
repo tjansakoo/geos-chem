@@ -40,7 +40,7 @@ MODULE Emissions_Mod
 ! !PRIVATE TYPES:
 !
   ! Species ID flags
-  INTEGER :: id_BrO, id_CH4, id_CH3Br
+  INTEGER :: id_CH4
   LOGICAL :: doMaintainMixRatio
 
 CONTAINS
@@ -108,9 +108,7 @@ CONTAINS
     ThisLoc  = ' -> at Emissions_Init (in module GeosCore/emissions_mod.F90)'
 
     ! Define species ID flags for use in routines below
-    id_BrO   = Ind_('BrO'  )
     id_CH4   = Ind_('CH4'  )
-    id_CH3Br = Ind_('CH3Br')
 
     ! Are we including a species for which the global mixing ratio should
     ! remain constant?
@@ -150,35 +148,28 @@ CONTAINS
 !
 ! !USES:
 !
-    USE BROMOCARB_MOD,      ONLY : SET_BRO
-    USE BROMOCARB_MOD,      ONLY : SET_CH3BR
     USE CARBON_MOD,         ONLY : EMISSCARBON
     USE CO2_MOD,            ONLY : EMISSCO2
     USE ErrCode_Mod
     USE GLOBAL_CH4_MOD,     ONLY : EMISSCH4
     USE HCOI_GC_MAIN_MOD,   ONLY : HCOI_GC_RUN
     USE Input_Opt_Mod,      ONLY : OptInput
-    USE Pops_Mod,           ONLY : GetPopsDiagsFromHemco
     USE Precision_Mod
     USE State_Chm_Mod,      ONLY : ChmState
     USE State_Diag_Mod,     ONLY : DgnState
     USE State_Grid_Mod,     ONLY : GrdState
     USE State_Met_Mod,      ONLY : MetState
-#if defined ( TOMAS )
+    USE Time_Mod,           ONLY : Get_Ts_Emis
+    USE UnitConv_Mod,       ONLY : Convert_Spc_Units
+    Use SfcVmr_Mod,         Only : FixSfcVmr_Run
+#ifdef BPCH_DIAG
+    USE MERCURY_MOD,        ONLY : EMISSMERCURY
+    USE Pops_Mod,           ONLY : GetPopsDiagsFromHemco
+#ifdef TOMAS
     USE CARBON_MOD,         ONLY : EMISSCARBONTOMAS !jkodros
     USE SULFATE_MOD,        ONLY : EMISSSULFATETOMAS !jkodros
 #endif
-    USE Time_Mod,           ONLY : Get_Ts_Emis
-    USE UnitConv_Mod,       ONLY : Convert_Spc_Units
-
-    ! Setting other surface VMRs
-    Use sfcVMR_Mod,         Only : fixSfcVMR
-
-    ! Use old mercury code for now (ckeller, 09/23/2014)
-    USE MERCURY_MOD,        ONLY : EMISSMERCURY
-
-    ! For UCX, use Seb's routines for now
-    USE UCX_MOD,            ONLY : EMISS_BASIC
+#endif
 !
 ! !INPUT PARAMETERS:
 !
@@ -208,6 +199,11 @@ CONTAINS
 !  15 Oct 2018 - R. Yantosca - Now call GetPopsDiagsFromHemco to copy manual
 !                              diags for the POPS simulation into State_Diag
 !  18 Oct 2018 - R. Yantosca - Now pass State_Diag to EmissCO2 for nc diags
+#if defined ( MODEL_GEOS )
+!  27 Jun 2019 - C. Keller   - Only set surface CH3Br concentrations if flag is
+!                              set accordingly.
+#endif
+!  16 Aug 2019 - C. Keller   - Now call update fixSfcVMR_Run routine
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -238,8 +234,8 @@ CONTAINS
        RETURN
     ENDIF
 
-    ! Exit if Phase 0 or 1
-    IF ( ( Phase == 1 ) .or. ( Phase == 0 ) ) RETURN
+    ! Exit if Phase 0 or 1, or if it is a GEOS-Chem dry-run
+    IF ( ( Phase == 1 ) .or. ( Phase == 0 ) .or. Input_Opt%DryRun ) RETURN
 
     ! Call carbon emissions module to make sure that sesquiterpene
     ! emissions calculated in HEMCO (SESQ) are passed to the internal
@@ -318,19 +314,7 @@ CONTAINS
        ENDIF
     ENDIF
 
-    ! For UCX, use Seb's routines for stratospheric species for now.
-    IF ( Input_Opt%LUCX .and. Input_Opt%LBASICEMIS ) THEN
-       CALL Emiss_Basic( am_I_Root,  Input_Opt, State_Chm, &
-                         State_Grid, State_Met, RC )
-
-       ! Trap potential errors
-       IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Error encountered in "Emiss_Basic"!'
-          CALL GC_Error( ErrMsg, RC, ThisLoc )
-          RETURN
-       ENDIF
-    ENDIF
-
+#ifdef BPCH_DIAG
     ! For mercury, use old emissions code for now
     IF ( Input_Opt%ITS_A_MERCURY_SIM ) THEN
        CALL EmissMercury( am_I_Root,  Input_Opt,  State_Chm,                 &
@@ -358,53 +342,18 @@ CONTAINS
           RETURN
        ENDIF
     ENDIF
+#endif
 
     ! Prescribe some concentrations if needed
     IF ( Input_Opt%ITS_A_FULLCHEM_SIM ) THEN
 
-       !========================================================
-       !jpp, 2/12/08: putting a call to SET_CH3Br
-       !              which is in bromocarb_mod.f
-       !       ***** Fix CH3Br Concentration in PBL *****
-       ! Kludge: eventually I want to keep the concentration
-       !         entirely fixed! Ask around on how to...
-       !========================================================
-       IF ( Input_Opt%LEMIS .AND. ( id_CH3Br > 0 ) ) THEN
-          CALL Set_CH3Br( am_I_Root,  Input_Opt, State_Chm, &
-                          State_Grid, State_Met, RC )
-
-          ! Trap potential errors
-          IF ( RC /= GC_SUCCESS ) THEN
-             ErrMsg = 'Error encountered in "Set_CH3BR"!'
-             CALL GC_Error( ErrMsg, RC, ThisLoc )
-             RETURN
-          ENDIF
-       ENDIF
-
-       ! ----------------------------------------------------
-       ! If selected in input.geos, then set the MBL
-       ! concentration of BrO equal to 1 pptv during daytime.
-       ! ----------------------------------------------------
-       IF ( Input_Opt%LEMIS .AND. ( id_BrO > 0 ) ) THEN
-          CALL Set_BrO( am_I_Root,  Input_Opt, State_Chm, &
-                        State_Grid, State_Met, RC )
-
-          ! Trap potential errors
-          IF ( RC /= GC_SUCCESS ) THEN
-             ErrMsg = 'Error encountered in "Set_BrO"!'
-             CALL GC_Error( ErrMsg, RC, ThisLoc )
-             RETURN
-          ENDIF
-       ENDIF
-
        ! Set other (non-UCX) fixed VMRs
        If ( Input_Opt%LEMIS ) Then
-          CALL FixSfcVMR( am_I_Root,  Input_Opt, State_Chm, &
-                          State_Grid, State_Met, RC          )
+          CALL FixSfcVMR_Run( Input_Opt, State_Chm, State_Grid, State_Met, RC )
 
           ! Trap potential errors
           IF ( RC /= GC_SUCCESS ) THEN
-             ErrMsg = 'Error encountered in "FixSfcVmr"!'
+             ErrMsg = 'Error encountered in "FixSfcVmr_Run"!'
              CALL GC_Error( ErrMsg, RC, ThisLoc )
              RETURN
           ENDIF

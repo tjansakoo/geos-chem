@@ -58,18 +58,18 @@
 !  Dylan Jones (dbj@atmosp.physics.utoronto.ca) wrote:
 !                                                                             .
 !    Testing this code [in v8-02-04] was more difficult that I thought.
-!    I began by trying to compare the output of v8-02-04 with our previous
-!    runs with v8-02-01.  I accounted for the changes in the transport_mod.f
-!    and I tried to undo the changes in when the diagnostics are archived in
-!    v8-02-04, but I was still getting large differences between v8-02-04
+!    I began by trying to compare the output of v8-02-04 with our previous 
+!    runs with v8-02-01.  I accounted for the changes in the transport_mod.f 
+!    and I tried to undo the changes in when the diagnostics are archived in 
+!    v8-02-04, but I was still getting large differences between v8-02-04 
 !    and v8-02-01. I finally gave up on this since I may have made a mistake
-!    in reverting to the old way of doing the diagnostics in v8-02-04.  In
-!    the end I took the new linoz code from v8-02-04 and used it in v8-02-01.
-!    I ran two GEOS-5 full chemistry simulations for 2007 and the output
+!    in reverting to the old way of doing the diagnostics in v8-02-04.  In 
+!    the end I took the new linoz code from v8-02-04 and used it in v8-02-01. 
+!    I ran two GEOS-5 full chemistry simulations for 2007 and the output 
 !    were consistent over the full year.
 !                                                                             .
-!    I think that it is safe to release [Linoz in v8-02-04].  However, we
-!    should acknowledge that it was [only] tested in v8-02-01, since I was
+!    I think that it is safe to release [Linoz in v8-02-04].  However, we 
+!    should acknowledge that it was [only] tested in v8-02-01, since I was 
 !    not able to assess the quality of the output in v8-02-04.
 !                                                                             .
 !  Bob Yantosca (yantosca@seas.harvard.edu) wrote:
@@ -484,7 +484,7 @@
                climpml=tlstt(i,j,l,4)      ! Climatological P-L = (P-L)^o
 
                ! ++++++ local ozone feedback: ++++++
-               dero3=tlstt(i,j,l,5)               ! Derivative w.r.t. O3.
+               dero3=tlstt(i,j,l,5)               ! Derivative w.r.t. O3. 
                                                 !  dero3=-1/(time constant)
                IF (dero3.EQ.0) CYCLE            ! Skip Linoz if lifetime
                                                 !  is infinite.
@@ -509,7 +509,7 @@
                ! between 0.3 and 0.01 hPa (with fall off of a scale height)
                IF (State_Met%PEDGE(I,J,L) .LE. 0.3e+0_f8) THEN
                   Spc(I,J,L,NTRACER) =
-     &                (State_Met%PMID(I,J,L)/State_Met%PMID(I,J,LPOS-1))
+     &                (State_Met%PMID(I,J,L)/State_Met%PMID(I,J,LPOS-1)) 
      &                * Spc(I,J,LPOS-1,NTRACER)
                ELSE
                   Spc(I,J,L,NTRACER) = Spc(I,J,L,NTRACER)+DMASS
@@ -1101,9 +1101,8 @@
 !
       USE CMN_SIZE_MOD
       USE ErrCode_Mod
-      USE FILE_MOD,           ONLY : IOERROR
-      USE Input_Opt_Mod,      ONLY : OptInput
-      USE InquireMod,         ONLY : findFreeLun
+      USE Input_Opt_Mod, ONLY : OptInput
+      USE InquireMod,    ONLY : findFreeLun
 !
 ! !INPUT PARAMETERS:
 !
@@ -1136,6 +1135,7 @@
 ! !LOCAL VARIABLES:
 !
       ! Scalars
+      LOGICAL            :: FileExists
       INTEGER            :: IU_FILE, K,     J
       INTEGER            :: M,       NTBLS, IOS
       REAL(fp)           :: TMAX,    TMIN
@@ -1150,6 +1150,8 @@
       CHARACTER(LEN=80)  :: HEADING, TITL1
       CHARACTER(LEN=255) :: ERRMSG
       CHARACTER(LEN=255) :: FILENAME
+      CHARACTER(LEN=255) :: FileMsg
+      CHARACTER(LEN=255) :: ThisLoc
 
       !=================================================================
       ! LINOZ_READ begins here!
@@ -1157,6 +1159,8 @@
 
       ! Assume success
       RC             = GC_SUCCESS
+      ErrMsg         = ''
+      ThisLoc        = ' -> at LINOZ_READ (in GeosCore/linoz_mod.F)'
 
       ! Get fields from Input_Opt
       NFIELDS_LINOZ  = Input_Opt%LINOZ_NFIELDS
@@ -1168,11 +1172,42 @@
       FILENAME       = TRIM( Input_Opt%CHEM_INPUTS_DIR ) //
      &                 'Linoz_200910/Linoz_March2007.dat'
 
-      ! Echo info
-      IF ( am_I_Root ) THEN
-         WRITE( 6, 100 ) TRIM( FILENAME )
- 100     FORMAT( '     - LINOZ_READ: Reading ', a )
+      !=================================================================
+      ! In dry-run mode, print file path to dryrun log and exit.
+      ! Otherwise, print file path to stdout and continue.
+      !=================================================================
+
+      ! Test if the file exists
+      INQUIRE( FILE=TRIM( FileName ), EXIST=FileExists )
+
+      ! Test if the file exists and define an output string
+      IF ( FileExists ) THEN
+         FileMsg = 'LINOZ (LINOZ_READ): Opening'
+      ELSE
+         FileMsg = 'LINOZ (LINOZ_READ): REQUIRED FILE NOT FOUND'
       ENDIF
+
+      ! Write message to stdout for both regular and dry-run simulations
+      IF ( Input_Opt%AmIRoot ) THEN
+         WRITE( 6, 300 ) TRIM( FileMsg ), TRIM( FileName )
+ 300     FORMAT( a, ' ', a )
+      ENDIF
+
+      ! For dry-run simulations, return to calling program.
+      ! For regular simulations, throw an error if we can't find the file.
+      IF ( Input_Opt%DryRun ) THEN
+         RETURN
+      ELSE
+         IF ( .not. FileExists ) THEN
+            WRITE( ErrMsg, 300 ) TRIM( FileMsg ), TRIM( FileName )
+            CALL GC_Error( ErrMsg, RC, ThisLoc )
+            RETURN
+         ENDIF
+      ENDIF
+
+      !=================================================================
+      ! Read climatological data from the LINOZ lookup tables
+      !=================================================================
 
       ! Find a free file LUN
       IU_FILE = findFreeLUN()
@@ -1184,9 +1219,11 @@
       OPEN( IU_FILE, FILE=TRIM( FILENAME ), STATUS='OLD',
      &               FORM='FORMATTED',      IOSTAT=IOS )
 
-      ! Stop on error
+      ! Return if there was an error opening the file
       IF ( IOS /= 0 ) THEN
-         CALL IOERROR( IOS, IU_FILE, ERRMSG )
+         WRITE( FileMsg, 300 ) TRIM( FileMsg ), TRIM( FileName )
+         CALL GC_Error( ErrMsg, RC, ThisLoc )
+         RETURN
       ENDIF
 
       ! Read header
@@ -1218,7 +1255,9 @@
 
                ! Stop on error
                IF ( IOS > 0 ) THEN
-                  CALL IOERROR( IOS, IU_FILE, ERRMSG )
+                  ErrMsg = 'Error reading ' // TRIM( FileName )
+                  CALL GC_Error( ErrMsg, RC, ThisLoc )
+                  RETURN
                ENDIF
 
                ! Loop over # of levels in the LINOZ climatology
@@ -1231,7 +1270,7 @@
          enddo
 
          ! Write overall min & max
-         write (6,912) TITL1,TMIN,TMAX
+         IF ( am_I_Root ) write (6,912) TITL1,TMIN,TMAX
  912     FORMAT('  Linoz Data:  ',a80,1p,2e10.3)
 
       enddo

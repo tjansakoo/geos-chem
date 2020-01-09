@@ -26,13 +26,13 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
 !
-#if defined( APM )
+#ifdef APM
       PRIVATE :: WET_SETTLINGBIN
 #endif
       PUBLIC :: CHEMSULFATE
       PUBLIC :: CLEANUP_SULFATE
       PUBLIC :: INIT_SULFATE
-#if defined( TOMAS )
+#ifdef TOMAS
       PUBLIC :: EMISSSULFATETOMAS ! JKodros (6/2/15 - this is to connect TOMAS to HEMCO)
 #endif
 !
@@ -48,124 +48,7 @@
 !        the ocean", J. Geophys. Res, 97, 7373-7382, 1992.
 !
 ! !REVISION HISTORY:
-!  (1 ) All module variables are declared PRIVATE (i.e., they can only
-!        be seen from within this module (bmy, 6/2/00)
-!  (2 ) The routines in "sulfate_mod.f" assume that we are doing chemistry
-!        over the global region (e.g. IIPAR=IIPAR, JJPAR=JJPAR). (bmy, 6/8/00)
-!  (3 ) Removed obsolete code from DRYDEP_SULFATE (bmy, 12/21/00)
-!  (4 ) Removed obsolete commented-out code from module routines (bmy, 4/23/01)
-!  (5 ) Now read data files from DATA_DIR/sulfate_sim_200106/ (bmy, 6/19/01)
-!  (6 ) Updated comments (bmy, 9/4/01)
-!  (7 ) XTRA2(IREF,JREF,5) is now XTRA2(I,J).  Now reference COSSZA from
-!        "dao_mod.f". (bmy, 9/27/01)
-!  (8 ) Removed obsolete commented out code from 9/01 (bmy, 10/24/01)
-!  (9 ) Minor fixes to facilitate compilation on ALPHA (bmy, 11/15/01)
-!  (11) Now divide module header into MODULE PRIVATE, MODULE VARIABLES, and
-!        MODULE ROUTINES sections.  Updated comments (bmy, 5/28/02)
-!  (12) Replaced all instances of IM with IIPAR and JM with JJPAR, in order
-!        to prevent namespace confusion for the new TPCORE (bmy, 6/25/02)
-!  (13) Now reference "file_mod.f" (bmy, 6/27/02)
-!  (14) Now references GET_PEDGE from "pressure_mod.f", which computes P at
-!        the bottom edge of grid box (I,J,L).  Also deleted obsolete,
-!        commented-out code. (dsa, bdf, bmy, 8/21/02)
-!  (15) Added updated code from Rokjin Park and Brendan Field, in order to
-!        perform coupled chemistry-aerosol simulations.  Also added parallel
-!        DO-loops in several subroutines.  Updated comments, cosmetic
-!        changes.  Now reference "error_mod.f" and "wetscav_mod.f".
-!        Now only do chemistry below the tropopause. (rjp, bdf, bmy, 12/6/02)
-!  (16) Added ENH3_na array to hold natural source NH3 emissions.  Also now
-!        facilitate passing DMS, SO2, SO4, NH3 to SMVGEAR for fullchem
-!        simulations.  Added subroutine READ_NATURAL_NH3. (rjp, bmy, 3/23/03)
-!  (17) Now references "grid_mod.f" and "time_mod.f".  Also made other minor
-!        cosmetic changes. (bmy, 3/27/03)
-!  (18) Updated chemistry routines to apply drydep losses throughout the
-!        entire PBL. (rjp, bmy, 8/1/03)
-!  (19) Now accounts for GEOS-4 PBL being in meters (bmy, 1/15/04)
-!  (20) Fix ND44 diag so that we get same results for sp or mp (bmy, 3/24/04)
-!  (21) Added COSZM array.  Now use diurnal varying JH2O2 in CHEM_H2O2.
-!        (rjp, bmy, 3/39/04)
-!  (22) Added more parallel DO-loops (bmy, 4/14/04)
-!  (23) Now add SO2 from ships (bec, bmy, 5/20/04)
-!  (24) Now references "directory_mod.f", "logical_mod.f" and "tracer_mod.f".
-!        Now removed IJSURF. (bmy, 7/20/04)
-!  (25) Can overwrite USA with EPA/NEI99 emissions (rjp, rch, bmy, 11/16/04)
-!  (26) Modified for AS, AHS, LET, SO4aq, NH4aq (cas, bmy, 1/11/05)
-!  (27) Now also references "pbl_mix_mod.f".  NOTE: Comment out phase
-!        transition  code for now since it is still under development and
-!        will take a while to be rewritten. (bmy, 3/15/05)
-!  (28) Modified for SO4s, NITs chemistry (bec, 4/13/05)
-!  (29) Now reads updated files for SST and offline chemistry.  Now read data
-!        for both GCAP and GEOS grids.  Now references "tropopause_mod.f".
-!        (bmy, 8/22/05)
-!  (30) Now make sure all USE statements are USE, ONLY (bmy, 10/3/05)
-!  (31) Now references XNUMOL & XNUMOLAIR from "tracer_mod.f" (bmy, 10/25/05)
-!  (32) Now read int'annual SST data on GEOS 1x1 grid (bmy, 11/17/05)
-!  (33) Bug fix for offline aerosol sim in SEASALT_CHEM (bec, bmy, 3/29/06)
-!  (34) Bug fix in INIT_DRYDEP (bmy, 5/23/06)
-!  (35) Now references "bravo_mod.f" (rjp, kfb, bmy, 6/26/06)
-!  (36) Now references "streets_anthro_mod.f" (yxw, bmy, 8/17/06)
-!  (37) Now references "biomass_mod.f" (bmy, 9/27/06)
-!  (38) Now prevent seg fault error in READ_BIOFUEL_SO2 (bmy, 11/3/06)
-!  (39) Bug fix in SEASALT_CHEM (havala, bec, bmy, 12/8/06)
-!  (40) Extra error check for low RH in GRAV_SETTLING (phs, 6/11/08)
-!  (41) Now references "cac_anthro_mod.f".  And apply SO2 yearly scale factor
-!        to SO2 from GEIA (amv, phs, 3/11/08)
-!  (41) Bug fixes in reading EDGAR data w/ the right tracer number,
-!        when we are doing offline or nonstd simulations (dkh, 10/31/08)
-!  (42) Bug fix for AD13_SO2_sh in SRCSO2 (phs, 2/27/09)
-!  (43) Bug fix: need to add CAC_AN to PRIVATE statements (bmy, 5/27/09)
-!  (44) Constrain surface emissions to the first level and save them into
-!        emis_save (lin, 5/29/09)
-!  (45) Last year of SST data is now 2008 (see READ_SST) (bmy, 7/13/09)
-!  (46) Updated rxns in CHEM_DMS and CHEM_SO2 to JPL 2006 (jaf, bmy, 10/15/09)
-!  (47) Added new volcanic emissions of SO2 (jaf, bmy, 10/15/09)
-!  (48) Now accounts for NEI 2005 emissions, and multilevels SOxan emissions
-!        (amv, phs, 10/15/2009)
-!  (49) Fixes in SRCSO2 for SunStudio compiler (bmy, 12/3/09)
-!  (50) Add new subroutine SRCSF30 for emission to 30bin sulfate (win, 1/25/10)
-!  (51) Add new array PSO4_SO2AQ for SO4 produced via aqueous chemistry of SO2
-!        excluding that from heterogeous reaction on sea-salt. (win, 1/25/10)
-!  (52) Standardized patch in READ_ANTHRO_NH3 (dkh, bmy, 3/5/10)
-!  (53) Use LWC from GEOS-5 met fields (jaf, bmy, 6/30/10)
-!  (54) Add module parameters MNYEAR_VOLC and MXYEAR_VOLC to define the 1st
-!       and last year with data for volcanic emissions. (ccc, 9/30/10)
-!  (55) Use updated volcanic emissions from 1979 to 2009
-!  26 Aug 2010 - R. Yantosca   - Add modifications for MERRA
-!  12 Nov 2010 - R. Yantosca   - Avoid div-by-zero when computing L2S, L3S
-!  07 Sep 2011 - P. Kasibathla - Modified to include GFED3
-!  22 Dec 2011 - M. Payer      - Added ProTeX headers
-!  08 Feb 2012 - R. Yantosca   - Add modifications for GEOS-5.7.2 met
-!  01 Mar 2012 - R. Yantosca   - Now reference new grid_mod.F90
-!  13 Mar 2012 - M. Cooper     - Changed regrid algorithm to map_a2a
-!  28 Nov 2012 - R. Yantosca   - Use SUNCOS fields from the State_Met object
-!  04 Mar 2013 - R. Yantosca   - Now call INIT_SULFATE from the init stage
-!                                which facilitates connection to GEOS-5 GCM
-!  05 Mar 2013 - R. Yantosca   - Now use Input_Opt%LNLPBL instead of LNLPBL
-!                                from logical_mod.F
-!  13 Mar 2013 - R. Yantosca   - Bug fix: make sure we pass values to the
-!                                SOIL_DRYDEP routine even when ND44 is off
-!  30 May 2013 - S. Farina     - Merged TOMAS code into sulfate_mod.F
-!  20 Aug 2013 - R. Yantosca   - Removed "define.h", this is now obsolete
-!  12 Sep 2013 - M. Sulprizio  - Add modifications for acid uptake on dust
-!                                aerosol (T.D. Fairlie)
-!  18 Sep 2014 - M. Sulprizio  - Get oxidant fields for offline aerosol
-!                                simulation from HEMCO
-!  03 Nov 2014 - C. Keller     - Incorporated GET_ALK from seasalt_mod.F
-!  20 Nov 2014 - M. Yannetti   - Added PRECISION_MOD
-!  04 Mar 2015 - R. Yantosca   - Remove obsolete, commented-out code
-!  04 Mar 2015 - R. Yantosca   - Use REAL(f4) for pointer args to HCO_GetPtr
-!  22 May 2015 - R. Yantosca   - Remove variables made obsolete by HEMCO
-!  12 Jun 2015 - R. Yantosca   - Now remove orphaned ND44 variables
-!  12 Jun 2015 - R. Yantosca   - Remove CHEM_NH3 and CHEM_NH4 routines
-!                                because drydep is now done in mixing_mod.F90
-!  23 Sep 2015 - R. Yantosca   - Remove DRY* flags for most species except
-!                                for those used in GRAV_SETTLING
-!  05 Jan 2016 - E. Lundgren   - Use global physical parameters
-!  04 Aug 2016 - M. Yannetti   - Replace TCVV with spc db MW and phys constant
-!  29 Nov 2016 - R. Yantosca   - grid_mod.F90 is now gc_grid_mod.F90
-!  24 Aug 2017 - M. Sulprizio  - Remove support for GCAP, GEOS-4, GEOS-5 and
-!                                MERRA; Also remove functions GET_VCLDF and
-!                                GET_LWC, they're no longer needed
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -189,7 +72,7 @@
       REAL(fp),  PARAMETER   :: SMALLNUM    = 1e-20_fp
       REAL(fp),  PARAMETER   :: CM3PERM3    = 1.e6_fp
 
-#if defined( TOMAS )
+#ifdef TOMAS
       !---------------------------------------------------------------
       ! For TOMAS microphysics: Add parameter for scaling anthro SO2
       !---------------------------------------------------------------
@@ -254,17 +137,16 @@
       REAL(fp),  ALLOCATABLE :: TTDAY(:,:)
       REAL(fp),  ALLOCATABLE :: COSZM(:,:)
 
-#if defined( APM )
+#ifdef APM
       REAL(fp),  ALLOCATABLE :: PSO4_SO2APM(:,:,:)
       REAL(fp),  ALLOCATABLE :: PSO4_SO2SEA(:,:,:)
 #endif
-#if defined( TOMAS )
+#ifdef TOMAS
       !---------------------------------------------------------------
       ! For TOMAS microphysics: Define PSO4_SO2aq array
       !---------------------------------------------------------------
       REAL(fp),  ALLOCATABLE :: PSO4_SO2AQ(:,:,:)
       REAL(fp),  ALLOCATABLE :: SO4_ANTH(:,:,:)
-      REAL(fp),  ALLOCATABLE :: SO4_BIOF(:,:)
 #endif
 
       ! These are pointers to fields in the HEMCO data structure.
@@ -348,7 +230,7 @@
       USE TIME_MOD,           ONLY : ITS_A_NEW_MONTH
       USE UCX_MOD,            ONLY : SETTLE_STRAT_AER
       USE UnitConv_Mod,       ONLY : Convert_Spc_Units
-#if defined( APM )
+#ifdef APM
       USE HCO_STATE_MOD,      ONLY : HCO_GetHcoID
       USE APM_DRIV_MOD,       ONLY : EMITNH3,EMITSO2
 #endif
@@ -371,60 +253,7 @@
       INTEGER,        INTENT(OUT)   :: RC          ! Success or failure?
 !
 ! !REVISION HISTORY:
-!  (1 ) Now reference all arguments except FIRSTCHEM and RH from either F90
-!        modules or from common block header files.  Updated comments,
-!        cosmetic changes.  Added NH3, NH4, NITRATE chemistry routines.
-!        Also call MAKE_RH and CONVERT_UNITS from "dao_mod.f".  Now references
-!        IDTDMS, IDTSO2 etc. from "tracerid_mod.f".  Now make FIRSTCHEM a
-!        local SAVEd variable.  Now reference DEPSAV from "drydep_mod.f".
-!        Also get rid of extraneous dimensions of DEPSAV.  Added NTIME,
-!        NHMSb arrays for OHNO3TIME.  (rjp, bdf, bmy, 12/16/02)
-!  (2 ) CHEM_DMS is now only called for offline sulfate simulations.
-!        (rjp, bmy, 3/23/03)
-!  (3 ) Now remove NTIME, NHMSb from the arg list and call to OHNO3TIME.
-!        Now references functions GET_MONTH, GET_TS_CHEM, and GET_ELAPSED_SEC
-!        from the new "time_mod.f". (bmy, 3/27/03)
-!  (4 ) Now reference STT, TCVV, N_TRACERS, ITS_AN_AEROSOL_SIM from
-!        "tracer_mod.f".  Now reference ITS_A_NEW_MONTH from "time_mod.f".
-!        Now references LPRT from "logical_mod.f". (bmy, 7/20/04)
-!  (5 ) Updated for AS, AHS, LET, SO4aq, NH4aq.  Now references LCRYST from
-!        logical_mod.f.  Now locate species in the DEPSAV array w/in
-!        INIT_SULFATE. (bmy, 12/21/04)
-!  (6 ) Now handle gravitational settling of SO4s, NITs (bec, bmy, 4/13/05)
-!  (7 ) Now make sure all USE statements are USE, ONLY (bmy, 10/3/05)
-!  (8 ) Remove reference to MAKE_RH, it's not needed here (bmy, 3/16/06)
-!  (9 ) Reference to LTOMAS and add call CHEM_SO4_AQ using aqueous oxidation
-!        which is one of the TOMAS microphysics subroutine  (win, 1/25/10)
-!  05 Oct 2011 - R. Yantosca - SUNCOS is no longer needed here
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  30 Jul 2012 - R. Yantosca - Now accept am_I_Root as an argument when
-!                              running with the traditional driver main.F
-!  14 Nov 2012 - R. Yantosca - Add Input_Opt, RC as arguments
-!  15 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  04 Mar 2013 - R. Yantosca - Remove call to INIT_SULFATE
-!  19 Mar 2013 - R. Yantosca - Now copy Input_Opt%TCVV(1:N_TRACERS)
-!  25 Mar 2013 - M. Payer    - Now pass State_Chm object via the arg list
-!  23 Apr 2013 - R. Yantosca - Remove LTOMAS logical, since we now invoke TOMAS
-!                              with either TOMAS=yes or TOMAS40=yes
-!  31 May 2013 - R. Yantosca - Now pass am_I_root, Input_Opt, State_Chm
-!                              and RC to TOMAS routine CHEM_SO4_AQ
-!  12 Sep 2013 - M. Sulprizio- Include gravitational settling of dust_sulfate
-!                              and dust_nitrate. Changes made to CHEM_SO2 and
-!                              CHEM_SO4 (tdf, 04/07/08)
-!  23 Oct 2013 - R. Yantosca - Now pass objects to GET_GLOBAL_OH routine
-!  18 Sep 2014 - M. Sulprizio- Get oxidant fields for offline aerosol
-!                              simulation from HEMCO
-!  30 Sep 2015 - E. Lundgren - Now use UNITCONV_MOD conversion routines
-!  29 Apr 2016 - R. Yantosca - Don't initialize pointers in declaration stmts
-!  16 Jun 2016 - M. Long     - Remove references to TRACERID_MOD and replace
-!                              with STATE_CHM_MOD::Ind_()
-!  30 Jun 2016 - R. Yantosca - Remove instances of STT.  Now get the advected
-!                              species ID from State_Chm%Map_Advect.
-!  11 Aug 2016 - R. Yantosca - Remove temporary tracer-removal code
-!  28 Sep 2017 - E. Lundgren - Simplify unit conversions using wrapper routine
-!  02 Nov 2017 - R. Yantosca - Now accept State_Diag as an argument
-!  03 Jan 2018 - M. Sulprizio- Replace UCX CPP switch with Input_Opt%LUCX
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -452,7 +281,7 @@
 
       ! Pointers
       REAL(fp),        POINTER :: Spc(:,:,:,:)
-#if defined( APM )
+#ifdef APM
       INTEGER           :: IDNH3,IDSO2
       REAL(fp)          :: A_M2
 #endif
@@ -555,7 +384,7 @@
          TS_EMIS = HcoState%TS_EMIS
       ENDIF
 
-#if defined( APM )
+#ifdef APM
       IDNH3 = HCO_GetHcoID( 'NH3', HcoState )
 !$OMP PARALLEL DO
 !$OMP+DEFAULT( SHARED )
@@ -605,15 +434,15 @@
       PNITs      = 0e+0_fp
       PSO4_dust  = 0e+0_fp     ! tdf 04/17/08
       PNIT_dust  = 0e+0_fp     ! tdf 04/17/08
-#if defined( APM )
+#ifdef APM
       PSO4_SO2APM = 0d0
       PSO4_SO2SEA = 0d0
 #endif
-#if defined( TOMAS )
+#ifdef TOMAS
       PSO4_SO2AQ = 0e+0_fp     ! For TOMAS microphysics
 #endif
 
-      !=================================================================
+      !================================================================= 
       ! Call individual chemistry routines for sulfate/aerosol tracers
       !=================================================================
 
@@ -824,7 +653,7 @@
             CALL DEBUG_MSG( '### CHEMSULFATE: a CHEM_SO4' )
          ENDIF
 
-#if   defined( TOMAS )
+#ifdef TOMAS
          !-----------------------------------------------------------------
          ! For TOMAS microphysics:
          !
@@ -906,7 +735,7 @@
 
       END SUBROUTINE CHEMSULFATE
 !EOC
-#if defined( TOMAS )
+#ifdef TOMAS
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
 !------------------------------------------------------------------------------
@@ -952,8 +781,12 @@
 ! !OUTPUT PARAMETERS:
 !
       INTEGER,        INTENT(OUT)   :: RC          ! Success or failure?
-
-! Local variables
+!EOP
+!-------------------------------------------------------------------------
+!BOC
+!
+! !LOCAL VARIABLES
+!
       ! Fields for TOMAS simulation
       REAL*8           :: BINMASS(State_Grid%NX,State_Grid%NY,
      &                            State_Grid%NZ,IBINS*ICOMP)
@@ -1063,7 +896,7 @@
 !-----------------------------------------------------------------------------
 !                  Jack Kodros re-writing this
 !-----------------------------------------------------------------------------
-#if defined( TOMAS )
+#ifdef TOMAS
       SUBROUTINE SRCSF30( am_I_Root,  Input_Opt,
      &                    State_Grid, State_Met,
      &                    TC1, TC2, RC )
@@ -1071,7 +904,7 @@
 ! !USES:
 !
       USE CMN_SIZE_MOD             ! Size parameters
-#if defined( BPCH_DIAG )
+#ifdef BPCH_DIAG
       USE CMN_DIAG_MOD             ! ND13 (for now)
       USE DIAG_MOD,           ONLY : AD59_SULF,     AD59_NUMB
 #endif
@@ -1232,22 +1065,16 @@
       ENDIF
       Ptr3D => NULL()
 
-      DgnName = 'SO4_BIOF'
-      CALL GetHcoDiagn( am_I_Root, DgnName, .FALSE., ERR,
-     &  Ptr2D=Ptr2D )
-      IF ( .NOT. ASSOCIATED(Ptr2D) ) THEN
-         CALL HCO_WARNING('Not found: '//TRIM(DgnName),ERR,THISLOC=LOC)
-      ELSE
-         SO4_BIOF = Ptr2D(:,:)
-      ENDIF
-      Ptr2D => NULL()
 
       ! convert to kg/box/sec
       DO L = 1, State_Grid%NZ
          SO4an(:,:,L) = 0.0d0
          SO4an(:,:,L) = SO4_ANTH(:,:,L) * AREA(:,:)
       END DO
-      SO4bf = SO4_BIOF(:,:) * AREA(:,:)
+
+      ! NOTE: Biofuels are now lumped into anthro,
+      ! so set SO4bf to zero (bmy, 10/1/19)
+      SO4bf = 0.0_fp
 
       !=================================================================
       ! Compute SO4 emissions
@@ -1496,7 +1323,7 @@
            !                 [kg S/box/timestep] and the corresponding
            !                  number emission [no./box/timestep]
            !==============================================================
-#if defined( BPCH_DIAG )
+#ifdef BPCH_DIAG
             IF ( ND59 > 0 ) THEN
                !print*, 'JACK IN ND59 SULFATE'
                DO K = 1, IBINS
@@ -1545,7 +1372,7 @@
                ENDDO
             ENDDO
 
-#if defined( BPCH_DIAG )
+#ifdef BPCH_DIAG
            !==============================================================
            ! ND59 Diagnostic: Size-resolved primary sulfate emission in
            !                 [kg S/box/timestep] and the corresponding
@@ -1600,10 +1427,6 @@
 ! !USES:
 !
       USE CMN_SIZE_MOD
-#if defined( BPCH_DIAG )
-      USE CMN_DIAG_MOD
-      USE DIAG_MOD,           ONLY : AD44
-#endif
       USE ErrCode_Mod
       USE Input_Opt_Mod,      ONLY : OptInput
       USE State_Chm_Mod,      ONLY : ChmState
@@ -1613,6 +1436,12 @@
       USE Species_Mod,        ONLY : Species
       USE TIME_MOD,           ONLY : GET_ELAPSED_SEC
       USE TIME_MOD,           ONLY : GET_TS_CHEM
+#ifdef TOMAS
+#ifdef BPCH_DIAG
+      USE CMN_DIAG_MOD
+      USE DIAG_MOD,           ONLY : AD44
+#endif
+#endif
 !
 ! !INPUT PARAMETERS:
 !
@@ -1642,29 +1471,7 @@
 !  tdf Treat these coated DUSTs as DRY for now
 !
 ! !REVISION HISTORY:
-!  (1 ) Now references SALA_REDGE_um and SALC_REDGE_um from "tracer_mod.f"
-!        (bmy, 7/20/04)
-!  (2 ) Now references XNUMOL from "tracer_mod.f" (bmy, 10/25/05)
-!  (3 ) Now limit relative humidity to [tiny(real(fp)),0.99] range for DLOG
-!         argument (phs, 5/1/08)
-!  (4 ) Bug fixes to the Gerber hygroscopic growth for sea salt aerosols
-!       (jaegle, 5/5/11)
-!  (5 ) Update hygroscopic growth to Lewis and Schwartz formulation (2006) and
-!       density calculation based on Tang et al. (1997) (bec, jaegle 5/5/11)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  01 Mar 2012 - R. Yantosca - Now use GET_AREA_CM2(I,J,L) from grid_mod.F90
-!  14 Nov 2012 - R. Yantosca - Now pass am_I_Root, Input_Opt, RC as arguments
-!  15 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  12 Sep 2013 - M. Sulprizio- Include Coarse Mode DUST size bins (T.D. Fairlie)
-!  06 Jan 2015 - M. Yannetti - Changed some variables to f8 as needed
-!  26 Feb 2015 - E. Lundgren - Replace GET_PCENTER with State_Met%PMID and
-!                              remove dependency on pressure_mod.
-!  22 Jan 2016 - E. Lundgren - Update netcdf drydep flux diagnostics
-!  29 Apr 2016 - R. Yantosca - Don't initialize pointers in declaration stmts
-!  31 May 2016 - E. Lundgren - Remove usage of Input_Opt%XNUMOL
-!  24 Jun 2016 - R. Yantosca - Now return if id_SO4d1<0 or id_NITd1<0 (not ==0)
-!  02 Nov 2017 - R. Yantosca - Now accept State_Diag as an argument
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -1888,7 +1695,7 @@
             ! NOTE: Eq) 3.22 pp 50 in Hinds (Aerosol Technology)
             ! which produces slip correction factore with small error
             ! compared to the above with less computation.
-            !===========================================================
+            !===========================================================  
 
             ! Slip correction factor (as function of P*dp)
             Slip = 1.e+0_fp+(15.60e+0_fp + 7.0e+0_fp *
@@ -1935,7 +1742,8 @@
          ! DIAGNOSTIC: Drydep flux [molec/cm2/s]
          ! (specifically sea salt loss diagnostics)
          !==============================================================
-#if defined( BPCH_DIAG )
+#ifdef TOMAS
+#ifdef BPCH_DIAG
          !-----------------------------------------------------------
          ! ND44 DIAGNOSTIC (bpch)
          ! Dry deposition flux loss [molec/cm2/s]
@@ -1967,6 +1775,7 @@
             AD44(I,J,DryDep_Id,1) = AD44(I,J,DryDep_Id,1) + FLUX
 
          ENDIF
+#endif
 #endif
 
          !-----------------------------------------------------------
@@ -2032,10 +1841,6 @@
 ! !USES:
 !
       USE CMN_SIZE_MOD
-#if defined( BPCH_DIAG )
-      USE CMN_DIAG_MOD
-      USE DIAG_MOD,           ONLY : AD05
-#endif
       USE ErrCode_Mod
       USE Input_Opt_Mod,      ONLY : OptInput
       USE State_Chm_Mod,      ONLY : ChmState
@@ -2085,37 +1890,12 @@
 !  R4:    DMS + X   ->   SO2 + ...
 !         assume to be at the rate of DMS+OH and DMS+NO3 combined.
 !                                                                             .
-!  The production of SO2 and MSA here, PSO2_DMS and PMSA_DMS, are saved
-!  for use in CHEM_SO2 and CHEM_MSA subroutines as a source term.  They
+!  The production of SO2 and MSA here, PSO2_DMS and PMSA_DMS, are saved    
+!  for use in CHEM_SO2 and CHEM_MSA subroutines as a source term.  They    
 !  are in unit of [v/v/timestep].
 !
 ! !REVISION HISTORY:
-!  (1 ) Now reference AD, AIRDEN, and SUNCOS from "dao_mod.f".  Added
-!        parallel DO-loops.  Also now extract OH and NO3 from SMVGEAR
-!        for coupled chemistry-aerosol runs. (rjp, bdf, bmy, 9/16/02)
-!  (2 ) Bug fix: remove duplicate definition of RK3 (bmy, 3/23/03)
-!  (3 ) Now use function GET_TS_CHEM from "time_mod.f".  (bmy, 3/27/03)
-!  (4 ) Now reference STT and ITS_A_FULLCHEM_SIM from "tracer_mod.f"
-!        Now replace IJSURF w/ an analytic function. (bmy, 7/20/04)
-!  (5 ) Shift rows 8,9 in AD05 to 9,10 in to make room for P(SO4) from O3
-!        oxidation in sea-salt aerosols (bec, bmy, 4/13/05)
-!  (6 ) Now remove reference to CMN, it's obsolete.  Now reference
-!        ITS_IN_THE_STRAT from "tropopause_mod.f". (bmy, 8/22/05)
-!  (7 ) Now references XNUMOL from "tracer_mod.f" (bmy, 10/25/05)
-!  (8 ) Now correctly records P(SO2) from OH in AD05 (pjh)
-!  (9 ) Update reaction rate to match JPL06 and full chem (jaf, bmy, 10/15/09)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  31 Jul 2012 - R. Yantosca - Now loop from 1..LLPAR for GIGC compatibility
-!  14 Nov 2012 - R. Yantosca - Add am_I_Root, Input_Opt, RC as arguments
-!  15 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  28 Nov 2012 - R. Yantosca - Replace SUNCOS with State_Met%SUNCOS
-!  24 Jul 2014 - R. Yantosca - Now compute BOXVL internally
-!  06 Nov 2014 - R. Yantosca - Now use State_Met%AIRDEN(I,J,L)
-!  24 Jun 2016 - R. Yantosca - Now Return if id_DMS < 0 (not == 0)
-!  30 Jun 2016 - R. Yantosca - Remove instances of STT.  Now get the advected
-!                              species ID from State_Chm%Map_Advect.
-!  08 Dec 2017 - R. Yantosca - Now accept State_Diag as an argument
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -2127,8 +1907,8 @@
       REAL(fp), PARAMETER :: B  = 0.25e+0_fp
 
       ! From D4: only 0.8 efficiency, also some goes to DMSO and lost.
-      ! So we assume 0.75 efficiency for DMS addtion channel to form
-      ! products.
+      ! So we assume 0.75 efficiency for DMS addtion channel to form     
+      ! products.                                                        
       REAL(fp), PARAMETER :: EFF = 1e+0_fp
 !
 ! !LOCAL VARIABLES:
@@ -2269,48 +2049,6 @@
 
          PSO2_DMS(I,J,L) =  DMS0 - DMS - PMSA_DMS(I,J,L)
 
-#if defined( BPCH_DIAG )
-         !==============================================================
-         ! ND05 (bpch) diagnostic: production and loss
-         !
-         ! For the offline run, we are reading in monthly mean OH, NO3
-         ! from disk.  We don't modify these, so LOH = 0 and LNO3 = 0.
-         !==============================================================
-         IF ( ND05 > 0 .and. L <= LD05 ) THEN
-
-            ! P(SO2) from DMS+OH, DMS+NO3, and DMS+X
-            XOH  = ( DMS0   - DMS_OH - PMSA_DMS(I,J,L) ) /
-     &                 Fx   * State_Met%AD(I,J,L) / TCVV_S
-            XN3  = ( DMS_OH - DMS ) / Fx * State_Met%AD(I,J,L) / TCVV_S
-            XX   = ( ( DMS0 - DMS ) * State_Met%AD(I,J,L) / TCVV_S )
-     &               - XOH  - XN3
-
-            ! Grid box volume [cm3]
-            BOXVL = State_Met%AIRVOL(I,J,L) * 1e+6_fp
-
-            ! Convert L(OH) and L(NO3) from [molec/cm3] to [kg/timestep]
-            LOH  = ( OH0   - OH  ) * BOXVL / XNUMOL_OH
-            LNO3 = ( XNO30 - XNO3) * BOXVL / XNUMOL_NO3
-
-            ! Store P(SO2) from DMS + OH [kg S/timestep]
-            AD05(I,J,L,1) = AD05(I,J,L,1) + XOH
-
-            ! Store P(SO2) from DMS + NO3 [kg S/timestep]
-            AD05(I,J,L,2) = AD05(I,J,L,2) + XN3
-
-            ! Store total P(SO2) from DMS [kg S/timestep]
-            AD05(I,J,L,3) = AD05(I,J,L,3)   +
-     &                    ( PSO2_DMS(I,J,L) * State_Met%AD(I,J,L) /
-     &                      TCVV_S )
-
-            ! Store P(MSA) from DMS [kg S/timestep]
-            AD05(I,J,L,4) = AD05(I,J,L,4)   +
-     &                    ( PMSA_DMS(I,J,L) * State_Met%AD(I,J,L) /
-     &                      TCVV_S )
-
-         ENDIF
-#endif
-
          !==============================================================
          ! HISTORY (aka netCDF diagnostics)
          !
@@ -2418,53 +2156,7 @@
       INTEGER,        INTENT(OUT)   :: RC          ! Success or failure?
 !
 ! !REVISION HISTORY:
-!  (1 ) Bug fix: need to multiply DXYP by 1d4 for cm2 (bmy, 3/23/03)
-!  (2 ) Now replace DXYP(JREF)*1d4 with routine GET_AREA_CM2 of "grid_mod.f"
-!        Now use functions GET_MONTH and GET_TS_CHEM from "time_mod.f".
-!        (bmy, 3/27/03)
-!  (3 ) Now references PBLFRAC from "drydep_mod.f".  Now apply dry deposition
-!        throughout the entire PBL.  Added FREQ variable. (bmy, 8/1/03)
-!  (4 ) Now use ND44_TMP array to store vertical levels of drydep flux, then
-!        sum into AD44 array.  This preents numerical differences when using
-!        multiple processors. (bmy, 3/24/04)
-!  (5 ) Now use diurnally-varying JO1D.  Now use new unit conversion for
-!        the ND44 diagnostic. (rjp, bmy, 3/30/04)
-!  (6 ) Now use parallel DO-loop to zero ND44_TMP.  Now uses ITS_A_NEW_MONTH
-!        from time_mod.f. (bmy, 4/14/04)
-!  (7 ) Now reference STT & TCVV from "tracer_mod.f".  Also replace IJSURF
-!        with an analytic function.  Now references DATA_DIR from
-!        "directory_mod.f". (bmy, 7/20/04)
-!  (8 ) Now suppress output from READ_BPCH with QUIET keyword (bmy, 1/25/05)
-!  (9 ) Replace PBLFRAC from "drydep_mod.f" with GET_FRAC_UNDER_PBLTOP
-!        from "pbl_mix_mod.f" (bmy, 2/22/05)
-!  (10) Now read offline files from "sulfate_sim_200508/offline".  Now remove
-!        reference to CMN, it's obsolete.  Now reference ITS_IN_THE_STRAT from
-!        "tropopause_mod.f". (bmy, 8/22/05)
-!  (11) Now make sure all USE statements are USE, ONLY (bmy, 10/3/05)
-!  (12) Now references XNUMOL from "tracer_mod.f" (bmy, 10/25/05)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  01 Mar 2012 - R. Yantosca - Now use GET_AREA_CM2(I,J,L) from grid_mod.F90
-!  30 Jul 2012 - R. Yantosca - Now accept am_I_Root as an argument when
-!                              running with the traditional driver main.F
-!  31 Jul 2012 - R. Yantosca - Now loop from 1..LLPAR for GIGC compatibility
-!  31 Jul 2012 - R. Yantosca - Declare temp drydep arrays w/ LLPAR (not LLTROP)
-!  14 Nov 2012 - R. Yantosca - Add am_I_Root, Input_Opt, RC as arguments
-!  15 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  26 Nov 2012 - R. Yantosca - Dimension ND44_TMP array with LLPAR, not LLTROP
-!  28 Nov 2012 - R. Yantosca - Replace SUNCOS with State_Met%SUNCOS
-!  05 Mar 2013 - R. Yantosca - Now use Input_Opt%LNLPBL
-!  19 Mar 2013 - R. Yantosca - Now copy Input_Opt%TCVV(1:N_TRACERS) and
-!                              Input_Opt%XNUMOL(1:N_TRACERS) -- avoid OOB errs
-!  25 Mar 2013 - M. Payer    - Now pass State_Chm object via the arg list
-!  18 Sep 2014 - M. Sulprizio- Now get J(H2O2) and PH2O2m from HEMCO
-!  06 Nov 2014 - R. Yantosca - Now use State_Met%AIRDEN(I,J,L)
-!  12 Jun 2015 - R. Yantosca - Now remove orphaned ND44 variables
-!  23 Sep 2015 - R. Yantosca - Remove reference to obsolete DRYH2O2 flag
-!  24 Jun 2016 - R. Yantosca - Now return if id_H2O2 < 0 (not == 0)
-!  30 Jun 2016 - R. Yantosca - Remove instances of Spc.  Now get the advected
-!                              species ID from State_Chm%Map_Advect.
-
+!  See the Git history with the gitk browser!
 !EOC
 !------------------------------------------------------------------------------
 !BOC
@@ -2552,7 +2244,7 @@
             PHOTJ = 0e+0_fp
          ENDIF
 
-         ! Compute loss fraction from OH, photolysis, drydep [unitless].
+         ! Compute loss fraction from OH, photolysis, drydep [unitless].  
          ALPHA = 1.e+0_fp + ( KOH + PHOTJ + FREQ ) * DT
 
          ! Delta H2O2 [v/v]
@@ -2611,11 +2303,7 @@
       USE TIME_MOD,           ONLY : GET_TS_CHEM, GET_MONTH
       USE TIME_MOD,           ONLY : ITS_A_NEW_MONTH
       USE HCO_INTERFACE_MOD,  ONLY : GetHcoDiagn
-#if defined( BPCH_DIAG )
-      USE CMN_DIAG_MOD
-      USE DIAG_MOD,           ONLY : AD05
-#endif
-#if defined( APM )
+#ifdef APM
       USE APM_DRIV_MOD,       ONLY : PSO4GAS
       USE APM_DRIV_MOD,       ONLY : XO3
 #endif
@@ -2643,9 +2331,9 @@
 !  (1 ) SO2 production:
 !       DMS + OH, DMS + NO3 (saved in CHEM_DMS)
 !                                                                             .
-!  (2 ) SO2 loss:
-!       (a) SO2 + OH  -> SO4
-!       (b) SO2       -> drydep
+!  (2 ) SO2 loss:                                                         
+!       (a) SO2 + OH  -> SO4                                               
+!       (b) SO2       -> drydep                                             
 !       (c) SO2 + H2O2 or O3 (aq) -> SO4
 !                                                                             .
 !  (3 ) SO2 = SO2_0 * exp(-bt) +  PSO2_DMS/bt * [1-exp(-bt)]
@@ -2654,79 +2342,14 @@
 !       deposition rate of SO2, PSO2_DMS is SO2 production from DMS in
 !       MixingRatio/timestep.
 !                                                                             .
-!  If there is cloud in the gridbox (fraction = fc), then the aqueous
-!  phase chemistry also takes place in cloud. The amount of SO2 oxidized
-!  by H2O2 in cloud is limited by the available H2O2; the rest may be
-!  oxidized due to additional chemistry, e.g, reaction with O3 or O2
-!  (catalyzed by trace metal).
-!
+!  If there is cloud in the gridbox (fraction = fc), then the aqueous      
+!  phase chemistry also takes place in cloud. The amount of SO2 oxidized   
+!  by H2O2 in cloud is limited by the available H2O2; the rest may be      
+!  oxidized due to additional chemistry, e.g, reaction with O3 or O2       
+!  (catalyzed by trace metal).                                             
+!                                                                          
 ! !REVISION HISTORY:
-!  (1 ) Removed duplicate definition of Ki (bmy, 11/15/01)
-!  (2 ) Eliminate duplicate HPLUS definition.  Make adjustments to facilitate
-!        SMVGEAR chemistry for fullchem runs (rjp, bmy, 3/23/03)
-!  (3 ) Now replace DXYP(J+J0)*1d4 with routine GET_AREA_CM2 of "grid_mod.f"
-!        Now use function GET_TS_CHEM from "time_mod.f".
-!  (4 ) Now apply dry deposition to entire PBL.  Now references PBLFRAC array
-!        from "drydep_mod.f". (bmy, 8/1/03)
-!  (5 ) Now use ND44_TMP array to store vertical levels of drydep flux, then
-!        sum into AD44 array.  This preents numerical differences when using
-!        multiple processors. (bmy, 3/24/04)
-!  (6 ) Now use parallel DO-loop to zero ND44_TMP (bmy, 4/14/04)
-!  (7 ) Now reference STT, TCVV, & ITS_AN_AEROSOL_SIM from "tracer_mod.f".
-!        Now reference DATA_DIR from "directory_mod.f" (bmy, 7/20/04)
-!  (8 ) Replace PBLFRAC from "drydep_mod.f" with GET_FRAC_UNDER_PBLTOP from
-!        "pbl_mix_mod.f" (bmy, 2/22/05)
-!  (9 ) Modified for SO4s, NITs.  Also modified for alkalinity w/in the
-!        seasalt chemistry. (bec, bmy, 4/13/05)
-!  (10) Now remove reference to CMN, it's obsolete.  Now reference
-!        ITS_IN_THE_STRAT from "tropopause_mod.f" (bmy, 8/22/05)
-!  (11) Now references XNUMOL from "tracer_mod.f" (bmy, 10/25/05)
-!  (12) Updated to match JPL 2006 + full chem (jaf, bmy, 10/15/09)
-!  (13) Now prevent floating-point exceptions when taking the exponential
-!        terms. (win, bmy, 1/4/10)
-!  (14) Save aqueous production rate to PSO4_SO2AQ for TOMAS microphyics
-!        (win, 1/25/10)
-!  (15) Added extra error checks to prevent negative L2S, L3S (bmy, 4/28/10)
-!  (16) Use liq. water content from met fields in GEOS-5 (jaf, bmy, 6/30/10)
-!  26 Aug 2010 - R. Yantosca - Use liquid water content from MERRA
-!  12 Nov 2010 - R. Yantosca - Prevent div-by-zero when computing L2S and L3S
-!  27 May 2011 - L. Zhang    - Divide LWC by cloud fraction for GEOS/MERRA
-!                              and adjust the L2S and L3S rates accordingly
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  08 Feb 2012 - R. Yantosca - Treat GEOS-5.7.2 in the same way as MERRA
-!  01 Mar 2012 - R. Yantosca - Now use GET_AREA_CM2(I,J,L) from grid_mod.F90
-!  31 Jul 2012 - R. Yantosca - Now loop over 1..LLPAR for GIGC compatibility
-!  31 Jul 2012 - R. Yantosca - Declare temp drydep arrays w/ LLPAR (not LLTROP)
-!  14 Nov 2012 - R. Yantosca - Add am_I_Root, Input_Opt, RC as arguments
-!  15 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  05 Mar 2013 - R. Yantosca - Now use Input_Opt%LNLPBL
-!  19 Mar 2013 - R. Yantosca - Now copy Input_Opt%TCVV(1:N_TRACERS) and
-!                              Input_Opt%XNUMOL(1:N_TRACERS) -- avoid OOB errs
-!  25 Mar 2013 - M. Payer    - Now pass State_Chm object via the arg list
-!  05 Sep 2013 - M. Sulprizio- Add modifications for cloud pH (B. Alexander)
-!  06 Sep 2013 - M. Sulprizio- Bug fix: Prevent divide-by-zero if LWC=0. Only
-!                              do aqueous SO2 chemistry when LWC>0.
-!  12 Sep 2013 - M. Sulprizio- Modified for SO4d, NITd.  Also modified for
-!                              alkalinity w/in the dust chemistry. (tdf 4/07/08)
-!  26 Sep 2013 - R. Yantosca - Renamed GEOS_57 Cpp switch to GEOS_FP
-!  28 Jan 2014 - R. Yantosca - Bug fix for TOMAS. Set ALKdst=0 since TOMAS
-!                              carries its own dust tracers instead of DST1-4.
-!  25 Jun 2014 - R. Yantosca - Now pass Input_Opt to GET_ALK
-!  18 Sep 2014 - M. Sulprizio- Now get HNO3 for offline aerosol sim from HEMCO
-!  06 Nov 2014 - R. Yantosca - Now use State_Met%AIRDEN(I,J,L)
-!  06 Nov 2014 - R. Yantosca - Now use State_Met%CLDF(I,J,L)
-!  12 Jan 2015 - C. Keller   - Now allow NDENS_SALA and NDENS_SALC to be empty.
-!  26 Feb 2015 - E. Lundgren - Replace GET_PCENTER with State_Met%PMID_DRY.
-!                              Remove dependency on pressure_mod.
-!  12 Aug 2015 - R. Yantosca - Add support for MERRA2 meteorology
-!  23 Sep 2015 - R. Yantosca - Remove reference to obsolete DRYSO2 flag
-!  24 Jun 2016 - R. Yantosca - Now return id_H2O2 < 0 or id_SO2 < 0 (not == 0)
-!  22 Mar 2017 - M. Sulprizio- Add fixes for LWC unit conversion (V. Shah)
-!  07 Dec 2017 - R. Yantosca - Now accept State_Diag as an argument
-!  25 Jan 2018 - C. Keller   - Prevent div-by-zero when computing SR
-!  02 Mar 2018 - M. Sulprizio- Bug fix: reorder IF statements for Fahey and
-!                              Seinfeld decision algorithm (C. Holmes)
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -2810,6 +2433,11 @@
       CHARACTER(LEN=255)    :: ErrMsg
       CHARACTER(LEN=255)    :: ThisLoc
 
+#ifdef LUO_WETDEP
+      ! For Luo et al wetdep scheme
+      LOGICAL               :: Is_QQ3D
+#endif
+
       !=================================================================
       ! CHEM_SO2 begins here!
       !=================================================================
@@ -2838,9 +2466,14 @@
       pHCloud(:,:,:) = 0.0e+0_fp
       isCloud(:,:,:) = 0.0e+0_fp ! jmm 3/1/19
 
-
       ! DTCHEM is the chemistry timestep in seconds
       DTCHEM   = GET_TS_CHEM()
+
+#ifdef LUO_WETDEP
+      ! For Luo et al wetdep scheme
+      State_Chm%PSO4s = 0.0_fp
+      Is_QQ3D         = ASSOCIATED( State_Chm%QQ3D )
+#endif
 
       ! Factor to convert AIRDEN from [kg air/m3] to [molec air/cm3]
       F        = 1000.e+0_fp / AIRMW * AVO * 1.e-6_fp
@@ -2927,7 +2560,7 @@
          ENDIF
          O3     = GET_O3( I, J, L, Input_Opt, State_Chm,
      &                    State_Grid, State_Met )
-#if defined( APM )
+#ifdef APM
          XO3(I,J,L)= O3
 #endif
 
@@ -3130,8 +2763,26 @@
 
          ! Get liquid water content [m3 H2O/m3 air] within cloud from met flds
          ! Units: [kg H2O/kg air] * [kg air/m3 air] * [m3 H2O/1e3 kg H2O]
-         LWC     = State_Met%QL(I,J,L) * State_Met%AIRDEN(I,J,L) *
-     &             1e-3_fp
+#ifdef LUO_WETDEP
+         ! Luo et al wetdep scheme
+         IF ( Is_QQ3D ) THEN
+            LWC = State_Met%QL(I,J,L)
+     &          * State_Met%AIRDEN(I,J,L)
+     &          * 1e-3_fp
+     *          + MAX( 0.0_fp, State_Chm%QQ3D(I,J,L) * DTCHEM )
+         ELSE
+            LWC = State_Met%QL(I,J,L)
+     &          * State_Met%AIRDEN(I,J,L)
+     &          * 1e-3_fp
+         ENDIF
+#else
+         ! Default scheme
+         LWC = State_Met%QL(I,J,L)
+     &       * State_Met%AIRDEN(I,J,L)
+     &       * 1e-3_fp
+#endif
+
+         LWC  = MAX( 0.0e+0_fp, LWC )
 
          ! LWC is a grid-box averaged quantity. To improve the representation
          ! of sulfate chemistry, we divide LWC by the cloud fraction and
@@ -3281,7 +2932,7 @@
                !--------------------------------------------------------
 
                ! Get dust concentrations [v/v -> ng/m3]
-#if defined( TOMAS )
+#ifdef TOMAS
                ! TOMAS uses its own dust tracers and does not
                ! carry DST1-4.  Set DUST to zero here. (mps, 2/2/18)
                DUST = 0e+0_fp
@@ -3401,7 +3052,7 @@
 
                ! NOTE from Jintai Lin (4/28/10):
                ! However, in the case of a negative XX, L2S should be
-               ! approximated as SO2_ss, instead of H2O20. In other words,
+               ! approximated as SO2_ss, instead of H2O20. In other words, 
                ! L2S = SO2_ss * H2O20 * ( L2 - 1.D0 ) / ( (SO2_ss*L2) - H2O20 )
                ! reaches different limits when XX reaches positive infinity
                ! and negative infinity.
@@ -3590,7 +3241,7 @@
             ! Note that it is better to use dust and sea-salt alkalinity
             ! tracers if these are being transported (bec, 12/23/11)
 
-#if defined( TOMAS )
+#ifdef TOMAS
             !%%%%%%%%%%%%%%%%% BUG FIX FOR TOMAS %%%%%%%%%%%%%%%%%%%%%%%
             ! NOTE: TOMAS uses its own dust tracers and does not
             ! carry ALKdst.  Set ALKdst to zero here. (bmy, 1/28/14)
@@ -3873,17 +3524,26 @@
          ! SO2 chemical loss rate  = SO4 production rate [v/v/timestep]
          ! Add L5S (qjc, 11/04/16)
          PSO4_SO2(I,J,L) = L1 + L2S + L3S + L4S + L5S + PSO4E + SR
-
+#ifdef LUO_WETDEP
+         ! Luo et al scheme: archive PSO4s
+         IF ( (PSO4_SO2(I,J,L) + Spc(I,J,L,id_SO4) ) > 1.0e-30_fp ) THEN
+            State_Chm%PSO4s(I,J,L) = L2S + L3S + L4S + L5S + SR
+            State_Chm%PSO4s(I,J,L) = State_Chm%PSO4s(I,J,L)
+     &                             / (PSO4_SO2(I,J,L)+Spc(I,J,L,id_SO4))
+         ELSE
+            State_Chm%PSO4s(I,J,L) = 0.0_fp
+         ENDIF
+#endif
          ! Production of sulfate on sea salt
          PSO4_ss (I,J,L) = PSO4F
 
-#if defined( APM )
+#ifdef APM
          PSO4_SO2APM(I,J,L) = L2S + L3S + L4S + L5S + SR
          PSO4_SO2APM(I,J,L) = MAX(0.d0,PSO4_SO2APM(I,J,L))
          PSO4_SO2SEA(I,J,L) = PSO4E + PSO4F
          PSO4_SO2SEA(I,J,L) = MAX(0.d0,PSO4_SO2SEA(I,J,L))
 #endif
-#if defined( TOMAS )
+#ifdef TOMAS
          PSO4_SO2AQ(I,J,L) = L2S + L3S + SR ! For TOMAS microphysics
 #endif
 
@@ -3906,88 +3566,6 @@
             END DO
 
          ENDIF    !tdf end of if (LDSTUP) condition
-
-#if defined( BPCH_DIAG )
-         !=================================================================
-         ! ND05 Diagnostics [kg S/timestep]
-         !=================================================================
-         IF ( FullRun .and. ND05 > 0 .and. L <= LD05 ) THEN
-
-            ! P(SO4) from gas-phase oxidation [kg S/timestep]
-            AD05(I,J,L,5) = AD05(I,J,L,5) +
-     &                      ( L1  * State_Met%AD(I,J,L) / TCVV_S )
-
-            ! P(SO4) from aqueous-phase oxidation with H2O2 [kg S/timestep]
-            AD05(I,J,L,6) = AD05(I,J,L,6) +
-     &                      ( L2S * State_Met%AD(I,J,L) / TCVV_S )
-
-            ! P(SO4) from aqueous-phase oxidation with O3 [kg S/timestep]
-            ! Replace SR with SRo3 (qjc, 04/10/16)
-            AD05(I,J,L,7) = AD05(I,J,L,7) +
-     &                      ( ( L3S + SRo3 ) * State_Met%AD(I,J,L) /
-     &                      TCVV_S )
-
-            ! P(SO4) from aqueous-phase oxidation with O2 metal-catalyzed
-            ! [kg S/timestep]
-            AD05(I,J,L,8) = AD05(I,J,L,8) +
-     &                      ( L4S * State_Met%AD(I,J,L) / TCVV_S )
-
-            ! P(SO4) from O3 oxidation in sea-salt aerosols [kg S/timestep]
-            AD05(I,J,L,9) = AD05(I,J,L,9) +
-     &                      ( (PSO4E + PSO4F) * State_Met%AD(I,J,L) /
-     &                      TCVV_S )
-
-            ! P(SO4) from aqueous-phase oxidation with HOBr [kg S/timestep]
-            AD05(I,J,L,16) = AD05(I,J,L,16) +
-     &                       ((L5S+SRhobr)* State_Met%AD(I,J,L)/TCVV_S)
-
-            ! P(SO4) by SRo3
-            AD05(I,J,L,17) = AD05(I,J,L,17) +
-     &                       (SRo3*State_Met%AD(I,J,L)/TCVV_S)
-
-            ! P(SO4) by SRhobr
-            AD05(I,J,L,18) = AD05(I,J,L,18) +
-     &                       (SRhobr*State_Met%AD(I,J,L)/TCVV_S)
-
-            ! P(SO4) by o3s
-            AD05(I,J,L,19) = AD05(I,J,L,19) +
-     &                       (L3S_1*State_Met%AD(I,J,L)/TCVV_S)
-
-            ! Cloud pH
-            AD05(I,J,L,20) = AD05(I,J,L,20) + HPLUS
-
-            !tdf
-            PSO4d_tot   = 0.e+0_fp
-            PH2SO4d_tot = 0.e+0_fp
-            PNITd_tot   = 0.e+0_fp
-
-            IF ( LDSTUP ) THEN
-               DO IBIN = 1, NDSTBIN
-                  PSO4d_tot = PSO4d_tot + PSO4_d(IBIN)
-                  PNITd_tot = PNITd_tot + PNIT_d(IBIN)
-                  ! included P(SO4) due to uptake of H2SO4(g)     !tdf 3/2/2K9
-                  PH2SO4d_tot = PH2SO4d_tot + PH2SO4_d(IBIN)
-               END DO
-
-               ! P(SO4) from O3 oxidation on dust aerosols [kg S/timestep]
-               AD05(I,J,L,12) = AD05(I,J,L,12) +
-     &                       ( PSO4d_tot * State_Met%AD(I,J,L) /
-     &                         TCVV_S )
-
-               ! P(NIT) from HNO3 uptake on dust [kg N/timestep]
-               AD05(I,J,L,13) = AD05(I,J,L,13) +
-     &                       ( PNITd_tot * State_Met%AD(I,J,L) /
-     &                         TCVV_N )
-
-               ! Included P(SO4) due to uptake of H2SO4(g)        !tdf 3/2/2K9
-               ! P(SO4) from uptake of H2SO4 on dust aerosols [kg S/timestep]
-               AD05(I,J,L,14) = AD05(I,J,L,14) +
-     &                       ( PH2SO4d_tot * State_Met%AD(I,J,L) /
-     &                         TCVV_S )
-            ENDIF
-
-         ENDIF
-#endif
 
          !=================================================================
          ! HISTORY (aka netCDF diagnostics)
@@ -4129,10 +3707,6 @@
 !
 ! !USES:
 !
-#if defined( BPCH_DIAG )
-      USE CMN_DIAG_MOD             ! ND05, LD05
-      USE DIAG_MOD,           ONLY : AD05
-#endif
       USE CMN_SIZE_MOD
       USE ErrCode_Mod
       USE ERROR_MOD,          ONLY : GEOS_CHEM_STOP
@@ -4190,32 +3764,7 @@
 !       Modeled after Chamedies and Stelson, 1992?
 !
 ! !REVISION HISTORY:
-!  (1 ) Now references XNUMOLAIR from "tracer_mod.f" (bmy, 10/25/05)
-!  (2 ) Bug fix: now avoid seg fault error if IDTHNO3 is zero, as it would
-!        be for an offline aerosol simulation. (bmy, 3/29/06)
-!  (3 ) Fixed typo in FALK_A_SO2 equation: C_FLUX_C should be C_FLUX_A.
-!        (havala, bec, bmy, 12/8/06)
-!  (4 ) Bug fix for mass balance, replace TITR_HNO3 w/ HNO3_SSC in the
-!        expression for HNO3_ss.  Bug fix: now do equivalent computation
-!        for GET_GNO3, which is now no longer called because it's in
-!        "isorropia_mod.f". (bec, bmy, 7/30/08)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  25 Mar 2013 - M. Payer    - Now pass State_Chm object via the arg list
-!  12 Sep 2013 - M. Sulprizio- Added loss of HNO3 on sea salt diagnostic
-!                              (T.D. Fairlie)
-!  18 Sep 2014 - M. Sulprizio- Now get HNO3 for offline aerosol sim from HEMCO
-!  24 Mar 2015 - E. Lundgren - Remove dependency on tracer_mod since
-!                              XNUMOLAIR now defined in CMN_GTCM_MOD
-!  06 Jan 2016 - E. Lundgren - Use global physical parameters
-!  30 Jun 2016 - R. Yantosca - Remove instances of STT.  Now get the advected
-!                              species ID from State_Chm%Map_Advect.
-!  11 Oct 2016 - R. Yantosca - Bug fix: make sure that MW_HNO3 is defined
-!                              for aerosol-only sims (where id_HNO3 < 0)
-!  10 Feb 2017 - R. Yantosca - Remove species molecular weights from
-!                              conversions from v/v to equivalents & back
-!  08 Dec 2017 - R. Yantosca - Now accept State_Diag as an argument
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -4494,19 +4043,6 @@
 
       ENDIF
 
-#if defined( BPCH_DIAG )
-      !=================================================================
-      ! ND05 (bpch) diagnostic
-      !
-      ! Loss of HNO3 on sea salt
-      !=================================================================
-      IF ( FullRun .and. ( ND05 > 0 .and. L <= LD05 ) ) THEN
-         ! L(HNO3) on sea-salt aerosols [kg N/timestep]
-         AD05(I,J,L,15) = AD05(I,J,L,15) +
-     &                  ( HNO3_ss * State_Met%AD(I,J,L) / TCVV_N )
-      ENDIF
-#endif
-
       !=================================================================
       ! HISTORY (aka netCDF diagnostics)
       !
@@ -4643,11 +4179,7 @@
 !
 ! !REVISION HISTORY:
 !  28 Mar 2008 - T.D. Fairlie- Initial version
-!  16 Sep 2013 - M. Sulprizio- Added ProTeX headers
-!  17 Sep 2013 - M. Sulprizio- Now pass Input_Opt, State_Met, State_Chm, and RC
-!                              as arguments
-!  30 Jun 2016 - R. Yantosca - Remove instances of STT.  Now get the advected
-!                              species ID from State_Chm%Map_Advect.
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5165,9 +4697,7 @@
 !  Assume [S(VI)] = [SO4]nss (this applies for pH > 3)
 !
 ! !REVISION HISTORY:
-!  25 Jan 2012 - M. Payer    - Added ProTeX headers
-!  06 Jan 2015 - M. Yannetti - Set some variables to f8 that required it
-!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5332,13 +4862,7 @@
       REAL(fp)              :: KCO2p, KCO2p2
 !
 ! !REVISION HISTORY:
-!  25 Jan 2012 - M. Payer    - Added ProTeX headers
-!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
-!  22 Mar 2017 - M. Sulprizio- Dhco2 value is from Table 7.3 of Seinfeld and
-!                              Pandis (2006, pp 289) and should be positive for
-!                              consistency with the way it is used here. Also,
-!                              the value of R, in units of kcal mol-1 K-1, is
-!                              1.986x10^-3, not 0.04. (V. Shah)
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5403,13 +4927,7 @@
       REAL(fp)              :: KCO2p, KCO2p2
 !
 ! !REVISION HISTORY:
-!  25 Jan 2012 - M. Payer    - Added ProTeX headers
-!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
-!  22 Mar 2017 - M. Sulprizio- Dhco2 value is from Table 7.3 of Seinfeld and
-!                              Pandis (2006, pp 289) and should be positive for
-!                              consistency with the way it is used here. Also,
-!                              the value of R, in units of kcal mol-1 K-1, is
-!                              1.986x10^-3, not 0.04. (V. Shah)
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5475,13 +4993,7 @@
       REAL(fp)              :: KSO2p, KSO2p2
 !
 ! !REVISION HISTORY:
-!  25 Jan 2012 - M. Payer    - Added ProTeX headers
-!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
-!  22 Mar 2017 - M. Sulprizio- Dhso2 value is from Table 7.3 of Seinfeld and
-!                              Pandis (2006, pp 289) and should be positive for
-!                              consistency with the way it is used here. Also,
-!                              the value of R, in units of kcal mol-1 K-1, is
-!                              1.986x10^-3, not 0.04. (V. Shah)
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5545,13 +5057,7 @@
       REAL(fp)              :: KSO2p, KSO2p2
 !
 ! !REVISION HISTORY:
-!  25 Jan 2012 - M. Payer    - Added ProTeX headers
-!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
-!  22 Mar 2017 - M. Sulprizio- Dhso2 value is from Table 7.3 of Seinfeld and
-!                              Pandis (2006, pp 289) and should be positive for
-!                              consistency with the way it is used here. Also,
-!                              the value of R, in units of kcal mol-1 K-1, is
-!                              1.986x10^-3, not 0.04. (V. Shah)
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5616,9 +5122,7 @@
       REAL(fp)              :: KHNO3p
 !
 ! !REVISION HISTORY:
-!  25 Jan 2012 - M. Payer    - Added ProTeX headers
-!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
-!  22 Mar 2017 - M. Sulprizio- Add fix for Hhno3eff from V. Shah
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5681,13 +5185,7 @@
       REAL(fp)              :: KHClp
 !
 ! !REVISION HISTORY:
-!  25 Jan 2012 - M. Payer    - Added ProTeX headers
-!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
-!  17 Oct 2017 - M. Sulprizio- Dhck value is from Table 7.3 of Seinfeld and
-!                              Pandis (2006, pp 289) and should be positive for
-!                              consistency with the way it is used here. Also,
-!                              the value of R, in units of kcal mol-1 K-1, is
-!                              1.986x10^-3, not 0.04. (Qianjie Chen)
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5746,13 +5244,7 @@
       REAL(fp)              :: KNH3p
 !
 ! !REVISION HISTORY:
-!  25 Jan 2012 - M. Payer    - Added ProTeX headers
-!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
-!  22 Mar 2017 - M. Sulprizio- Dhnh3 value is from Table 7.3 of Seinfeld and
-!                              Pandis (2006, pp 289) and should be positive for
-!                              consistency with the way it is used here. Also,
-!                              the value of R, in units of kcal mol-1 K-1, is
-!                              1.986x10^-3, not 0.04. (V. Shah)
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5823,8 +5315,7 @@
 ! - now call ERROR_STOP from "error_mod.f" to stop the run safely
 !
 ! !REVISION HISTORY:
-!  25 Jan 2012 - M. Payer    - Added ProTeX headers
-!  06 Jan 2015 - M. Yannetti - Manual changes of some variables to f8
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -5991,8 +5482,7 @@
 !
 ! !REVISION HISTORY:
 !  (1 ) Updated by Rokjin Park (rjp, bmy, 12/12/02)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  28 Apr 2015 - E. Lundgren - Input pressure is now dry air partial pressure
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -6217,15 +5707,7 @@
       REAL(fp),       INTENT(OUT) :: SR ! Sulfate production rate
 !
 ! !REVISION HISTORY:
-!  25 Jan 2012 - M. Payer    - Added ProTeX headers
-!  05 Sep 2013 - M. Sulprizio- Now pass met fields using the State_Met object
-!  06 Nov 2014 - R. Yantosca - Now use State_Met%AIRDEN(I,J,L)
-!  22 Jun 2016 - M. Yannetti - Pass State_Chm as arg for spc db access
-!  03 Feb 2017 - M. Sulprizio- Add fixes for sulfate production provided by
-!                              Qianjie Chen:
-!                               - Bug fix: NDss should be #/cm3, not #/m3
-!                               - Compute updraft velocity W from met fields
-!                               - Only compute SR when W>0
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -6429,7 +5911,7 @@
       USE State_Diag_Mod, ONLY : DgnState
       USE State_Grid_Mod, ONLY : GrdState
       USE State_Met_Mod,  ONLY : MetState
-#if defined( APM )
+#ifdef APM
       USE APM_INIT_MOD,       ONLY : APMIDS
       USE APM_INIT_MOD,       ONLY : NGCOND,   NSO4,      NSEA
       USE APM_INIT_MOD,       ONLY : NCTSO4,NCTBC,NCTOC,NCTDST,NCTSEA
@@ -6461,49 +5943,7 @@
 !  production from SO2 into the SO4 tracers.
 !                                                                             .
 ! !REVISION HISTORY:
-!  (1 ) Now reference AD from "dao_mod.f".  Added parallel DO-loops.
-!        Updated comments, cosmetic changes. (rjp, bdf, bmy, 9/16/02)
-!  (2 ) Now replace DXYP(JREF)*1d4 with routine GET_AREA_CM2 of "grid_mod.f"
-!        Now use function GET_TS_CHEM from "time_mod.f" (bmy, 3/27/03)
-!  (3 ) Now reference PBLFRAC from "drydep_mod.f".  Now apply dry deposition
-!        to the entire PBL. (rjp, bmy, 8/1/03)
-!  (4 ) Now use ND44_TMP array to store vertical levels of drydep flux, then
-!        sum into AD44 array.  This preents numerical differences when using
-!        multiple processors. (bmy, 3/24/04)
-!  (5 ) Now use parallel DO-loop to zero ND44_TMP (bmy, 4/14/04)
-!  (6 ) Now reference STT & TCVV from "tracer_mod.f" (bmy, 7/20/04)
-!  (7 ) Now references LCRYST from "logical_mod.f".  Modified for crystalline
-!        and aqueous sulfate2 tracers: AS, AHS, LET, SO4aq.  Also changed name
-!        of ND44_TMP to T44 to save space. (cas, bmy, 12/21/04)
-!  (8 ) Replace PBLFRAC from "drydep_mod.f" with GET_FRAC_UNDER_PBLTOP from
-!        "pbl_mix_mod.f" (bmy, 2/22/05)
-!  (9 )  Now remove reference to CMN, it's obsolete.  Now reference
-!         ITS_IN_THE_STRAT from "tropopause_mod.f" (bmy, 8/22/05)
-!  (10) Now references XNUMOL from "tracer_mod.f" (bmy, 10/25/05)
-!  (11) Rearrange error check to avoid SEG FAULTS (bmy, 5/23/06)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  01 Mar 2012 - R. Yantosca - Now use GET_AREA_CM2(I,J,L) from grid_mod.F90
-!  30 Jul 2012 - R. Yantosca - Now accept am_I_Root as an argument when
-!                              running with the traditional driver main.F
-!  31 Jul 2012 - R. Yantosca - Now loop from 1..LLPAR for GIGC compatibility
-!  31 Jul 2012 - R. Yantosca - Declare temp drydep arrays w/ LLPAR (not LLTROP)
-!  14 Nov 2012 - R. Yantosca - Add am_I_Root, Input_Opt, RC as arguments
-!  15 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  05 Mar 2013 - R. Yantosca - Now use Input_Opt%LNLPBL
-!  19 Mar 2013 - R. Yantosca - Now copy Input_Opt%TCVV(1:N_TRACERS) and
-!                              Input_Opt%XNUMOL(1:N_TRACERS) -- avoid OOB errs
-!  25 Mar 2013 - M. Payer    - Now pass State_Chm object via the arg list
-!  12 Sep 2013 - M. Sulprizio- Now include references to dust-sulfate chemistry
-!                              (tdf 04/07/08)
-!  12 Jun 2015 - R. Yantosca - Now remove orphaned ND44 variables
-!  12 Jun 2015 - R. Yantosca - Drydep is now handled in mixing_mod.F90,
-!                              so we can greatly collapse this code
-!  23 Sep 2015 - R. Yantosca - Remove references to DRYSO4 and DRYSO4s
-!  24 Jun 2016 - R. Yantosca - Now return if id_SO4<0 or id_SO4s<0 (not == 0)
-!  30 Jun 2016 - R. Yantosca - Remove instances of STT.  Now get the advected
-!                              species ID from State_Chm%Map_Advect.
-!  07 Dec 2017 - R. Yantosca - Now accept State_DIag as an argument
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -6526,7 +5966,7 @@
 
       ! Pointers
       REAL(fp), POINTER :: Spc(:,:,:,:)
-#if defined( APM )
+#ifdef APM
       REAL*8            :: MASS0, MASS, PMASS
       REAL*8            :: RKTs, E_RKTs, DTCHEM
 #endif
@@ -6544,7 +5984,7 @@
       ! Copy fields from INPUT_OPT to local variables for use below
       LDSTUP    = Input_Opt%LDSTUP
 
-#if defined( APM )
+#ifdef APM
       !------------------------------------------
       ! Call APM size-resolved drydep algorithm
       !------------------------------------------
@@ -6562,7 +6002,7 @@
 !$OMP+PRIVATE( I, J, L, SO4, SO4s, SO40, SO40s )
 !$OMP+PRIVATE( SO4d, SO40d, SO40_dust          ) ! tdf 04/07/08
 !$OMP+PRIVATE( IBIN, PSO4d, IDTRC              )
-#if   defined( APM )
+#ifdef APM
 !$OMP+PRIVATE( N, MASS0, MASS, PMASS, RKTs, E_RKTs )
 #endif
 !$OMP+SCHEDULE( DYNAMIC )
@@ -6650,7 +6090,7 @@
          Spc(I,J,L,id_SO4s) = SO4s
 
 !APM_GanLuo+
-#if defined( APM )
+#ifdef APM
          IF(NSO4>=1)THEN
             DO N=1,NSO4
             ! Updated SO4 (gas phase) [v/v]
@@ -6717,7 +6157,7 @@
       ENDDO
 !$OMP END PARALLEL DO
 
-#if defined( APM )
+#ifdef APM
       PSO4_SO2APM2 = 0.D0
 #endif
 
@@ -6726,7 +6166,7 @@
 
       END SUBROUTINE CHEM_SO4
 !EOC
-#if   defined( TOMAS )
+#ifdef TOMAS
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
 !------------------------------------------------------------------------------
@@ -6734,8 +6174,8 @@
 !
 ! !IROUTINE: chem_so4_aq
 !
-! !DESCRIPTION: Subroutine CHEM\_SO4\_AQ takes the SO4 produced via aqueous
-!  chemistry of SO2 and distribute onto the size-resolved aerosol number and
+! !DESCRIPTION: Subroutine CHEM\_SO4\_AQ takes the SO4 produced via aqueous 
+!  chemistry of SO2 and distribute onto the size-resolved aerosol number and 
 !  sulfate mass as a part of the TOMAS aerosol microphysics module
 !  (win, 1/25/10)
 !\\
@@ -6776,19 +6216,7 @@
 !  NOTE: This subroutine is ignored unless we compile for TOMAS microphysics.
 !
 ! !REVISION HISTORY:
-!  (1 ) As of now the SO4 produced via heterogeneous reaction on the 2-mode
-!        seasalt is not include in this treatment (win, 7/23/07)
-!  (2 ) Change a fixed kmin = 8 (corresponding to the assumed activation dia.
-!        of 55nm to be varying with current chemical composition.  Take average
-!        of the activating bin for LS and CONV rains. (win, 9/25/07)
-!  16 Feb 2012 - R. Yantosca - Added ProTeX headers
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  31 May 2013 - R. Yantosca - Now accept am_I_Root, Input_Opt, State_Chm
-!                              and RC arguments
-!  31 May 2013 - R. Yantosca - Now pass State_Chm to TOMAS routines
-!  30 Sep 2015 - E. Lundgren - Now use UNITCONV_MOD conversion routine
-!  28 Sep 2017 - E. Lundgren - Simplify unit conversions using wrapper routine
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -6835,31 +6263,31 @@
 
          IF ( SO4OXID > 0e+0_fp ) THEN
 ! JKodros (6/2/15 - Set activating bin based on which TOMAS bin length being used)
-# if   defined( TOMAS12 )
+#if defined( TOMAS12 )
             CALL GETACTBIN
      &         ( I, J, L, id_NK5, .TRUE. , BINACT1, State_Chm, RC )
 
             CALL GETACTBIN
      &         ( I, J, L, id_NK5, .FALSE., BINACT2, State_Chm, RC )
-# elif defined ( TOMAS15 )
+#elif defined( TOMAS15 )
             CALL GETACTBIN
      &         ( I, J, L, id_NK8, .TRUE. , BINACT1, State_Chm, RC )
 
             CALL GETACTBIN
      &         ( I, J, L, id_NK8, .FALSE., BINACT2, State_Chm, RC )
-# elif defined ( TOMAS30 )
+#elif defined( TOMAS30 )
             CALL GETACTBIN
      &         ( I, J, L, id_NK10, .TRUE. , BINACT1, State_Chm, RC )
 
             CALL GETACTBIN
      &         ( I, J, L, id_NK10, .FALSE., BINACT2, State_Chm, RC )
-# else
+#else
             CALL GETACTBIN
      &         ( I, J, L, id_NK20, .TRUE. , BINACT1, State_Chm, RC )
 
             CALL GETACTBIN
      &         ( I, J, L, id_NK20, .FALSE., BINACT2, State_Chm, RC )
-# endif
+#endif
 
             KMIN = ( BINACT1 + BINACT2 )/ 2.
 
@@ -6929,44 +6357,7 @@
 !  Dry deposition is now treaded in mixing_mod.F90.
 !
 ! !REVISION HISTORY:
-!  (1 ) Now reference AD from "dao_mod.f".  Added parallel DO-loops.
-!        Updated comments, cosmetic changes. (rjp, bmy, bdf, 9/16/02)
-!  (2 ) Now replace DXYP(JREF)*1d4 with routine GET_AREA_CM2 of "grid_mod.f"
-!        Now use function GET_TS_CHEM from "time_mod.f" (bmy, 3/27/03)
-!  (3 ) Now reference PBLFRAC from "drydep_mod.f".  Now apply dry deposition
-!        to the entire PBL. (rjp, bmy, 8/1/03)
-!  (4 ) Now use ND44_TMP array to store vertical levels of drydep flux, then
-!        sum into AD44 array.  This preents numerical differences when using
-!        multiple processors. (bmy, 3/24/04)
-!  (5 ) Now use parallel DO-loop to zero ND44_TMP (bmy, 4/14/04)
-!  (6 ) Now references STT & TCVV from "tracer_mod.f" (bmy, 7/20/04)
-!  (7 ) Replace PBLFRAC from "drydep_mod.f" with GET_FRAC_UNDER_PBLTOP from
-!        "pbl_mix_mod.f".  Also reference GET_PBL_MAX_L from "pbl_mix_mod.f"
-!        Vertical DO-loops can run up to PBL_MAX and not LLTROP.   Also
-!        remove reference to header file CMN. (bmy, 2/22/05)
-!  (8 ) Now references XNUMOL from "tracer_mod.f" (bmy, 10/25/05)
-!  (9 ) Change loop back to over entire troposphere to correctly add production
-!        of MSA (PMSA_dms) to the MSA tracer array.
-!       Added reference USE_TROPOPAUSE_MOD, ONLY : ITS_IN_THE_STRAT
-!        as a precaution.  (pjh, 8/19/2009)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  01 Mar 2012 - R. Yantosca - Now use GET_AREA_CM2(I,J,L) from grid_mod.F90
-!  31 Jul 2012 - R. Yantosca - Now loop from 1..LLPAR for GIGC compatibility
-!  31 Jul 2012 - R. Yantosca - Declare temp drydep arrays w/ LLPAR (not LLTROP)
-!  14 Nov 2012 - R. Yantosca - Add am_I_Root, Input_Opt, RC as arguments
-!  15 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  05 Mar 2013 - R. Yantosca - Now use Input_Opt%LNLPBL
-!  19 Mar 2013 - R. Yantosca - Now copy Input_Opt%TCVV(1:N_TRACERS) and
-!                              Input_Opt%XNUMOL(1:N_TRACERS) -- avoid OOB errs
-!  25 Mar 2013 - M. Payer    - Now pass State_Chm object via the arg list
-!  12 Jun 2015 - R. Yantosca - Now remove orphaned ND44 variables
-!  12 Jun 2015 - R. Yantosca - Drydep is now handled in mixing_mod.F90,
-!                              so we can greatly collapse this code
-!  23 Sep 2015 - R. Yantosca - Remove references to obsolete DRYMSA flag
-!  24 Jun 2016 - R. Yantosca - Now return if id_MSA < 0 (not == 0)
-!  30 Jun 2016 - R. Yantosca - Remove instances of STT.  Now get the advected
-!                              species ID from State_Chm%Map_Advect.
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -7073,48 +6464,7 @@
 !  (1 ) NIT = NIT_0 * EXP( -dt )  where d = dry deposition rate [s-1]
 !
 ! !REVISION HISTORY:
-!  (1 ) Now reference AD from "dao_mod.f".  Added parallel DO-loops.
-!        Updated comments, cosmetic changes. (rjp, bmy, bdf, 9/20/02)
-!  (2 ) Now replace DXYP(J+J0)*1d4 with routine GET_AREA_CM2 from "grid_mod.f".
-!        Now use function GET_TS_CHEM from "time_mod.f" (bmy, 3/27/03)
-!  (3 ) Now reference PBLFRAC from "drydep_mod.f".  Now apply dry deposition
-!        to the entire PBL.  Added L and FREQ variables.  Recode to avoid
-!        underflow from EXP(). (rjp, bmy, 8/1/03)
-!  (4 ) Now use ND44_TMP array to store vertical levels of drydep flux, then
-!        sum into AD44 array.  This preents numerical differences when using
-!        multiple processors. (bmy, 3/24/04)
-!  (5 ) Now use parallel DO-loop to zero ND44_TMP (bmy, 4/14/04)
-!  (6 ) Now reference STT & TCVV from "tracer_mod.f".  Also remove reference
-!        to CMN, it's not needed anymore. (bmy, 7/20/04)
-!  (7 ) Replace PBLFRAC from "drydep_mod.f" with GET_FRAC_UNDER_PBLTOP from
-!        "pbl_mix_mod.f".  Also reference GET_PBL_MAX_L from "pbl_mix_mod.f"
-!        Vertical DO-loops can run up to PBL_MAX and not LLTROP. (bmy, 2/22/05)
-!  (8 ) Now references XNUMOL from "tracer_mod.f" (bmy, 10/25/05)
-!  (9 ) Rearrange error check to avoid SEG FAULTS (bmy, 5/23/06)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  01 Mar 2012 - R. Yantosca - Now use GET_AREA_CM2(I,J,L) from grid_mod.F90
-!  31 Jul 2012 - R. Yantosca - Now loop from 1..LLPAR for GIGC compatibility
-!  31 Jul 2012 - R. Yantosca - Declare temp drydep arrays w/ LLPAR (not LLTROP)
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  05 Mar 2013 - R. Yantosca - Now use Input_Opt%LNLPBL
-!  13 Mar 2013 - R. Yantosca - Bug fix: make sure we pass values to the
-!                              SOIL_DRYDEP routine even when ND44 is off
-!                              (this happens when LNLPBL = F)
-!  19 Mar 2013 - R. Yantosca - Now copy Input_Opt%TCVV(1:N_TRACERS) and
-!                              Input_Opt%XNUMOL(1:N_TRACERS) -- avoid OOB errs
-!  25 Mar 2013 - M. Payer    - Now pass State_Chm object via the arg list
-!  12 Sep 2013 - M. Sulprizio- Now include references to nitrate on dust
-!                              (tdf, 04/07/08)
-!  23 Sep 2013 - M. Sulprizio- Bug fix: Skip stratospheric boxes to prevent
-!                              out-of-bounds error in PNIT_DUST
-!  12 Jun 2015 - R. Yantosca - Now remove orphaned ND44 variables
-!  12 Jun 2015 - R. Yantosca - Drydep is now handled in mixing_mod.F90,
-!                              so we can greatly collapse this code
-!  23 Sep 2015 - R. Yantosca - Remove reference to DRYNIT, DRYNITs
-!  24 Jun 2016 - R. Yantosca - Now return if id_NIT<0 or id_NITs<0 (not == 0)
-!  30 Jun 2016 - R. Yantosca - Remove instances of STT.  Now get the advected
-!                              species ID from State_Chm%Map_Advect.
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -7258,7 +6608,7 @@
 !
 ! !REVISION HISTORY:
 !  27 Oct 2009 - P. Le Sager - initial
-!  20 Aug 2013 - R. Yantosca - Removed "define.h", this is now obsolete
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -7343,28 +6693,14 @@
       TYPE(ChmState), INTENT(IN) :: State_Chm   ! Chemistry State object
 !
 ! !REVISION HISTORY:
-!  (1 ) We assume SETTRACE has been called to define IDOH (bmy, 11/1/02)
-!  (2 ) Now use function GET_TS_CHEM from "time_mod.f" (bmy, 3/27/03)
-!  (3 ) Now reference ITS_A_FULLCHEM_SIM, ITS_AN_AEROSOL_SIM from
-!        "tracer_mod.f".  Also replace IJSURF w/ an analytic function.
-!        (bmy, 7/20/04)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  28 Nov 2012 - R. Yantosca - Replace SUNCOS with State_Met%SUNCOS
-!  28 Nov 2012 - R. Yantosca - Add State_Met to argument list
-!  04 Mar 2013 - R. Yantosca - Now pass Input_Opt%ITS_A_FULLCHEM_SIM and
-!                              Input_Opt%ITS_AN_AEROSOL_SIM
-!  18 Sep 2014 - M. Sulprizio- Now get OH for offline aerosol sim from HEMCO
-!  22 Dec 2015 - M. Sulprizio- Remove references to CSPEC and JLOOP. We now get
-!                              species concentrations from State_Chm%Species.
-!  11 Oct 2018 - R. Yantosca - Remove invalid simulation error check; this
-!                              can be done in Init_Sulfate.
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
 !
 ! !LOCAL VARIABLES:
 !
-      REAL(fp)            :: OH_MOLEC_CM3
+      REAL(fp)            :: OH_MOLEC_CM3, MolecRatio
 
       !=================================================================
       ! GET_OH begins here!
@@ -7376,10 +6712,14 @@
          ! Coupled simulation
          !---------------------
 
-         ! Take OH from State_Chm%Species [molec/cm3]
          ! OH is defined only in the chemistry grid
          IF ( State_Met%InChemGrid(I,J,L) ) THEN
+
+            ! Get OH from State_Chm%Species [v/v] converted to [molec/cm3]
+            MolecRatio = State_Chm%SpcData(id_OH)%Info%MolecRatio
             OH_MOLEC_CM3 = State_Chm%Species(I,J,L,id_OH)
+     &                     * State_Met%AIRDEN(I,J,L) * 1e+3_fp * AVO
+     &                     / ( AIRMW * MolecRatio )
          ELSE
             OH_MOLEC_CM3 = 0e+0_fp
          ENDIF
@@ -7449,24 +6789,7 @@
       TYPE(ChmState), INTENT(IN)  :: State_Chm   ! Chemistry State object
 !
 ! !REVISION HISTORY:
-!  (1 ) Now references ERROR_STOP from "error_mod.f".  We also assume that
-!        SETTRACE has been called to define IDNO3.  Now also set NO3 to
-!        zero during the day. (rjp, bmy, 12/16/02)
-!  (2 ) Now reference ITS_A_FULLCHEM_SIM and ITS_AN_AEROSOL_SIM from
-!        "tracer_mod.f".  Also remove reference to CMN.   Also replace
-!        IJSURF with an analytic function. (bmy, 7/20/04)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  28 Nov 2012 - R. Yantosca - Replace SUNCOS with State_Met%SUNCOS
-!  04 Mar 2013 - R. Yantosca - Now pass Input_Opt%ITS_A_FULLCHEM_SIM and
-!                              Input_Opt%ITS_AN_AEROSOL_SIM
-!  24 Jul 2014 - R. Yantosca - Now compute BOXVL internally
-!  18 Sep 2014 - M. Sulprizio- Now get NO3 for offline aerosol sims from HEMCO
-!  22 Dec 2015 - M. Sulprizio- Remove references to CSPEC and JLOOP. We now get
-!                              species concentrations from State_Chm%Species.
-!  11 Oct 2018 - R. Yantosca - Remove invalid simulation error check; this
-!                              can be done in Init_Sulfate.
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -7531,7 +6854,7 @@
          !
          ! If at nighttime, use the monthly mean NO3 concentration from
          ! the NO3 array of "global_no3_mod.f".  If during the daytime,
-         ! set the NO3 concentration to zero.  We don't have to relax to
+         ! set the NO3 concentration to zero.  We don't have to relax to 
          ! the monthly mean concentration every 3 hours (as for HNO3)
          ! since NO3 has a very short lifetime. (rjp, bmy, 12/16/02)
          !==============================================================
@@ -7597,22 +6920,7 @@
       TYPE(MetState), INTENT(IN)  :: State_Met   ! Meteorology State object
 !
 ! !REVISION HISTORY:
-!  (1 ) We assume SETTRACE has been called to define IDO3. (bmy, 12/16/02)
-!  (2 ) Now reference inquiry functions from "tracer_mod.f" (bmy, 7/20/04)
-!  (3 ) Now remove reference to CMN, it's obsolete.  (bmy, 8/22/05)
-!  (4 ) Now references XNUMOLAIR from "tracer_mod.f" (bmy, 10/25/05)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  04 Mar 2013 - R. Yantosca - Now pass Input_Opt%ITS_A_FULLCHEM_SIM and
-!                              Input_Opt%ITS_AN_AEROSOL_SIM
-!  06 Nov 2014 - R. Yantosca - Now use State_Met%AIRDEN(I,J,L)
-!  24 Mar 2015 - E. Lundgren - Replace dependency on tracer_mod with
-!                              CMN_GTCM_MOD to get XNUMOLAIR.
-!  22 Dec 2015 - M. Sulprizio- Remove references to CSPEC and JLOOP. We now get
-!                              species concentrations from State_Chm%Species.
-!  11 Oct 2018 - R. Yantosca - Remove invalid simulation error check; this
-!                              can be done in Init_Sulfate.
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -7685,18 +6993,7 @@
       TYPE(GrdState), INTENT(IN) :: State_Grid  ! Grid State object
 !
 ! !REVISION HISTORY:
-!  (1 ) Copy code from COSSZA directly for now, so that we don't get NaN
-!        values.  Figure this out later (rjp, bmy, 1/10/03)
-!  (2 ) Now replace XMID(I) with routine GET_XMID from "grid_mod.f".
-!        Now replace RLAT(J) with routine GET_YMID_R from "grid_mod.f".
-!        Removed NTIME, NHMSb from the arg list.  Now use GET_NHMSb,
-!        GET_ELAPSED_SEC, GET_TS_CHEM, GET_DAY_OF_YEAR, GET_GMT from
-!        "time_mod.f". (bmy, 3/27/03)
-!  (3 ) Now store the peak SUNCOS value for each surface grid box (I,J) in
-!        the COSZM array. (rjp, bmy, 3/30/04)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  16 May 2016 - M. Sulprizio- Remove IJLOOP and change SUNTMP array dimensions
-!                              from (MAXIJ) to (IIPAR,JJPAR)
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -7772,7 +7069,7 @@
                !===========================================================
                ! The cosine of the solar zenith angle (SZA) is given by:
                !
-               !  cos(SZA) = sin(LAT)*sin(DEC) + cos(LAT)*cos(DEC)*cos(AHR)
+               !  cos(SZA) = sin(LAT)*sin(DEC) + cos(LAT)*cos(DEC)*cos(AHR) 
                !
                ! where LAT = the latitude angle,
                !       DEC = the solar declination angle,
@@ -7874,24 +7171,7 @@
       TYPE(ChmState), INTENT(INOUT) :: State_Chm   ! Chemistry State object
 !
 ! !REVISION HISTORY:
-!  (1 ) Becky Alexander says we can remove AREA1, AREA2 (bec, bmy, 9/5/06)
-!  (2 ) Bug fix to remove a double-substitution.  Replace code lines for
-!        TERM{123}A, TERM{123}B, TERM{123}AN, TERM{123}BN. (bec, bmy, 7/18/08)
-!  (3 ) Updated hygroscopic growth parameters (bec, bmy, 11/23/09)
-!  (4 ) Fixed bug when calculating rate constants for uptake of SO2 and HNO3
-!       (kt). The bug caused kt to be too small and prevented acidification
-!       of SSA. (jas, 8/4/15)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  25 Jun 2014 - R. Yantosca - Now accept Input_Opt via the arg list
-!  25 Jun 2014 - R. Yantosca - Removed references to tracer_mod.F
-!  02 Nov 2014 - C. Keller   - Now get alkalinity and number density from HEMCO
-!  04 Nov 2014 - C. Keller   - Moved from seasalt_mod.F
-!  12 Nov 2014 - C. Keller   - Now weight # dens. and alk. by fraction of PBL
-!  12 May 2016 - M. Sulprizio- Remove 1D arrays that depend on JLOOP. ERADIUS,
-!                              TAREA, are now pointers that point to 3D fields
-!                              fields in State_Chm.
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -8163,38 +7443,8 @@
       INTEGER,        INTENT(OUT) :: RC          ! Success or failure?
 !
 ! !REVISION HISTORY:
-!  (1 ) Only allocate some arrays for the standalone simulation (NSRCX==10).
-!        Also reference NSRCX from "CMN".  Now eferences routine ALLOC_ERR
-!        from "error_mod.f" ((rjp, bdf, bmy, 10/15/02)
-!  (2 ) Now also allocate the IJSURF array to keep the 1-D grid box indices
-!        for SUNCOS (for both coupled & offline runs).  Now allocate PH2O2m
-!        and O3m for offline runs.  Also allocate ESO2_bf (bmy, 1/16/03)
-!  (3 ) Now allocate ENH3_na array (rjp, bmy, 3/23/03)
-!  (4 ) Now allocate COSZM for offline runs (bmy, 3/30/04)
-!  (5 ) Now allocate ESO2_sh array (bec, bmy, 5/20/04)
-!  (6 ) Now allocates ITS_AN_AEROSOL_SIM from "tracer_mod.f".  Now remove
-!        IJSURF (bmy, 7/20/04)
-!  (7 ) Now locate species in the DEPSAV array here instead of in CHEMSULFATE.
-!        Now reference LDRYD from "logical_mod.f".  Updated for AS, AHS, LET,
-!        SO4aq, NH4aq. (bmy, 1/6/06)
-!  (8 ) Now allocates PSO4_ss, PNITs (bec, bmy, 4/13/05)
-!  (9 ) Initialize drydep flags outside of IF block (bmy, 5/23/06)
-!  (10) Now redimension EEV & NEV arrays for new SO2 volcanic emissions
-!        inventory.  Deleted obsolete arrays from older SO2 volcanic
-!        emissions inventory. (jaf, bmy, 10/15/09)
-!  (11) Now alllocate PSO4_SO2AQ (win, 1/25/10)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  04 Mar 2013 - R. Yantosca - Now accept am_I_Root, Input_Opt, RC arguments
-!  05 Mar 2013 - R. Yantosca - Now use Input_Opt%ITS_AN_AEROSOL_SIM
-!  30 May 2013 - S. Farina   - Allocate PSO4_SO2AQ for TOMAS
-!  12 Sep 2013 - M. Sulprizio- Add PSO4_dust and PNIT_dust for acid update on
-!                              dust aerosols (T.D. Fairlie)
-!  26 Sep 2013 - R. Yantosca - Renamed GEOS_57 Cpp switch to GEOS_FP
-!  22 May 2015 - R. Yantosca - Remove variables made obsolete by HEMCO
-!  29 Apr 2016 - R. Yantosca - Don't initialize pointers in declaration stmts
-!  21 Jun 2016 - R. Yantosca - Reorder the Ind_ declaration statements a bit
-!  24 Jun 2016 - R. Yantosca - Add error checks for dust uptake species
-!  02 Nov 2017 - R. Yantosca - Now accept State_Diag as an argument
+!  02 Jun 2000 - R. Yantosca - Initial version
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -8289,7 +7539,7 @@
       IF ( RC /= GC_SUCCESS ) RETURN
       SOx_SCALE = 0e+0_fp
 
-#if  defined( APM )
+#ifdef APM
       ! Allocate for APM microphysics
       ALLOCATE( PSO4_SO2APM( State_Grid%NX,
      &                       State_Grid%NY,
@@ -8305,7 +7555,7 @@
       PSO4_SO2SEA = 0e+0_fp
 #endif
 
-#if   defined( TOMAS )
+#ifdef TOMAS
       ! Allocate for TOMAS microphysics
       ALLOCATE( PSO4_SO2AQ( State_Grid%NX, State_Grid%NY,
      &                      State_Grid%NZ ), STAT=RC )
@@ -8318,11 +7568,6 @@
       CALL GC_CheckVar( 'sulfate_mod.F:SO4_ANTH', 0, RC )
       IF ( RC /= GC_SUCCESS ) RETURN
       SO4_ANTH = 0e+0_fp
-
-      ALLOCATE( SO4_BIOF( State_Grid%NX, State_Grid%NY ), STAT=RC )
-      CALL GC_CheckVar( 'sulfate_mod.F:SO4_BIOF', 0, RC )
-      IF ( RC /= GC_SUCCESS ) RETURN
-      SO4_BIOF = 0e+0_fp
 #endif
 
       !=================================================================
@@ -8443,20 +7688,8 @@
       SUBROUTINE CLEANUP_SULFATE()
 !
 ! !REVISION HISTORY:
-!  (1 ) Now also deallocates IJSURF. (bmy, 11/12/02)
-!  (2 ) Now also deallocates ENH3_na (rjp, bmy, 3/23/03)
-!  (3 ) Now also deallocates COSZM (rjp, bmy, 3/30/04)
-!  (4 ) Now also deallocates ESO4_sh (bec, bmy, 5/20/04)
-!  (5 ) Now remove IJSURF (bmy, 7/20/04)
-!  (6 ) Bug fix: now deallocate PSO4_ss, PNITs (bmy, 5/3/06)
-!  (7 ) Deleted obsolete arrays from older SO2 volcanic emissions
-!        inventory (jaf, bmy, 10/15/09)
-!  (8 ) Deallocate PSO4_SO2AQ (win, 1/25/10)
-!  22 Dec 2011 - M. Payer    - Added ProTeX headers
-!  30 May 2013 - S. Farina   - Deallocate PSO4_SO2AQ for TOMAS
-!  04 Mar 2015 - R. Yantosca - Remove EEV, NEV.  Volcano eruptions are now
-!                              handled via HEMCO.
-!  22 May 2015 - R. Yantosca - Remove variables made obsolete by HEMCO
+!  01 Jun 2000 - R. Yantosca - Initial version
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -8470,14 +7703,13 @@
       IF ( ALLOCATED( PNITs      ) ) DEALLOCATE( PNITs      )
       IF ( ALLOCATED( PSO2_DMS   ) ) DEALLOCATE( PSO2_DMS   )
       IF ( ALLOCATED( PSO4_SO2   ) ) DEALLOCATE( PSO4_SO2   )
-#if defined( APM )
+#ifdef APM
       IF ( ALLOCATED( PSO4_SO2APM ) ) DEALLOCATE( PSO4_SO2APM )
       IF ( ALLOCATED( PSO4_SO2SEA ) ) DEALLOCATE( PSO4_SO2SEA )
 #endif
-#if   defined( TOMAS )
+#ifdef TOMAS
       IF ( ALLOCATED( PSO4_SO2AQ ) ) DEALLOCATE( PSO4_SO2AQ )
       IF ( ALLOCATED( SO4_ANTH   ))  DEALLOCATE( SO4_ANTH   )
-      IF ( ALLOCATED( SO4_BIOF   ))  DEALLOCATE( SO4_BIOF   )
 #endif
       IF ( ALLOCATED( PSO4_ss    ) ) DEALLOCATE( PSO4_ss    )
 
@@ -8501,7 +7733,7 @@
 
       END SUBROUTINE CLEANUP_SULFATE
 !EOC
-#if defined( APM )
+#ifdef APM
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
 !------------------------------------------------------------------------------
@@ -8552,11 +7784,7 @@
       INTEGER,        INTENT(OUT)   :: RC          ! Success or failure?
 !
 ! !REVISION HISTORY:
-!  01 Mar 2012 - R. Yantosca - Now use GET_AREA_CM2(I,J,L) from grid_mod.F90
-!  09 Nov 2012 - M. Payer    - Replaced all met field arrays with State_Met
-!                              derived type object
-!  17 Oct 2013 - M. Sulprizio- Now pass STT via the State_Chm object
-!  17 Oct 2013 - M. Sulprizio- Added ProTeX headers
+!  See the Git history with the gitk browser!
 !EOP
 !------------------------------------------------------------------------------
 !BOC

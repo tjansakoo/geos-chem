@@ -275,7 +275,7 @@
 ! !IROUTINE: Set_Floating_Pressures
 !
 ! !DESCRIPTION: Subroutine SET\_FLOATING\_PRESSURES initializes the
-!  dry and wet floating pressure fields PFLT\_DRY and PFLT\_WET with the
+!  dry and wet floating pressure fields PFLT\_DRY and PFLT\_WET with the 
 !  "true" surface pressures PSC2\_DRY and PSC2\_WET, stored in State\_Met.
 !\\
 !\\
@@ -528,7 +528,7 @@
 ! !IROUTINE: Get_Pedge_Dry
 !
 ! !DESCRIPTION: Function GET\_PEDGE\_DRY returns the pressure at the
-!  bottom edge of level L, reconstructed using the dry surface pressure.
+!  bottom edge of level L, reconstructed using the dry surface pressure. 
 !  L=1 is the surface, L=State\_Grid%NZ+1 is the atm top.
 !\\
 !\\
@@ -627,18 +627,20 @@
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE INIT_PRESSURE( am_I_Root, State_Grid, RC )
+      SUBROUTINE INIT_PRESSURE( am_I_Root, Input_Opt, State_Grid, RC )
 !
 ! !USES:
 !
-      USE CMN_SIZE_MOD         ! PTOP
+      USE CMN_SIZE_MOD
       USE ErrCode_Mod
       USE ERROR_MOD,      ONLY : ALLOC_ERR
+      USE Input_Opt_Mod,  ONLY : OptInput
       USE State_Grid_Mod, ONLY : GrdState
 !
 ! !INPUT PARAMETERS:
 !
       LOGICAL,        INTENT(IN)  :: am_I_Root   ! Is this the root CPU?
+      TYPE(OptInput), INTENT(IN)  :: Input_Opt   ! Input Options object
       TYPE(GrdState), INTENT(IN)  :: State_Grid  ! Grid State object
 !
 ! !OUTPUT PARAMETERS:
@@ -899,7 +901,7 @@
 
 #if ( !defined( ESMF_ ) && !defined( MODEL_ ) ) || defined( MODEL_GEOS )
       ! Echo info to std output (skip if interfacing with external models)
-      IF ( am_I_Root ) THEN
+      IF ( am_I_Root .and. ( .not. Input_Opt%DryRun ) ) THEN
          WRITE( 6, '(a)'   ) REPEAT( '=', 79 )
          WRITE( 6, '(a,/)' ) 'V E R T I C A L   G R I D   S E T U P'
          WRITE( 6, '(a,/)' ) 'INIT_PRESSURE: Vertical coordinates!'
@@ -1056,4 +1058,3 @@
 !EOC
 #endif
       END MODULE PRESSURE_MOD
-

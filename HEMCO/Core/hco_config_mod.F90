@@ -125,7 +125,8 @@ CONTAINS
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE Config_ReadFile( am_I_Root, HcoConfig, ConfigFile, Phase, RC, IsNest )
+  SUBROUTINE Config_ReadFile( am_I_Root, HcoConfig, ConfigFile, Phase, RC,   &
+                              IsNest,    IsDryRun                           )
 !
 ! !USES:
 !
@@ -141,7 +142,8 @@ CONTAINS
     INTEGER,            INTENT(IN)              :: Phase      ! 0: all
                                                               ! 1: Settings and switches only
                                                               ! 2: fields only
-    LOGICAL,            INTENT(IN   ), OPTIONAL :: IsNest     ! Nested call?
+    LOGICAL,            INTENT(IN),    OPTIONAL :: IsNest     ! Nested call?
+    LOGICAL,            INTENT(IN),    OPTIONAL :: IsDryRun   ! Dry-run?
 !
 ! !INPUT/OUTPUT PARAMETERS:
 !
@@ -163,11 +165,14 @@ CONTAINS
 !
 ! !LOCAL VARIABLES:
 !
+    ! Scalars
+    LOGICAL              :: AIR,    EOF
+    LOGICAL              :: EXISTS, NEST, DoDryRUn
     INTEGER              :: NN
     INTEGER              :: IU_HCO, IOS
-    LOGICAL              :: AIR,    EOF
-    LOGICAL              :: EXISTS, NEST
-    CHARACTER(LEN=255)   :: MSG,    LOC
+
+    ! Strings
+    CHARACTER(LEN=255)   :: MSG,    LOC,  FileMsg
     CHARACTER(LEN=2047)  :: CFDIR
     CHARACTER(LEN=2047)  :: LINE
 
@@ -194,21 +199,62 @@ CONTAINS
     AIR = am_I_Root
 
     ! Nested call?
-    IF ( PRESENT(IsNest) ) THEN
+    IF ( PRESENT( IsNest ) ) THEN
        NEST = IsNest
     ELSE
        NEST = .FALSE.
     ENDIF
 
-    ! Prompt to standard output
+    ! Is this a dry-run simulation?
+    IF ( PRESENT( IsDryRun) ) THEN
+       DoDryRun= IsDryRun
+    ELSE
+       DoDryRun = .FALSE.
+    ENDIF
+
+    ! Prompt to standard output (only on the root core
     IF ( am_I_Root ) THEN
-       WRITE(6,*) ' '
-       IF ( Phase == 1 ) THEN
-          WRITE(6,*) 'Reading part 1 of HEMCO configuration file: ', TRIM(ConfigFile)
-       ELSEIF ( Phase == 2 ) THEN
-          WRITE(6,*) 'Reading part 2 of HEMCO configuration file: ', TRIM(ConfigFile)
+
+       IF ( DoDryRun ) THEN
+
+          !-----------------------------------------------------------------
+          ! For dry-run simulations: state if the configuration file
+          ! is found on disk, or not.  Only write this message once.
+          !-----------------------------------------------------------------
+
+          ! Test if the file exists
+          INQUIRE( FILE=TRIM( ConfigFile ), EXIST=Exists )
+
+          ! Test if the file exists and define an output string
+          IF ( Exists ) THEN
+             FileMsg = 'HEMCO (INIT): Opening '
+          ELSE
+             FileMsg = 'HEMCO (INIT): REQUIRED FILE NOT FOUND '
+          ENDIF
+
+          ! Write message to stdout
+          WRITE( 6, 300 ) TRIM( FileMsg ), TRIM( ConfigFile )
+ 300      FORMAT( a, ' ./', a )
+
        ELSE
-          WRITE(6,*) 'Reading part 1+2 of HEMCO configuration file: ', TRIM(ConfigFile)
+
+          !-----------------------------------------------------------------
+          ! For regular simulations, write a message containing
+          ! the configuration file as well as the Phase value.
+          !-----------------------------------------------------------------
+          WRITE(6,*) ' '
+          IF ( Phase == 1 ) THEN
+             WRITE( 6, 310 ) TRIM(ConfigFile)
+ 310         FORMAT( 'Reading settings & switches of HEMCO configuration file: ', a )
+
+          ELSEIF ( Phase == 2 ) THEN
+             WRITE( 6, 320 ) TRIM(ConfigFile)
+ 320         FORMAT( 'Reading fields of HEMCO configuration file: ', a )
+
+          ELSE
+             WRITE( 6, 330 ) TRIM(ConfigFile)
+ 330         FORMAT( 'Reading entire HEMCO configuration file: ', a )
+          ENDIF
        ENDIF
     ENDIF
 
@@ -307,9 +353,12 @@ CONTAINS
        ELSEIF ( INDEX ( LINE, 'BEGIN SECTION BASE EMISSIONS' ) > 0 ) THEN
 
           ! Read data and write into container
+          ! For dry-run simulations, print name of any
+          ! nested configuration files (e.g. for standalone)
           IF ( PHASE == 0 .OR. PHASE == 2 ) THEN
-             CALL Config_ReadCont( AIR, HcoConfig, IU_HCO, CFDIR, &
-                                   HCO_DCTTYPE_BASE, EOF, RC )
+             CALL Config_ReadCont( AIR, HcoConfig,   IU_HCO, CFDIR,          &
+                                   HCO_DCTTYPE_BASE, EOF,    RC,             &
+                                   IsDryRun=IsDryRun                        )
              IF ( RC /= HCO_SUCCESS ) RETURN
              IF ( EOF ) EXIT
 
@@ -390,7 +439,7 @@ CONTAINS
 ! !USES:
 !
     USE HCO_DATACONT_Mod,    ONLY : cIDList_Create
-    USE HCO_READLIST_Mod,    ONLY : ReadList_Init
+    USE HCO_READLIST_Mod,    ONLY : ReadList_Init, ReadList_Print
 !
 ! !INPUT PARAMETERS:
 !
@@ -416,17 +465,18 @@ CONTAINS
 
     ! Init
     CALL HCO_ENTER ( HcoState%Config%Err, 'SetReadList (hco_config_mod.F90)', RC )
-    IF ( RC /= HCO_SUCCESS ) RETURN
+    IF ( RC /= HCO_SUCCESS ) THEN
+       PRINT *,'Error in HCO_ENTER called from HEMCO SetReadList'
+       RETURN
+    ENDIF
 
     ! Return w/ error if configuration file hasn't been read yet!
     IF ( .NOT. ASSOCIATED(HcoState%Config) ) THEN
-       MSG = 'HEMCO configuration object in HEMCO state is empty!'
-       CALL HCO_ERROR ( HcoState%Config%Err, MSG, RC )
+       PRINT *,'HEMCO configuration object in HEMCO state is empty! Error in HEMCO SetReadList.'
        RETURN
     ENDIF
     IF ( .NOT. HcoState%Config%ConfigFileRead ) THEN
-       MSG = 'HEMCO configuration file not read!'
-       CALL HCO_ERROR ( HcoState%Config%Err, MSG, RC )
+       PRINT *,'HEMCO configuration file not read! Error in HEMCO SetReadList.'
        RETURN
     ENDIF
 
@@ -435,29 +485,44 @@ CONTAINS
 
        ! Initialize ReadList
        CALL ReadList_Init ( am_I_Root, HcoState%ReadLists, RC )
-       IF ( RC /= HCO_SUCCESS ) RETURN
+       IF ( RC /= HCO_SUCCESS ) THEN
+          PRINT *,'Error in HCO_ENTER called from HEMCO SetReadList'
+          RETURN
+       ENDIF
 
        ! Prepare data in buffer. This call identifies all base fields
        ! that have to be read by this CPU. It also kicks out base
        ! fields for emissions with an invalid species ID (if any) or
        ! if there are other base fields with higher priority.
        CALL RegisterPrepare ( am_I_Root, HcoState, RC )
-       IF ( RC /= HCO_SUCCESS ) RETURN
+       IF ( RC /= HCO_SUCCESS ) THEN
+          PRINT *,'Error in RegisterPrepare called from HEMCO SetReadList'
+          RETURN
+       ENDIF
 
        ! Register base emissions. In this step, we also redefine the
        ! list UnqScalIDs to make sure that only those scale factors
        ! will be registered that are effectively used in the next step.
        CALL Register_Base( am_I_Root, HcoState, RC )
-       IF ( RC /= HCO_SUCCESS ) RETURN
+       IF ( RC /= HCO_SUCCESS ) THEN
+          PRINT *,'Error in Register_Base called from HEMCO SetReadList'
+          RETURN
+       ENDIF
 
        ! Register scale factors based upon UnqScalIDs.
        CALL Register_Scal( am_I_Root, HcoState, RC )
-       IF ( RC /= HCO_SUCCESS ) RETURN
+       IF ( RC /= HCO_SUCCESS ) THEN
+          PRINT *,'Error in Register_Scal called from HEMCO SetReadList'
+          RETURN
+       ENDIF
 
        ! Create cIDList which allows quick access to all data containers
        ! based on their container IDs cID
        CALL cIDList_Create ( am_I_Root, HcoState, HcoState%Config%ConfigList, RC )
-       IF ( RC /= HCO_SUCCESS ) RETURN
+       IF ( RC /= HCO_SUCCESS ) THEN
+          PRINT *,'Error in cIDList_Create called from HEMCO SetReadlist'
+          RETURN
+       ENDIF
 
        ! Don't need internal lists anymore.
        CALL ScalID_Cleanup   ( HcoState%Config%ScalIDList   )
@@ -467,6 +532,11 @@ CONTAINS
 
     ! SetReadList has now been called
     HcoState%SetReadListCalled = .TRUE.
+
+    ! Debug
+    IF ( HCO_IsVerb( HcoState%Config%Err, 1 ) ) THEN
+       CALL ReadList_Print( am_I_Root, HcoState, HcoState%ReadLists, 1 )
+    ENDIF
 
     ! Leave w/ success
     CALL HCO_LEAVE( HcoState%Config%Err, RC )
@@ -487,9 +557,8 @@ CONTAINS
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE Config_ReadCont( am_I_Root, HcoConfig, IU_HCO,   &
-                              CFDIR,     DctType,   EOF,    RC )
-
+  SUBROUTINE Config_ReadCont( am_I_Root, HcoConfig, IU_HCO,  CFDIR,          &
+                              DctType,   EOF,       RC,      IsDryRun       )
 !
 ! !USES:
 !
@@ -506,6 +575,7 @@ CONTAINS
     INTEGER,          INTENT(IN   ) :: IU_HCO    ! Logfile LUN
     CHARACTER(LEN=*), INTENT(IN   ) :: CFDIR     ! Configuration file directory
     INTEGER,          INTENT(IN   ) :: DctType   ! 1=base; 2=scale; 3=mask
+    LOGICAL,          OPTIONAL      :: IsDryRun  ! Is this a HEMCO dry-run?
 !
 ! !INPUT/OUTPUT PARAMETERS:
 !
@@ -539,6 +609,8 @@ CONTAINS
 !  02 Nov 2018 - M. Sulprizio- Add cycle flag "CS" to skip fields not found
 !  08 Mar 2019 - M. Sulprizio- Add "*Y" options to TmCycle to force always using
 !                              simulation year (eg, instead of emissions year)
+!  23 Oct 2019 - M. Sulprizio- Added cycle flag "ID" to denote when dataset is
+!                              discontinous and needs to be interpolated
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -565,7 +637,7 @@ CONTAINS
     CHARACTER(LEN=255)        :: srcFile
     CHARACTER(LEN= 50)        :: srcVar
     CHARACTER(LEN= 31)        :: srcTime
-    CHARACTER(LEN=  3)        :: TmCycle
+    CHARACTER(LEN= 31)        :: TmCycle
     CHARACTER(LEN=  1)        :: WildCard
     CHARACTER(LEN=  1)        :: Separator
     CHARACTER(LEN= 31)        :: srcDim
@@ -706,7 +778,8 @@ CONTAINS
           CALL HCO_CharParse ( HcoConfig, LINE, 0, 0, 0, 0, 0, RC )
           IF ( RC /= HCO_SUCCESS ) RETURN
 
-          CALL Config_ReadFile( am_I_Root, HcoConfig, LINE, 0, RC, IsNest=.TRUE. )
+          CALL Config_ReadFile( am_I_Root, HcoConfig, LINE, 0, RC,          &
+                               IsNest=.TRUE., IsDryRun=IsDryRun            )
           IF ( RC /= HCO_SUCCESS ) RETURN
 
           ! All done with this line
@@ -892,6 +965,7 @@ CONTAINS
                 ! - "RA" : range, average outside
                 ! - "RF" : range, forced (error if not in range)
                 ! - "RFY": range, forced, always use simulation year
+                ! - "RFY3: range, forced, always use simulation year, 3-hourly
                 ! - "RY" : range, always use simulation year
                 ! - "E"  : exact (read file once)
                 ! - "EF" : exact, forced (error if not exist, read/query once)
@@ -900,8 +974,10 @@ CONTAINS
                 ! - "EY" : exact, always use simulation year
                 ! - "A"  : average
                 ! - "I"  : interpolate
+                ! - "ID" : interpolate, discontinuous dataset
                 Dta%MustFind  = .FALSE.
                 Dta%UseSimYear= .FALSE.
+                Dta%Discontinuous = .FALSE.
                 IF ( TRIM(TmCycle) == "C" ) THEN
                    Dta%CycleFlag = HCO_CFLAG_CYCLE
                    Dta%MustFind  = .TRUE.
@@ -927,6 +1003,11 @@ CONTAINS
                    Dta%CycleFlag = HCO_CFLAG_RANGE
                    Dta%MustFind  = .TRUE.
                    Dta%UseSimYear= .TRUE.
+                ELSEIF ( TRIM(TmCycle) == "RFY3" ) THEN
+                   Dta%CycleFlag = HCO_CFLAG_RANGE
+                   Dta%MustFind  = .TRUE.
+                   Dta%UseSimYear= .TRUE.
+                   Dta%UpdtFlag  = HCO_UFLAG_3HR
                 ELSEIF ( TRIM(TmCycle) == "RY" ) THEN
                    Dta%CycleFlag = HCO_CFLAG_RANGE
                    Dta%UseSimYear= .TRUE.
@@ -950,6 +1031,9 @@ CONTAINS
                    Dta%CycleFlag = HCO_CFLAG_AVERG
                 ELSEIF ( TRIM(TmCycle) == "I" ) THEN
                    Dta%CycleFlag = HCO_CFLAG_INTER
+                ELSEIF ( TRIM(TmCycle) == "ID" ) THEN
+                   Dta%CycleFlag = HCO_CFLAG_INTER
+                   Dta%Discontinuous = .TRUE.
                 ELSEIF ( TRIM(TmCycle) == "-" ) THEN
                    Dta%CycleFlag = HCO_CFLAG_CYCLE
                 ELSE
@@ -1181,6 +1265,7 @@ CONTAINS
              ! - "RA" : range, average outside
              ! - "RF" : range, forced (error if not in range)
              ! - "RFY": range, forced, always use simulation year
+             ! - "RFY3: range, forced, always use simulation year, 3-hourly
              ! - "RY" : range, always use simulation year
              ! - "E"  : exact (read file once)
              ! - "EF" : exact, forced (error if not exist, read/query once)
@@ -1213,9 +1298,14 @@ CONTAINS
                 Dta%CycleFlag = HCO_CFLAG_RANGE
                 Dta%MustFind  = .TRUE.
              ELSEIF ( TRIM(TmCycle) == "RFY" ) THEN
-                   Dta%CycleFlag = HCO_CFLAG_RANGE
-                   Dta%MustFind  = .TRUE.
-                   Dta%UseSimYear= .TRUE.
+                Dta%CycleFlag = HCO_CFLAG_RANGE
+                Dta%MustFind  = .TRUE.
+                Dta%UseSimYear= .TRUE.
+             ELSEIF ( TRIM(TmCycle) == "RFY3" ) THEN
+                Dta%CycleFlag = HCO_CFLAG_RANGE
+                Dta%MustFind  = .TRUE.
+                Dta%UseSimYear= .TRUE.
+                Dta%UpdtFlag  = HCO_UFLAG_3HR
              ELSEIF ( TRIM(TmCycle) == "RY" ) THEN
                 Dta%CycleFlag = HCO_CFLAG_RANGE
                 Dta%UseSimYear= .TRUE.
@@ -1556,9 +1646,9 @@ CONTAINS
        ! Verbose mode
        IF ( verb ) THEN
           MSG = 'Opened shortcut bracket: '//TRIM(TmpBracket)
-          CALL HCO_MSG(HcoConfig%Err,MSG)
+          CALL HCO_MSG( HcoConfig%Err, MSG )
           WRITE(MSG,*) ' - Skip content of this bracket: ', SKIP
-          CALL HCO_MSG(HcoConfig%Err,MSG)
+          CALL HCO_MSG( HcoConfig%Err, MSG )
        ENDIF
     ENDIF
 
@@ -1585,9 +1675,9 @@ CONTAINS
        ! Verbose mode
        IF ( verb ) THEN
           MSG = 'Closed shortcut bracket: '//TRIM(TmpBracket)
-          CALL HCO_MSG(HcoConfig%Err,MSG)
+          CALL HCO_MSG( HcoConfig%Err, MSG )
           WRITE(MSG,*) ' - Skip following lines: ', SKIP
-          CALL HCO_MSG(HcoConfig%Err,MSG)
+          CALL HCO_MSG( HcoConfig%Err, MSG )
        ENDIF
     ENDIF
 
@@ -2345,7 +2435,7 @@ CONTAINS
        ELSE IF ( Lct%Dct%DctType   == HCO_DCTTYPE_MASK .AND. &
                  Lct%Dct%Dta%Cover == -999                   ) THEN
 
-          If (HcoState%isESMF) Then
+          If (HcoState%Options%isESMF) Then
              ThisCover = -1
           Else
              ! Get mask edges
@@ -2364,7 +2454,7 @@ CONTAINS
              ! can be seen as fully covering a given CPU even though in
              ! reality it may only cover parts of it. Thus, in ESMF mode
              ! always set coverage to zero or partial (ckeller, 3/17/16).
-             IF ( HcoState%isESMF ) THEN
+             IF ( HcoState%Options%isESMF ) THEN
                 IF ( ThisCover == 1 ) ThisCover = -1
              ENDIF
           ENDIF
@@ -2446,7 +2536,10 @@ CONTAINS
 
     ! Enter
     CALL HCO_ENTER ( HcoState%Config%Err, 'Register_Base (hco_config_mod.F90)', RC )
-    IF ( RC /= HCO_SUCCESS ) RETURN
+    IF ( RC /= HCO_SUCCESS ) THEN
+       PRINT *,'Error in HCO_ENTER called from Register_Base'
+       RETURN
+    ENDIF
 
     ! Initialize
     Lct => NULL()
@@ -2493,7 +2586,7 @@ CONTAINS
              WRITE(MSG,*) &
                   'Register_Base: Ignore (and remove) base field ', &
                   TRIM(Lct%Dct%cName)
-             CALL HCO_MSG(HcoState%Config%Err,MSG)
+             CALL HCO_MSG(HcoState%Config%Err,MSG,SEP1='-')
           ENDIF
 
           ! Remove data container from list.
@@ -2506,7 +2599,7 @@ CONTAINS
        ! Verbose mode
        IF ( HCO_IsVerb(HcoState%Config%Err,3) ) THEN
           WRITE(MSG,*) 'Register_Base: Checking ', TRIM(Lct%Dct%cName)
-          CALL HCO_MSG(HcoState%Config%Err,MSG)
+          CALL HCO_MSG(HcoState%Config%Err,MSG,SEP1='-')
        ENDIF
 
        ! -------------------------------------------------------------
@@ -2516,7 +2609,10 @@ CONTAINS
        ! container IDs. Beforehand, add scale factor IDs to internal
        ! list of used scale factors (UnqScalIDs).
        CALL ScalID_Register ( Lct%Dct, HcoState%Config, RC )
-       IF ( RC /= HCO_SUCCESS ) RETURN
+       IF ( RC /= HCO_SUCCESS ) THEN
+          PRINT *,'Error in ScaleID_Register called from Register_Base'
+          RETURN
+       ENDIF
 
        ! Get target ID of this container. The targetID corresponds
        ! to the container ID cID into which emissions data of the
@@ -2530,7 +2626,10 @@ CONTAINS
        ! ID, emission category and hierarchy, ext. number, scale
        ! factors, and update frequency.
        CALL Get_targetID( am_I_Root, HcoState, Lct, targetID, RC)
-       IF ( RC /= HCO_SUCCESS ) RETURN
+       IF ( RC /= HCO_SUCCESS ) THEN
+          PRINT *,'Error in Get_targetID called from Register_Base'
+          RETURN
+       ENDIF
 
        ! verbose
        IF ( HCO_IsVerb(HcoState%Config%Err,3) ) THEN
@@ -2559,7 +2658,10 @@ CONTAINS
        ! Register container in ReadList. Containers will be listed
        ! in the reading lists sorted by cID.
        CALL ReadList_Set( am_I_Root, HcoState, Lct%Dct, RC )
-       IF ( RC /= HCO_SUCCESS ) RETURN
+       IF ( RC /= HCO_SUCCESS ) THEN
+          PRINT *,'Error in ReadList_Set called from Register_Base'
+          RETURN
+       ENDIF
 
        ! Print some information if verbose mode is on
        IF ( HCO_IsVerb(HcoState%Config%Err,2) ) THEN
@@ -3021,7 +3123,7 @@ CONTAINS
        ! increasing cID, pick the lowest cID to make sure that all
        ! fields are properly added.
        ! Note: this option is currently disabled for ESMF applications.
-       IF ( tmpLct%Dct%Hier == Hier .AND. .NOT. HcoState%isESMF ) THEN
+       IF ( tmpLct%Dct%Hier == Hier .AND. .NOT. HcoState%Options%isESMF ) THEN
 
           ! temporary flag
           sameCont = .TRUE.
@@ -3576,7 +3678,8 @@ CONTAINS
     IF ( cID <= 0 ) THEN
        WRITE ( strID, * ) ScalID
        MSG = 'Cannot find ScalID' // TRIM(strID)
-       CALL HCO_ERROR ( HcoConfig%Err, MSG, RC, THISLOC=LOC )
+       PRINT *,'cID negative in HEMCO Get_cID'
+       PRINT *, TRIM(MSG)
        RETURN
     ENDIF
 
@@ -3696,11 +3799,17 @@ CONTAINS
        IF ( Dct%Scal_cID(N) < 0 ) CYCLE
 
        CALL ScalID2List( HcoConfig%ScalIDList, Dct%Scal_cID(N), RC )
-       IF ( RC /= HCO_SUCCESS ) RETURN
-
+       IF ( RC /= HCO_SUCCESS ) THEN
+          PRINT *,'Error in ScaleID2List called from HEMCO ScalID_Register (1)'
+          RETURN
+       ENDIF
+ 
        ! Replace scale factor ID with container ID.
        CALL Get_cID ( Dct%Scal_cID(N), HcoConfig, cID, RC )
-       IF ( RC /= HCO_SUCCESS ) RETURN
+       IF ( RC /= HCO_SUCCESS ) THEN
+          PRINT *,'Error in Get_cID called from HEMCO ScalID_Register (1)'
+          RETURN
+       ENDIF
        Dct%Scal_cID(N) = cID
 
     ENDDO
@@ -3708,16 +3817,28 @@ CONTAINS
     ! Also check for level scale factor IDs
     IF ( Dct%levScalID1 > 0 ) THEN
        CALL ScalID2List( HcoConfig%ScalIDList, Dct%levScalID1, RC )
-       IF ( RC /= HCO_SUCCESS ) RETURN
+       IF ( RC /= HCO_SUCCESS ) THEN
+          PRINT *,'Error in ScalID2List called from HEMCO ScalID_Register (2)'
+          RETURN
+       ENDIF
        CALL Get_cID ( Dct%levScalID1, HcoConfig, cID, RC )
-       IF ( RC /= HCO_SUCCESS ) RETURN
+       IF ( RC /= HCO_SUCCESS ) THEN
+          PRINT *,'Error in Get_cID called from HEMCO ScalID_Register (2)'
+          RETURN
+       ENDIF
        Dct%levScalID1 = cID
     ENDIF
     IF ( Dct%levScalID2 > 0 ) THEN
        CALL ScalID2List( HcoConfig%ScalIDList, Dct%levScalID2, RC )
-       IF ( RC /= HCO_SUCCESS ) RETURN
+       IF ( RC /= HCO_SUCCESS ) THEN
+          PRINT *,'Error in ScaleID2List called from HEMCO ScalID_Register (3)'
+          RETURN
+       ENDIF
        CALL Get_cID ( Dct%levScalID2, HcoConfig, cID, RC )
-       IF ( RC /= HCO_SUCCESS ) RETURN
+       IF ( RC /= HCO_SUCCESS ) THEN
+          PRINT *,'Error in Get_cID called from HEMCO ScalID_Register (3)'
+          RETURN
+       ENDIF
        Dct%levScalID2 = cID
     ENDIF
 

@@ -21,6 +21,7 @@ MODULE State_Chm_Mod
 !
 ! USES:
 !
+  USE Dictionary_M, ONLY : dictionary_t  ! Fortran hash table type
   USE ErrCode_Mod                        ! Error handling
   USE PhysConstants                      ! Physical constants
   USE Precision_Mod                      ! GEOS-Chem precision types
@@ -46,6 +47,11 @@ MODULE State_Chm_Mod
   TYPE(SpcPtr), PRIVATE, POINTER :: SpcDataLocal(:)  ! Local pointer to
                                                      ! StateChm%SpcData for
                                                      ! availability to IND_
+
+  TYPE(dictionary_t), PRIVATE    :: SpcDictLocal     ! Private copy of the
+                                                     ! Fortran Hash table for
+                                                     ! availability to IND_
+
 
   INTEGER, PRIVATE               :: nChmState = 0    ! # chemistry states,
                                                      ! this CPU
@@ -93,6 +99,7 @@ MODULE State_Chm_Mod
      INTEGER,           POINTER :: Map_Prod   (:      ) ! Prod diag species
      CHARACTER(LEN=36), POINTER :: Name_Prod  (:      ) !  ID and names
      INTEGER,           POINTER :: Map_WetDep (:      ) ! Wetdep species IDs
+     INTEGER,           POINTER :: Map_WL     (:      ) ! Wavelength bins in fjx
 
 #if defined( MODEL_GEOS )
      ! For drydep
@@ -104,6 +111,7 @@ MODULE State_Chm_Mod
      ! Physical properties & indices for each species
      !----------------------------------------------------------------------
      TYPE(SpcPtr),      POINTER :: SpcData    (:      ) ! GC Species database
+     TYPE(dictionary_t)         :: SpcDict              ! Species dictionary
 
      !----------------------------------------------------------------------
      ! Chemical species
@@ -150,7 +158,6 @@ MODULE State_Chm_Mod
      !----------------------------------------------------------------------
      REAL(fp),          POINTER :: KPPHvalue  (:,:,:  ) ! H-value for Rosenbrock
                                                         !  solver
-
      !----------------------------------------------------------------------
      ! Fields for UCX mechanism
      !----------------------------------------------------------------------
@@ -211,6 +218,12 @@ MODULE State_Chm_Mod
      REAL(fp),          POINTER :: TLSTT      (:,:,:,:) ! TLSTT (I,J,L,LINOZ_NFIELDS)
 
      !----------------------------------------------------------------------
+     ! Fields for Gan Luo et al Wetdep scheme (GMD-12-3439-2019)
+     !----------------------------------------------------------------------
+     REAL(fp),          POINTER :: PSO4s      (:,:,:  )
+     REAL(fp),          POINTER :: QQ3D       (:,:,:  )
+
+     !----------------------------------------------------------------------
      ! Registry of variables contained within State_Chm
      !----------------------------------------------------------------------
      CHARACTER(LEN=4)           :: State     = 'CHEM'   ! Name of this state
@@ -256,11 +269,13 @@ CONTAINS
 !
 ! !USES:
 !
+    USE CharPak_Mod,          ONLY : To_UpperCase
     USE CMN_Size_Mod,         ONLY : NDUST, NAER
     USE GCKPP_Parameters,     ONLY : NSPEC
     USE Input_Opt_Mod,        ONLY : OptInput
     USE Species_Database_Mod, ONLY : Init_Species_Database
     USE State_Grid_Mod,       ONLY : GrdState
+    USE CMN_FJX_MOD,          ONLY : W_         ! For UVFlx diagnostic
 !
 ! !INPUT PARAMETERS:
 !
@@ -292,13 +307,14 @@ CONTAINS
     ! Scalars
     INTEGER                :: N, C, IM, JM, LM
     INTEGER                :: N_Hg0_CATS, N_Hg2_CATS, N_HgP_CATS
-    INTEGER                :: nKHLSA, nAerosol
+    INTEGER                :: nKHLSA, nAerosol, nMatches
 
     ! Strings
     CHARACTER(LEN=255)     :: ErrMsg, ThisLoc, ChmID
 
     ! Pointers
     TYPE(Species), POINTER :: ThisSpc
+    INTEGER,       POINTER :: CheckIds(:)
     REAL(fp),      POINTER :: Ptr2data(:,:,:)
 
     ! Error handling
@@ -313,124 +329,129 @@ CONTAINS
     ! Count the # of chemistry states we have initialized, so SpcData(Local)
     ! is not deallocated until the last ChmState is cleaned up.
     ! This avoids dangling pointers with detrimental effects. (hplin, 8/3/18)
-    nChmState = nChmState + 1
+    nChmState                   =  nChmState + 1
 
     ! Shorten grid parameters for readability
-    IM                      =  State_Grid%NX ! # latitudes
-    JM                      =  State_Grid%NY ! # longitudes
-    LM                      =  State_Grid%NZ ! # levels
+    IM                          =  State_Grid%NX ! # latitudes
+    JM                          =  State_Grid%NY ! # longitudes
+    LM                          =  State_Grid%NZ ! # levels
 
     ! Number of aerosols
-    nAerosol                =  NDUST + NAER
+    nAerosol                    =  NDUST + NAER
 
     ! Number of each type of species
-    State_Chm%nSpecies      =  0
-    State_Chm%nAdvect       =  0
-    State_Chm%nAero         =  0
-    State_Chm%nDryAlt       =  0
-    State_Chm%nDryDep       =  0
-    State_Chm%nGasSpc       =  0
-    State_Chm%nHygGrth      =  0
-    State_Chm%nKppVar       =  0
-    State_Chm%nKppFix       =  0
-    State_Chm%nKppSpc       =  0
-    State_Chm%nLoss         =  0
-    State_Chm%nPhotol       =  0
-    State_Chm%nProd         =  0
-    State_Chm%nWetDep       =  0
+    State_Chm%nSpecies          =  0
+    State_Chm%nAdvect           =  0
+    State_Chm%nAero             =  0
+    State_Chm%nDryAlt           =  0
+    State_Chm%nDryDep           =  0
+    State_Chm%nGasSpc           =  0
+    State_Chm%nHygGrth          =  0
+    State_Chm%nKppVar           =  0
+    State_Chm%nKppFix           =  0
+    State_Chm%nKppSpc           =  0
+    State_Chm%nLoss             =  0
+    State_Chm%nPhotol           =  0
+    State_Chm%nProd             =  0
+    State_Chm%nWetDep           =  0
 
 
     ! Mapping vectors for subsetting each type of species
-    State_Chm%Map_Advect    => NULL()
-    State_Chm%Map_Aero      => NULL()
-    State_Chm%Map_DryAlt    => NULL()
-    State_Chm%Map_DryDep    => NULL()
-    State_Chm%Map_GasSpc    => NULL()
-    State_Chm%Map_HygGrth   => NULL()
-    State_Chm%Map_KppVar    => NULL()
-    State_Chm%Map_KppFix    => NULL()
-    State_Chm%Map_KppSpc    => NULL()
-    State_Chm%Name_Loss     => NULL()
-    State_Chm%Map_Loss      => NULL()
-    State_Chm%Map_Photol    => NULL()
-    State_Chm%Name_Prod     => NULL()
-    State_Chm%Map_Prod      => NULL()
-    State_Chm%Map_WetDep    => NULL()
+    State_Chm%Map_Advect        => NULL()
+    State_Chm%Map_Aero          => NULL()
+    State_Chm%Map_DryAlt        => NULL()
+    State_Chm%Map_DryDep        => NULL()
+    State_Chm%Map_GasSpc        => NULL()
+    State_Chm%Map_HygGrth       => NULL()
+    State_Chm%Map_KppVar        => NULL()
+    State_Chm%Map_KppFix        => NULL()
+    State_Chm%Map_KppSpc        => NULL()
+    State_Chm%Name_Loss         => NULL()
+    State_Chm%Map_Loss          => NULL()
+    State_Chm%Map_Photol        => NULL()
+    State_Chm%Name_Prod         => NULL()
+    State_Chm%Map_Prod          => NULL()
+    State_Chm%Map_WetDep        => NULL()
+    State_Chm%Map_WL            => NULL()
 
     ! Chemical species
-    State_Chm%Species       => NULL()
-    State_Chm%Spc_Units     = ''
+    State_Chm%Species           => NULL()
+    State_Chm%Spc_Units         = ''
 
     ! Boundary conditions
-    State_Chm%BoundaryCond  => NULL()
+    State_Chm%BoundaryCond      => NULL()
 
     ! Species database
-    State_Chm%SpcData       => NULL()
-    ThisSpc                 => NULL()
+    State_Chm%SpcData           => NULL()
+    ThisSpc                     => NULL()
 
     ! Aerosol parameters
-    State_Chm%AeroArea      => NULL()
-    State_Chm%AeroRadi      => NULL()
-    State_Chm%WetAeroArea   => NULL()
-    State_Chm%WetAeroRadi   => NULL()
-    State_Chm%AeroH2O       => NULL()
-    State_Chm%GammaN2O5     => NULL()
-    State_Chm%OMOC_POA      => NULL()
-    State_Chm%OMOC_OPOA     => NULL()
+    State_Chm%AeroArea          => NULL()
+    State_Chm%AeroRadi          => NULL()
+    State_Chm%WetAeroArea       => NULL()
+    State_Chm%WetAeroRadi       => NULL()
+    State_Chm%AeroH2O           => NULL()
+    State_Chm%GammaN2O5         => NULL()
+    State_Chm%OMOC_POA          => NULL()
+    State_Chm%OMOC_OPOA         => NULL()
 
     ! Isoprene SOA
-    State_Chm%pHSav         => NULL()
-    State_Chm%HplusSav      => NULL()
-    State_Chm%WaterSav      => NULL()
-    State_Chm%SulRatSav     => NULL()
-    State_Chm%NaRatSav      => NULL()
-    State_Chm%AcidPurSav    => NULL()
-    State_Chm%BisulSav      => NULL()
+    State_Chm%pHSav             => NULL()
+    State_Chm%HplusSav          => NULL()
+    State_Chm%WaterSav          => NULL()
+    State_Chm%SulRatSav         => NULL()
+    State_Chm%NaRatSav          => NULL()
+    State_Chm%AcidPurSav        => NULL()
+    State_Chm%BisulSav          => NULL()
 
     ! Fields for KPP solver
-    State_Chm%KPPHvalue     => NULL()
+    State_Chm%KPPHvalue         => NULL()
 
     ! Fields for UCX mechanism
-    State_Chm%STATE_PSC     => NULL()
-    State_Chm%KHETI_SLA     => NULL()
+    State_Chm%STATE_PSC         => NULL()
+    State_Chm%KHETI_SLA         => NULL()
 
     ! pH/alkalinity
-    State_Chm%pHCloud       => NULL()
-    State_Chm%isCloud       => NULL()
-    State_Chm%SSAlk         => NULL()
+    State_Chm%pHCloud           => NULL()
+    State_Chm%isCloud           => NULL()
+    State_Chm%SSAlk             => NULL()
 
     ! Fields for sulfate chemistry
-    State_Chm%H2O2AfterChem => NULL()
-    State_Chm%SO2AfterChem  => NULL()
+    State_Chm%H2O2AfterChem     => NULL()
+    State_Chm%SO2AfterChem      => NULL()
 
     ! Fields for nitrogen deposition
-    State_Chm%DryDepNitrogen=> NULL()
-    State_Chm%WetDepNitrogen=> NULL()
+    State_Chm%DryDepNitrogen    => NULL()
+    State_Chm%WetDepNitrogen    => NULL()
 
     ! Hg species indexing
-    N_Hg0_CATS              =  0
-    N_Hg2_CATS              =  0
-    N_HgP_CATS              =  0
-    State_Chm%N_Hg_CATS     =  0
-    State_Chm%Hg_Cat_Name   => NULL()
-    State_Chm%Hg0_Id_List   => NULL()
-    State_Chm%Hg2_Id_List   => NULL()
-    State_Chm%HgP_Id_List   => NULL()
-    State_Chm%OceanHg0      => NULL()
-    State_Chm%OceanHg2      => NULL()
-    State_Chm%OceanHgP      => NULL()
-    State_Chm%SnowHgOcean   => NULL()
-    State_Chm%SnowHgLand    => NULL()
+    N_Hg0_CATS                  =  0
+    N_Hg2_CATS                  =  0
+    N_HgP_CATS                  =  0
+    State_Chm%N_Hg_CATS         =  0
+    State_Chm%Hg_Cat_Name       => NULL()
+    State_Chm%Hg0_Id_List       => NULL()
+    State_Chm%Hg2_Id_List       => NULL()
+    State_Chm%HgP_Id_List       => NULL()
+    State_Chm%OceanHg0          => NULL()
+    State_Chm%OceanHg2          => NULL()
+    State_Chm%OceanHgP          => NULL()
+    State_Chm%SnowHgOcean       => NULL()
+    State_Chm%SnowHgLand        => NULL()
     State_Chm%SnowHgOceanStored => NULL()
     State_Chm%SnowHgLandStored  => NULL()
 
     ! For HOBr + S(IV) chemistry
-    State_Chm%HSO3_AQ       => NULL()
-    State_Chm%SO3_AQ        => NULL()
-    State_Chm%fupdateHOBr   => NULL()
+    State_Chm%HSO3_AQ           => NULL()
+    State_Chm%SO3_AQ            => NULL()
+    State_Chm%fupdateHOBr       => NULL()
+
+    ! For Luo et al wetdep
+    State_Chm%PSO4s             => NULL()
+    State_Chm%QQ3D              => NULL()
 
     ! Local variables
-    Ptr2data                => NULL()
+    Ptr2data                    => NULL()
 
     !=======================================================================
     ! Populate the species database object field
@@ -530,6 +551,54 @@ CONTAINS
     !CLOSE( 700 )
     !STOP
     !########################################################################
+
+    !=======================================================================
+    ! Populate the species lookup table, for quick index lookup via Ind_
+    !=======================================================================
+
+    ! Initialize the species lookup table
+    CALL State_Chm%SpcDict%Init( State_Chm%nSpecies )
+
+    ! Populate the species lookup table
+    DO N = 1, State_Chm%nSpecies
+       ThisSpc => SpcDataLocal(N)%Info
+       CALL State_Chm%SpcDict%Set( To_UpperCase( TRIM( ThisSpc%Name ) ),     &
+                                   ThisSpc%ModelId                          )
+       ThisSpc => NULL()
+    ENDDO
+
+    ! Error check: make sure we have no hash collisions that would
+    ! assign more than one species to the same ModelId value
+    ALLOCATE( CheckIds( State_Chm%nSpecies ), STAT=RC ) 
+    DO N = 1, State_Chm%nSpecies
+       CheckIds(N) = SpcDataLocal(N)%Info%ModelId
+    ENDDO
+    DO N = 1, State_Chm%nSpecies
+       nMatches = COUNT( CheckIds(N) == CheckIds )
+       IF ( nMatches > 1 ) THEN
+          ErrMsg = 'Species: ' // TRIM( SpcDataLocal(N)%Info%Name )       // &
+                   'maps to more than one ModelID value!'
+          CALL GC_Error( ErrMsg, RC, ThisLoc )
+          CheckIds => NULL()
+          RETURN
+       ENDIF
+    ENDDO
+    IF ( ASSOCIATED( CheckIds ) ) DEALLOCATE( CheckIds )
+
+    ! If there are no hash collisions, then species lookup table
+    ! to a local shadow variable for use with the Ind_ function.
+    SpcDictLocal = State_Chm%SpcDict
+
+    !### Debug: Show the values in the lookup table
+    !###CALL State_Chm%SpcDict%Show()
+
+    !=======================================================================
+    ! Exit if this is a dry-run simulation
+    !=======================================================================
+    IF ( Input_Opt%DryRun ) THEN
+       RC = GC_SUCCESS
+       RETURN
+    ENDIF
 
     !=======================================================================
     ! Allocate and initialize mapping vectors to subset species
@@ -638,6 +707,13 @@ CONTAINS
        CALL GC_CheckVar( 'State_Chm%Map_Wetdep', 0, RC )
        IF ( RC /= GC_SUCCESS ) RETURN
        State_Chm%Map_WetDep = 0
+    ENDIF
+
+    IF ( W_ > 0 ) THEN
+       ALLOCATE( State_Chm%Map_WL( W_ ), STAT=RC )
+       CALL GC_CheckVar( 'State_Chm%Map_WL', 0, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Chm%Map_WL = 0
     ENDIF
 
     !=======================================================================
@@ -755,6 +831,19 @@ CONTAINS
        ThisSpc => NULL()
 
     ENDDO
+
+    !-----------------------------------------------------------------------
+    ! Set up the mapping for UVFlux Diagnostics
+    ! placeholder for now since couldn't figure out how to read in WL from file
+    !-----------------------------------------------------------------------
+    IF ( W_ > 0 ) THEN
+
+       DO N = 1, W_
+          !
+          ! Define identifying string
+                State_Chm%Map_WL(N) = 0
+       ENDDO
+    ENDIF
 
     !-----------------------------------------------------------------------
     ! Set up the mapping for PRODUCTION AND LOSS DIAGNOSTIC SPECIES
@@ -1672,6 +1761,34 @@ CONTAINS
         ! dimension later.
     ENDIF
 
+    !------------------------------------------------------------------
+    ! Gan Luo et al wetdep fields
+    !------------------------------------------------------------------
+    IF ( Input_Opt%LWETD .or. Input_Opt%LCONV ) THEN
+
+        ! PSO4s
+        chmID = 'PSO4s'
+        ALLOCATE( State_Chm%PSO4s( IM, JM, LM ), STAT=RC )
+        CALL GC_CheckVar( 'State_Chm%PSO4s', 0, RC )
+        IF ( RC /= GC_SUCCESS ) RETURN
+        State_Chm%PSO4s = 0.0_fp
+        CALL Register_ChmField( am_I_Root, chmID, State_Chm%PSO4s,           &
+                                State_Chm, RC                               )
+        CALL GC_CheckVar( 'State_Chm%PSO4s', 1, RC )
+        IF ( RC /= GC_SUCCESS ) RETURN
+
+        ! QQ3D
+        chmID = 'QQ3D'
+        ALLOCATE( State_Chm%QQ3D( IM, JM, LM ), STAT=RC )
+        CALL GC_CheckVar( 'State_Chm%QQ3D', 0, RC )
+        IF ( RC /= GC_SUCCESS ) RETURN
+        State_Chm%QQ3D = 0.0_fp
+        CALL Register_ChmField( am_I_Root, chmID, State_Chm%QQ3D,            &
+                                State_Chm, RC                               )
+        CALL GC_CheckVar( 'State_Chm%QQ3D', 1, RC )
+        IF ( RC /= GC_SUCCESS ) RETURN
+    ENDIF
+
     !=======================================================================
     ! Print out the list of registered fields
     !=======================================================================
@@ -1864,6 +1981,13 @@ CONTAINS
        CALL GC_CheckVar( 'State_Chm%Map_WetDep', 2, RC )
        IF ( RC /= GC_SUCCESS ) RETURN
        State_Chm%Map_WetDep => NULL()
+    ENDIF
+
+    IF ( ASSOCIATED( State_Chm%Map_WL ) ) THEN
+       DEALLOCATE( State_Chm%Map_WL, STAT=RC )
+       CALL GC_CheckVar( 'State_Chm%Map_WL', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Chm%Map_WL => NULL()
     ENDIF
 
     IF ( ASSOCIATED( State_Chm%Species ) ) THEN
@@ -2173,6 +2297,20 @@ CONTAINS
        State_Chm%TLSTT => NULL()
     ENDIF
 
+    IF ( ASSOCIATED( State_Chm%PSO4s ) ) THEN
+       DEALLOCATE( State_Chm%PSO4s, STAT=RC )
+       CALL GC_CheckVar( 'State_Chm%PSO4s', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Chm%PSO4s => NULL()
+    ENDIF
+
+    IF ( ASSOCIATED( State_Chm%QQ3D ) ) THEN
+       DEALLOCATE( State_Chm%QQ3D, STAT=RC )
+       CALL GC_CheckVar( 'State_Chm%QQ3D', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Chm%QQ3D => NULL()
+    ENDIF
+
     !-----------------------------------------------------------------------
     ! Template for deallocating more arrays, replace xxx with field name
     !-----------------------------------------------------------------------
@@ -2324,75 +2462,75 @@ CONTAINS
 
        CASE ( 'AEROAREAMDUST1' )
           IF ( isDesc  ) Desc  = 'Dry aerosol area for mineral dust (0.15 um)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROAREAMDUST2' )
           IF ( isDesc  ) Desc  = 'Dry aerosol area for mineral dust (0.25 um)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROAREAMDUST3' )
           IF ( isDesc  ) Desc  = 'Dry aerosol area for mineral dust (0.4 um)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROAREAMDUST4' )
           IF ( isDesc  ) Desc  = 'Dry aerosol area for mineral dust (0.8 um)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROAREAMDUST5' )
           IF ( isDesc  ) Desc  = 'Dry aerosol area for mineral dust (1.5 um)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROAREAMDUST6' )
           IF ( isDesc  ) Desc  = 'Dry aerosol area for mineral dust (2.5 um)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROAREAMDUST7' )
           IF ( isDesc  ) Desc  = 'Dry aerosol area for mineral dust (4.0 um)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROAREASULF' )
           IF ( isDesc  ) Desc  = 'Dry aerosol area for black carbon'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROAREABC' )
           IF ( isDesc  ) Desc  = 'Dry aerosol area for black carbon'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROAREAOC' )
           IF ( isDesc  ) Desc  = 'Dry aerosol area for organic carbon'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROAREASSA' )
           IF ( isDesc  ) Desc  = 'Dry aerosol area for sea salt,' &
                                  // ' accumulation mode'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROAREASSC' )
           IF ( isDesc  ) Desc  = 'Dry aerosol area for sea salt, coarse mode'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROAREABGSULF' )
           IF ( isDesc  ) Desc  = 'Dry aerosol area for background' &
                                  // ' stratospheric sulfate'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROAREAICEI' )
           IF ( isDesc  ) Desc  = 'Dry aerosol area for irregular ice cloud' &
                                  // ' (Mischenko)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AERORADIMDUST1' )
@@ -2470,75 +2608,75 @@ CONTAINS
 
        CASE ( 'WETAEROAREAMDUST1' )
           IF ( isDesc  ) Desc  = 'Wet aerosol area for mineral dust (0.15 um)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'WETAEROAREAMDUST2' )
           IF ( isDesc  ) Desc  = 'Wet aerosol area for mineral dust (0.25 um)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'WETAEROAREAMDUST3' )
           IF ( isDesc  ) Desc  = 'Wet aerosol area for mineral dust (0.4 um)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'WETAEROAREAMDUST4' )
           IF ( isDesc  ) Desc  = 'Wet aerosol area for mineral dust (0.8 um)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'WETAEROAREAMDUST5' )
           IF ( isDesc  ) Desc  = 'Wet aerosol area for mineral dust (1.5 um)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'WETAEROAREAMDUST6' )
           IF ( isDesc  ) Desc  = 'Wet aerosol area for mineral dust (2.5 um)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'WETAEROAREAMDUST7' )
           IF ( isDesc  ) Desc  = 'Wet aerosol area for mineral dust (4.0 um)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'WETAEROAREASULF' )
           IF ( isDesc  ) Desc  = 'Wet aerosol area for tropospheric sulfate'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'WETAEROAREABC' )
           IF ( isDesc  ) Desc  = 'Wet aerosol area for black carbon'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'WETAEROAREAOC' )
           IF ( isDesc  ) Desc  = 'Wet aerosol area for organic carbon'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'WETAEROAREASSA' )
           IF ( isDesc  ) Desc  = 'Wet aerosol area for sea salt,' &
                                  // ' accumulation mode'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'WETAEROAREASSC' )
           IF ( isDesc  ) Desc  = 'Wet aerosol area for sea salt, coarse mode'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'WETAEROAREABGSULF' )
           IF ( isDesc  ) Desc  = 'Wet aerosol area for background' &
                                  // ' stratospheric sulfate'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'WETAEROAREAICEI' )
           IF ( isDesc  ) Desc  = 'Wet aerosol area for irregular ice cloud' &
                                  // ' (Mischenko)'
-          IF ( isUnits ) Units = 'cm2/cm3'
+          IF ( isUnits ) Units = 'cm2 cm-3'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'WETAERORADIMDUST1' )
@@ -2616,75 +2754,75 @@ CONTAINS
 
        CASE ( 'AEROH2OMDUST1' )
           IF ( isDesc  ) Desc  = 'Aerosol H2O content for mineral dust (0.15 um)'
-          IF ( isUnits ) Units = 'cm3(H2O)/cm3(air)'
+          IF ( isUnits ) Units = 'cm3(H2O) cm-3(air)'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROH2OMDUST2' )
           IF ( isDesc  ) Desc  = 'Aerosol H2O content for mineral dust (0.25 um)'
-          IF ( isUnits ) Units = 'cm3(H2O)/cm3(air)'
+          IF ( isUnits ) Units = 'cm3(H2O) cm-3(air)'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROH2OMDUST3' )
           IF ( isDesc  ) Desc  = 'Aerosol H2O content for mineral dust (0.4 um)'
-          IF ( isUnits ) Units = 'cm3(H2O)/cm3(air)'
+          IF ( isUnits ) Units = 'cm3(H2O) cm-3(air)'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROH2OMDUST4' )
           IF ( isDesc  ) Desc  = 'Aerosol H2O content for mineral dust (0.8 um)'
-          IF ( isUnits ) Units = 'cm3(H2O)/cm3(air)'
+          IF ( isUnits ) Units = 'cm3(H2O) cm-3(air)'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROH2OMDUST5' )
           IF ( isDesc  ) Desc  = 'Aerosol H2O content for mineral dust (1.5 um)'
-          IF ( isUnits ) Units = 'cm3(H2O)/cm3(air)'
+          IF ( isUnits ) Units = 'cm3(H2O) cm-3(air)'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROH2OMDUST6' )
           IF ( isDesc  ) Desc  = 'Aerosol H2O content for mineral dust (2.5 um)'
-          IF ( isUnits ) Units = 'cm3(H2O)/cm3(air)'
+          IF ( isUnits ) Units = 'cm3(H2O) cm-3(air)'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROH2OMDUST7' )
           IF ( isDesc  ) Desc  = 'Aerosol H2O content for mineral dust (4.0 um)'
-          IF ( isUnits ) Units = 'cm3(H2O)/cm3(air)'
+          IF ( isUnits ) Units = 'cm3(H2O) cm-3(air)'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROH2OSULF' )
           IF ( isDesc  ) Desc  = 'Aerosol H2O content for tropospheric sulfate'
-          IF ( isUnits ) Units = 'cm3(H2O)/cm3(air)'
+          IF ( isUnits ) Units = 'cm3(H2O) cm-3(air)'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROH2OBC' )
           IF ( isDesc  ) Desc  = 'Aerosol H2O content for black carbon'
-          IF ( isUnits ) Units = 'cm3(H2O)/cm3(air)'
+          IF ( isUnits ) Units = 'cm3(H2O) cm-3(air)'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROH2OOC' )
           IF ( isDesc  ) Desc  = 'Aerosol H2O content for organic carbon'
-          IF ( isUnits ) Units = 'cm3(H2O)/cm3(air)'
+          IF ( isUnits ) Units = 'cm3(H2O) cm-3(air)'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROH2OSSA' )
           IF ( isDesc  ) Desc= 'Aerosol H2O content for sea salt,' &
                                // ' accumulation mode'
-          IF ( isUnits ) Units = 'cm3(H2O)/cm3(air)'
+          IF ( isUnits ) Units = 'cm3(H2O) cm-3(air)'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROH2OSSC' )
           IF ( isDesc  ) Desc  = 'Aerosol H2O content for sea salt, coarse mode'
-          IF ( isUnits ) Units = 'cm3(H2O)/cm3(air)'
+          IF ( isUnits ) Units = 'cm3(H2O) cm-3(air)'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROH2OBGSULF' )
           IF ( isDesc  ) Desc  = 'Aerosol H2O content for background' &
                                 // ' stratospheric sulfate'
-          IF ( isUnits ) Units = 'cm3(H2O)/cm3(air)'
+          IF ( isUnits ) Units = 'cm3(H2O) cm-3(air)'
           IF ( isRank  ) Rank  = 3
 
        CASE ( 'AEROH2OICEI' )
           IF ( isDesc  ) Desc  = 'Aerosol H2O content for irregular ice cloud' &
                                 // ' (Mischenko)'
-          IF ( isUnits ) Units = 'cm3(H2O)/cm3(air)'
+          IF ( isUnits ) Units = 'cm3(H2O) cm-3(air)'
           IF ( isRank  ) Rank  = 3
 
 
@@ -2792,7 +2930,7 @@ CONTAINS
 
        CASE( 'HPLUSSAV' )
           IF ( isDesc  ) Desc  = 'ISORROPIA H+ concentration'
-          IF ( isUnits ) Units = 'mol/L'
+          IF ( isUnits ) Units = 'mol L-1'
           IF ( isRank  ) Rank  = 3
 
        CASE( 'WATERSAV' )
@@ -2802,23 +2940,23 @@ CONTAINS
 
        CASE( 'SULRATSAV' )
           IF ( isDesc  ) Desc  = 'ISORROPIA sulfate concentration'
-          IF ( isUnits ) Units = 'mol/L'
+          IF ( isUnits ) Units = 'mol L-1'
           IF ( isRank  ) Rank  = 3
 
        CASE( 'NARATSAV' )
           IF ( isDesc  ) Desc  = 'ISORROPIA Na+ concentration'
-          IF ( isUnits ) Units = 'mol/L'
+          IF ( isUnits ) Units = 'mol L-1'
           IF ( isRank  ) Rank  = 3
 
        CASE( 'ACIDPURSAV' )
           IF ( isDesc  ) Desc  = 'ISORROPIA ACIDPUR'
-          IF ( isUnits ) Units = 'mol/L'
+          IF ( isUnits ) Units = 'mol L-1'
           IF ( isRank  ) Rank  = 3
 
        CASE( 'BISULSAV' )
           IF ( isDesc  ) Desc  = 'ISORROPIA Bisulfate (general acid)' &
                                  // ' concentration'
-          IF ( isUnits ) Units = 'mol/L'
+          IF ( isUnits ) Units = 'mol L-1'
           IF ( isRank  ) Rank  =  3
 
        CASE( 'PHCLOUD' )
@@ -2843,12 +2981,12 @@ CONTAINS
 
        CASE ( 'HSO3AQ' )
           IF ( isDesc  ) Desc  = 'Cloud bisulfite concentration'
-          IF ( isUnits ) Units = 'mol/L'
+          IF ( isUnits ) Units = 'mol L-1'
           IF ( isRank  ) Rank  =  3
 
        CASE ( 'SO3AQ' )
           IF ( isDesc  ) Desc  = 'Cloud sulfite concentration'
-          IF ( isUnits ) Units = 'mol/L'
+          IF ( isUnits ) Units = 'mol L-1'
           IF ( isRank  ) Rank  =  3
 
        CASE ( 'FUPDATEHOBR' )
@@ -2858,22 +2996,22 @@ CONTAINS
 
        CASE ( 'H2O2AFTERCHEM' )
           IF ( isDesc  ) Desc  = 'H2O2 after sulfate chemistry'
-          IF ( isUnits ) Units = 'v/v'
+          IF ( isUnits ) Units = 'mol mol-1'
           IF ( isRank  ) Rank  =  3
 
        CASE ( 'SO2AFTERCHEM' )
           IF ( isDesc  ) Desc  = 'SO2 after sulfate chemistry'
-          IF ( isUnits ) Units = 'v/v'
+          IF ( isUnits ) Units = 'mol mol-1'
           IF ( isRank  ) Rank  =  3
 
        CASE ( 'DRYDEPNITROGEN' )
           IF ( isDesc  ) Desc  = 'Dry deposited nitrogen'
-          IF ( isUnits ) Units = 'molec/cm2/s'
+          IF ( isUnits ) Units = 'molec cm-2 s-1'
           IF ( isRank  ) Rank  =  2
 
        CASE ( 'WETDEPNITROGEN' )
           IF ( isDesc  ) Desc  = 'Wet deposited nitrogen'
-          IF ( isUnits ) Units = 'molec/cm2/s'
+          IF ( isUnits ) Units = 'molec cm-2 s-1'
           IF ( isRank  ) Rank  =  2
 
        CASE( 'OCEANHG0' )
@@ -2927,6 +3065,16 @@ CONTAINS
           IF ( isDesc  ) Desc  = 'TLSTT'
           IF ( isUnits ) Units = ''
           IF ( isRank  ) Rank  = 4
+
+       CASE( 'PSO4S' )
+          IF ( isDesc  ) Desc  = 'PSO4s'
+          IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  = 3
+
+       CASE( 'QQ3D' )
+          IF ( isDesc  ) Desc  = 'Rate of new precipitation formation'
+          IF ( isUnits ) Units = 'cm3 H2O cm-3 air'
+          IF ( isRank  ) Rank  = 3
 
        CASE DEFAULT
           Found = .False.
@@ -3533,7 +3681,8 @@ CONTAINS
 !
 ! !USES:
 !
-    USE CharPak_Mod, ONLY : Str2Hash14, To_UpperCase
+    USE CharPak_Mod, ONLY : To_UpperCase
+
 !
 ! !INPUT PARAMETERS:
 !
@@ -3544,7 +3693,18 @@ CONTAINS
 !
     INTEGER                                :: Indx  ! Index of this species
 !
-! !REMARKS
+! !REMARKS:
+!   Values of FLAG (case-insensitive):
+!   'A' : Returns advected species index
+!   'D' : Returns dry-deposition species index
+!   'F' : Returns KPP fixed species index
+!   'G' : Returns gas-phase species index
+!   'H' : Returns hygroscopic-growth species index
+!   'K' : Returns KPP master species index 
+!   'P' : Returns photolysis species index
+!   'S' : Returns master species index (aka "ModelId")
+!   'V' : Returns KPP variable species index
+!   'W' : Returns wet-deposition species index
 !
 ! !REVISION HISTORY:
 !  07 Oct 2016 - M. Long     - Initial version
@@ -3555,108 +3715,79 @@ CONTAINS
 !
 ! !LOCAL VARIABLES:
 !
-    INTEGER           :: N, Hash
-    CHARACTER(LEN=14) :: Name14
+    INTEGER :: N
 
     !=====================================================================
     ! Ind_ begins here!
     !=====================================================================
 
-    ! Initialize the output value
-    Indx   = -1
+    ! Get the ModelId value from the lookup table
+    ! NOTE: -1 is used to denote missing species.
+    N    = SpcDictLocal%Get( To_UpperCase( TRIM( Name ) ) )
+    Indx = N
 
-    ! Make species name (14 chars only)  uppercase for hash algorithm
-    Name14 = To_UpperCase( Name )
+    ! If N is negative then return -1 to denote the species was not found.
+    ! If FLAG is not passed, RETURN the ModelId (regardless of whether the
+    ! species was found or missing).
+    IF ( ( N < 0 ).or. ( .not. PRESENT( Flag ) ) ) RETURN
 
-    ! Compute the hash corresponding to the given species name
-    Hash   = Str2Hash14( Name14 )
+    ! For species that were found, return the index specified by FLAG
+    SELECT CASE( Flag(1:1) )
 
-    ! Loop over all entries in the Species Database object
-    DO N = 1, SIZE( SpcDataLocal )
+       ! Advected species flag
+       CASE( 'A', 'a' )
+          Indx = SpcDataLocal(N)%Info%AdvectID
+          RETURN
 
-       ! Compare the hash we just created against the list of
-       ! species name hashes stored in the species database
-       IF( Hash == SpcDataLocal(N)%Info%NameHash  ) THEN
+       ! Dry-deposited species ID
+       CASE( 'D', 'd' )
+          Indx = SpcDataLocal(N)%Info%DryDepId
+          RETURN
 
-          IF (.not. PRESENT(Flag)) THEN
+       ! KPP fixed species ID
+       CASE( 'F', 'f' )
+          Indx = SpcDataLocal(N)%Info%KppFixId
+          RETURN
 
-             ! Default to Species/ModelID
-             Indx = SpcDataLocal(N)%Info%ModelID
-             RETURN
+       ! Gas-phase species ID
+       CASE( 'G', 'g' )
+          Indx = SpcDataLocal(N)%Info%GasSpcId
+          RETURN
 
-          ELSE
+       ! Hygroscopic growth species ID
+       CASE( 'H', 'h' )
+          Indx = SpcDataLocal(N)%Info%HygGrthId
+          RETURN
 
-             ! Only need first character of the flag for this.
-             IF (flag(1:1) .eq. 'A' .or. flag(1:1) .eq. 'a') THEN
+       ! KPP chemical species ID
+       CASE( 'K', 'k' )
+          Indx = SpcDataLocal(N)%Info%KppSpcId
+          RETURN
 
-                ! Advected species flag
-                Indx = SpcDataLocal(N)%Info%AdvectID
-                RETURN
+       ! Photolysis species ID
+       CASE( 'P', 'p' )
+          Indx = SpcDataLocal(N)%Info%PhotolId
+          RETURN
 
-             ELSEIF (flag(1:1) .eq. 'D' .or. flag(1:1) .eq. 'd') THEN
+       ! Species/ModelID
+       CASE ( 'S', 's' )
+          Indx = SpcDataLocal(N)%Info%ModelID
+          RETURN
 
-                ! Dry-deposited species ID
-                Indx = SpcDataLocal(N)%Info%DryDepId
-                RETURN
+       ! KPP variable species ID
+       CASE( 'V', 'v' )
+          Indx = SpcDataLocal(N)%Info%KppVarId
+          RETURN
 
-             ELSEIF (flag(1:1) .eq. 'F' .or. flag(1:1) .eq. 'f') THEN
+       ! WetDep ID
+       CASE( 'W', 'w' )
+          Indx = SpcDataLocal(N)%Info%WetDepId
+          RETURN
+          
+       CASE DEFAULT
+          ! Pass
 
-                ! KPP fixed species ID
-                Indx = SpcDataLocal(N)%Info%KppFixId
-                RETURN
-
-             ELSEIF (flag(1:1) .eq. 'G' .or. flag(1:1) .eq. 'g') THEN
-
-                ! Gas-phase species ID
-                Indx = SpcDataLocal(N)%Info%GasSpcId
-                RETURN
-
-             ELSEIF (flag(1:1) .eq. 'H' .or. flag(1:1) .eq. 'h') THEN
-
-                ! Hygroscopic growth species ID
-                Indx = SpcDataLocal(N)%Info%HygGrthId
-                RETURN
-
-             ELSEIF (flag(1:1) .eq. 'K' .or. flag(1:1) .eq. 'k') THEN
-
-                ! KPP chemical species ID
-                Indx = SpcDataLocal(N)%Info%KppSpcId
-                RETURN
-
-             ELSEIF (flag(1:1) .eq. 'P' .or. flag(1:1) .eq. 'p') THEN
-
-                ! Photolysis species ID
-                Indx = SpcDataLocal(N)%Info%PhotolId
-                RETURN
-
-             ELSEIF (flag(1:1) .eq. 'S' .or. flag(1:1) .eq. 's') THEN
-
-                ! Species/ModelID
-                Indx = SpcDataLocal(N)%Info%ModelID
-                RETURN
-
-             ELSEIF (flag(1:1) .eq. 'V' .or. flag(1:1) .eq. 'v') THEN
-
-                ! KPP variable species ID
-                Indx = SpcDataLocal(N)%Info%KppVarId
-                RETURN
-
-             ELSEIF (flag(1:1) .eq. 'W' .or. flag(1:1) .eq. 'w') THEN
-
-                ! WetDep ID
-                Indx = SpcDataLocal(N)%Info%WetDepId
-                RETURN
-
-             ENDIF
-
-          ENDIF
-          EXIT
-
-       ENDIF
-
-    ENDDO
-
-    RETURN
+     END SELECT
 
   END FUNCTION Ind_
 !EOC
