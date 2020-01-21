@@ -2387,7 +2387,7 @@
       REAL(fp)              :: RK,     RKT,     DTCHEM, DT_T, TK
       REAL(fp)              :: F1,     RK1,     RK2,    RK3,  SO20
       REAL(fp)              :: SO2_cd, H2O20,   O3,     L2S,  L3S
-      REAL(fp)              :: LWC,    KaqH2O2, KaqO3,  PATM, NCP ! jmm 2/28/19
+      REAL(fp)              :: LWC,    KaqH2O2, KaqO3,  PATM
       REAL(fp)              :: ALK,    ALK1,    ALK2,    SO2_ss
       REAL(fp)              :: AlkA,   AlkC
       REAL(fp)              :: Kt1,    Kt2,     AREASS1, AREASS2
@@ -2544,7 +2544,7 @@
 !$OMP+PRIVATE( RK2, RK, RKT, SO2_cd, L1, Ld, L2, L2S, L3, L3S, FC, LWC )
 !$OMP+PRIVATE( KaqH2O2, KaqO3, ALK, ALK1, ALK2                         )
 !$OMP+PRIVATE( Kt1, Kt2, AREASS1, AREASS2, SO2_ss, Kt1N, Kt2N          )
-!$OMP+PRIVATE( PSO4E, PSO4F, XX, TAA, TFA, TDCA, NCP                   )
+!$OMP+PRIVATE( PSO4E, PSO4F, XX, TAA, TFA, TDCA                        )
 !$OMP+PRIVATE( HPLUS, SO4nss, TNH3, TNO3,  GNO3, ANIT,   LSTOT, ALKdst )
 !$OMP+PRIVATE( ALKds, ALKss,  NH3,  SSCvv, aSO4, SO2_sr, SR,    TANIT  )
 !$OMP+PRIVATE( BULK,  SIZE_RES,     RC, AlkA, AlkC                     )
@@ -2822,10 +2822,6 @@
          ! multiplying these quantities by FC AFTER computing the aqueous
          ! sulfur chemistry within the cloud. (lzh, jaf, bmy, 5/27/11)
          LWC     = SAFE_DIV( LWC, FC, 0e+0_fp )
-
-         ! Get whether or not box is within North China Plain
-         ! jmm 2/28/19
-         NCP = State_Met%STATE_NCP(I,J)
 
          ! Zero variables
          KaqH2O2 = 0.e+0_fp
