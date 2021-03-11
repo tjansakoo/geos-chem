@@ -119,6 +119,7 @@ MODULE State_Met_Mod
      REAL(fp), POINTER :: SEAICE70      (:,:  ) ! Sea ice coverage 70-80%
      REAL(fp), POINTER :: SEAICE80      (:,:  ) ! Sea ice coverage 80-90%
      REAL(fp), POINTER :: SEAICE90      (:,:  ) ! Sea ice coverage 90-100%
+     REAL(fp), POINTER :: SFC_ELEV_m    (:,:  ) ! Surface elevation [m]
      REAL(fp), POINTER :: SLP           (:,:  ) ! Sea level pressure [hPa]
      REAL(fp), POINTER :: SNODP         (:,:  ) ! Snow depth [m]
      REAL(fp), POINTER :: SNOMAS        (:,:  ) ! Snow mass [kg/m2]
@@ -4800,7 +4801,7 @@ CONTAINS
           IF ( isUnits ) Units = '1'
           IF ( isRank  ) Rank  = 2
 
-       CASE ( 'SFCELEVm' )
+       CASE ( 'SFCELEVM' )
           IF ( isDesc  ) Desc  = 'Elevation above surface'
           IF ( isUnits ) Units = 'm'
           IF ( isRank  ) Rank  = 2
