@@ -2394,7 +2394,7 @@ CONTAINS
     PSFC     => PEDGE(:,:,1)
 
     ! Point to other fields of State_Met
-    ZSFC     => State_Met%PHIS
+    ZSFC     => State_Met%SFC_ELEV_m
     BXHEIGHT => State_Met%BXHEIGHT
     TK       => State_Met%T
 
@@ -2826,8 +2826,8 @@ CONTAINS
     HcoState%Grid%YEDGE%Val      => State_Grid%YEdge  (:,:)
     HcoState%Grid%YSIN%Val       => State_Grid%YSIN   (:,:)
     HcoState%Grid%AREA_M2%Val    => State_Grid%Area_M2(:,:)
-!    HcoState%Grid%ZSFC%Val       => State_Met%PHIS      ! Surface geopotential height
-!    HcoState%Grid%BXHEIGHT_M%Val => State_Met%BXHEIGHT  ! Grid box heights
+!    HcoState%Grid%ZSFC%Val       => State_Met%SFC_ELEV_m  ! Surface altitude
+!    HcoState%Grid%BXHEIGHT_M%Val => State_Met%BXHEIGHT    ! Grid box heights
 
 !    ! Allocate PEDGE. Will be updated every time step!
 !    CALL HCO_ArrInit( HcoState%Grid%PEDGE, HcoState%NX, HcoState%NY, HcoState%NZ+1, RC )

@@ -36,7 +36,7 @@
   State_Met%FROCEAN             = FROCEAN                    ! 1
   State_Met%FRLAKE              = FRLAKE                     ! 1
   State_Met%FRLANDIC            = FRLANDIC                   ! 1
-  State_Met%PHIS                = PHIS / 9.80665d0           ! m
+  State_Met%PHIS                = PHIS                       ! m2 s-2
   State_Met%GWETROOT            = GWETROOT                   ! 1
   State_Met%GWETTOP             = GWETTOP                    ! 1
   State_Met%LAI                 = LAI                        ! 1  
@@ -48,12 +48,13 @@
   State_Met%PS1_WET             = PS1                        ! hPa
   State_Met%PS2_WET             = PS2                        ! hPa
   State_Met%SLP                 = SLP                        ! hPa
-  State_Met%TMPU1               = TMPU1
-  State_Met%TMPU2               = TMPU2
+  State_Met%TMPU1               = TMPU1                      ! K
+  State_Met%TMPU2               = TMPU2                      ! K
   State_Met%TS                  = TS                         ! K
   State_Met%TSKIN               = TSKIN                      ! K
   State_Met%SWGDN               = RADSWG                     ! W/m2
   State_Met%TO3                 = TO3                        ! dobson
+  State_Met%SFC_ELEV_m          = PHIS / 9.80665d0           ! m
   State_Met%SNODP               = SNODP                      ! m
   State_Met%SNOMAS              = SNOMAS                     ! kg/m2
   State_Met%SUNCOS              = zenith                     ! unitless

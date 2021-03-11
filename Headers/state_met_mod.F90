@@ -404,6 +404,7 @@ CONTAINS
     State_Met%SEAICE70       => NULL()
     State_Met%SEAICE80       => NULL()
     State_Met%SEAICE90       => NULL()
+    State_Met%SFC_ELEV_m     => NULL()
     State_Met%SLP            => NULL()
     State_Met%SNODP          => NULL()
     State_Met%SNOMAS         => NULL()
@@ -1598,6 +1599,24 @@ CONTAINS
          State_Grid = State_Grid,                                            &
          metId      = metId,                                                 &
          Ptr2Data   = State_Met%SEAICE90,                                    &
+         RC         = RC                                                    )
+
+    IF ( RC /= GC_SUCCESS ) THEN
+       errMsg = TRIM( errMsg_ir ) // TRIM( metId )
+       CALL GC_Error( errMsg, RC, thisLoc )
+       RETURN
+    ENDIF
+
+    !------------------------------------------------------------------------
+    ! SFC_ELEV_m
+    !------------------------------------------------------------------------
+    metId = 'SFCELEVm'
+    CALL Init_and_Register(                                                  &
+         Input_Opt  = Input_Opt,                                             &
+         State_Met  = State_Met,                                             &
+         State_Grid = State_Grid,                                            &
+         metId      = metId,                                                 &
+         Ptr2Data   = State_Met%SFC_ELEV_m,                                  &
          RC         = RC                                                    )
 
     IF ( RC /= GC_SUCCESS ) THEN
@@ -3606,6 +3625,13 @@ CONTAINS
        State_Met%SEAICE90 => NULL()
     ENDIF
 
+    IF ( ASSOCIATED( State_Met%SFC_ELEV_m ) ) THEN
+       DEALLOCATE( State_Met%SFC_ELEV_m, STAT=RC  )
+       CALL GC_CheckVar( 'State_Met%SFC_ELEV_m', 2, RC )
+       IF ( RC /= GC_SUCCESS ) RETURN
+       State_Met%SFC_ELEV_m => NULL()
+    ENDIF
+
     IF ( ASSOCIATED( State_Met%SLP ) ) THEN
        DEALLOCATE( State_Met%SLP, STAT=RC  )
        CALL GC_CheckVar( 'State_Met%SLP', 2, RC )
@@ -4772,6 +4798,11 @@ CONTAINS
        CASE ( 'SEAICE90' )
           IF ( isDesc  ) Desc  = 'Sea ice coverage 90-100%'
           IF ( isUnits ) Units = '1'
+          IF ( isRank  ) Rank  = 2
+
+       CASE ( 'SFCELEVm' )
+          IF ( isDesc  ) Desc  = 'Elevation above surface'
+          IF ( isUnits ) Units = 'm'
           IF ( isRank  ) Rank  = 2
 
        CASE ( 'SLP' )

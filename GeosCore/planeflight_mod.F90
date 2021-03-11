@@ -1025,12 +1025,12 @@ CONTAINS
             TRIM(NAME) .EQ. 'Twgc'   .OR. & ! NOAA Tower
             TRIM(NAME) .EQ. 'Twkt' ) THEN   ! NOAA Tower
           ! Change units
-          ! NOTE: PHIS is now in units of [m], so we don't need to
-          ! divide by g0 again (see issue geoschem/geos-chem #531)
+          ! NOTE: SFC_ELEV_m is now surface altitude (PHIS/g)
+          ! in meters. (See issue geoschem/geos-chem #531)
           L_ALT = 0
           IJ = GET_IJ( LON, LAT, State_Grid )
           DO L = 1, State_Grid%NZ
-             MOD_ELEV = State_Met%PHIS(IJ(1),IJ(2))                         &
+             MOD_ELEV = State_Met%SFC_ELEV_m(IJ(1),IJ(2))                    &
                         + SUM( State_Met%BXHEIGHT(IJ(1),IJ(2),1:L) )
              IF ( (L_ALT .EQ. 0)  .AND. (MOD_ELEV .GT. PRES) ) THEN
                 L_ALT = L

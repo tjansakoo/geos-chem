@@ -141,8 +141,8 @@ CONTAINS
     ! Cleanup and quit
     !======================================================================
 
-    ! Convert PHIS from [m2/s2] to [m]
-    State_Met%PHIS = State_Met%PHIS / g0
+    ! Get surface elevation [m] by dividing PHIS [m2/s2] by g [m2/s2]
+    State_Met%SFC_ELEV_m = State_Met%PHIS / g0
 
   END SUBROUTINE FlexGrid_Read_CN
 !EOC

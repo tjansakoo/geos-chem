@@ -1380,7 +1380,7 @@ CONTAINS
                 Spc(I,J,L,APMIDS%id_OPOA1)+Spc(I,J,L,APMIDS%id_OPOA2))*1.d9/VOL
           ENDIF
 
-          TEMPOUT1(59)=State_Met%PHIS(I,J)+SUM(State_Met%BXHEIGHT(I,J,1:L))
+          TEMPOUT1(59)=State_Met%SFC_ELEV_m(I,J)+SUM(State_Met%BXHEIGHT(I,J,1:L))
 
           IF(IFOUTIJ(I,J).EQ.1)THEN
              AEROCOMOUT1D(23:27)=TEMPOUT1(54:58)
