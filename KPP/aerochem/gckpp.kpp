@@ -2486,12 +2486,12 @@ PH2O2 : H2O2;
   REAL(dp) :: HENRY_K0(NSPEC)
   REAL(dp) :: HENRY_CR(NSPEC)
 
-  ! Array for aqueous rates (1/s)
+  ! Array for aqueous rates
   ! - number of reactions set to 50 arbitrarily
   REAL(kind=dp) :: K_MT(20)
   !$OMP THREADPRIVATE( K_MT )
 
-  ! Array for cloud rates (1/s)
+  ! Array for cloud rates
   ! - number of reactions set to 50 arbitrarily
   REAL(kind=dp) :: K_CLD(20)
   !$OMP THREADPRIVATE( K_CLD )
