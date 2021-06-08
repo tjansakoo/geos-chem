@@ -235,6 +235,7 @@ H1301      = IGNORE; {CBrF3; H-1301}
 H2402      = IGNORE; {C2Br2F4; H-2402}
 H2O        = IGNORE; {H2O; Water vapor}
 H2O2       = IGNORE; {H2O2; Hydrogen peroxide}
+H2SO4	   = IGNORE; {H2SO4; Sulfuric Acid; for dust acid uptake}
 HAC        = IGNORE; {HOCH2C(O)CH3; Hydroxyacetone}
 HBr        = IGNORE; {HBr; Hypobromic acid}
 HC5A       = IGNORE; {C5H8O2; Isoprene-4,1-hydroxyaldehyde}
@@ -491,6 +492,12 @@ HNO3 + DSTAL1 = NITD1	: K_DST(5);
 HNO3 + DSTAL2 = NITD2	: K_DST(6);
 HNO3 + DSTAL3 = NITD3	: K_DST(7);
 HNO3 + DSTAL4 = NITD4	: K_DST(8);
+//H2SO4
+H2SO4 + 2DSTAL1 = SO4D1 : K_DST(9);
+H2SO4 + 2DSTAL2 = SO4D2 : K_DST(10);
+H2SO4 + 2DSTAL3 = SO4D3 : K_DST(11);
+H2SO4 + 2DSTAL4 = SO4D4 : K_DST(12);
+SO2  + 2OH      = H2SO4 : K_DST(13);
 //------------------------
 // Cloud:
 // - S(IV) --> S(VI)

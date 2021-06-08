@@ -2314,7 +2314,7 @@ CONTAINS
 ! !USES:
 !
     USE CMN_SIZE_Mod,         ONLY : NDSTBIN
-    USE DUST_MOD,             ONLY : GET_DUST_ALK      ! tdf 04/08/08
+!    USE DUST_MOD,             ONLY : GET_DUST_ALK      ! tdf 04/08/08
     USE ErrCode_Mod
     USE ERROR_MOD,            ONLY : IS_SAFE_EXP
     USE ERROR_MOD,            ONLY : SAFE_DIV
@@ -2780,8 +2780,8 @@ CONTAINS
 
           ! Get dust alkalinity ALK_d (NDSTBIN) [v/v], Uptake rates for
           ! sulfate, KTS(NDSTBIN), and nitrate, KTN(NDSTBIN) on dust [s-1]
-          CALL GET_DUST_ALK( I, J, L, ALK_d, KTS, KTN, KTH, &
-                             Input_Opt, State_Met, State_Chm )
+!          CALL GET_DUST_ALK( I, J, L, ALK_d, KTS, KTN, KTH, &
+!                             Input_Opt, State_Met, State_Chm )
 
           ! Total alkalinity [kg]
           ALK = 0.0e+0_fp

@@ -190,15 +190,20 @@ MODULE gckpp_Global
   REAL(dp) :: HENRY_K0(NSPEC)
   REAL(dp) :: HENRY_CR(NSPEC)
 
-  ! Array for aqueous rates (1/s)
-  ! - number of reactions set to 50 arbitrarily
+  ! Array for aqueous rates
+  ! - number of reactions set to 20 arbitrarily
   REAL(kind=dp) :: K_MT(20)
   !$OMP THREADPRIVATE( K_MT )
 
-  ! Array for cloud rates (1/s)
-  ! - number of reactions set to 50 arbitrarily
+  ! Array for cloud rates
+  ! - number of reactions set to 20 arbitrarily
   REAL(kind=dp) :: K_CLD(20)
   !$OMP THREADPRIVATE( K_CLD )
+
+  ! Array for dust acid-uptake reates
+  ! - number of reactions set to 20 arbitrarily
+  REAL(kind=dp) :: K_DST(20)
+  !$OMP THREADPRIVATE( K_DST )
 
   ! Liquid water conversion factor
   ! - Size = number of aerosol types (nAeroType)
