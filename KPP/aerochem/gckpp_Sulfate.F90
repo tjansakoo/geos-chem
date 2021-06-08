@@ -431,38 +431,35 @@ CONTAINS
     K0 = 3.3e-31_fp * ( 300.e+0_fp / TK )**4.3e+0_fp
     Ki = 1.6e-12_fp
 
-    IF ( 1 .eq. 1) THEN !<-- force dustuptake reactions for testing!Input_Opt%LDSTUP ) THEN !<<>> We are assuming that if we're here, it's Fullrun
-       
-       !==============================================================
-       ! %%% NOTE: THIS IS ONLY DONE FOR ACID UPTAKE SIMULATIONS %%%
-       !==============================================================
-       ! Get dust alkalinity ALK_d (NDSTBIN) [v/v], Uptake rates for
-       ! sulfate, KTS(NDSTBIN), and nitrate, KTN(NDSTBIN) on dust [s-1]
-       CALL GET_DUST_ALK( I, J, L, ALK_d, KTS, KTN, KTH, &
-                             Input_Opt, State_Met, State_Chm )
+    !==============================================================
+    ! %%% NOTE: THIS IS ONLY DONE FOR ACID UPTAKE SIMULATIONS %%%
+    !==============================================================
+    ! Get dust alkalinity ALK_d (NDSTBIN) [v/v], Uptake rates for
+    ! sulfate, KTS(NDSTBIN), and nitrate, KTN(NDSTBIN) on dust [s-1]
+    CALL GET_DUST_ALK( I, J, L, ALK_d, KTS, KTN, KTH, &
+                       Input_Opt, State_Met, State_Chm )
 
-       K_DST(1)  = KIIR1Ltd( C(ind_SO2), 2.e0*C(ind_DSTAL1), KTS(1) )
-       K_DST(2)  = KIIR1Ltd( C(ind_SO2), 2.e0*C(ind_DSTAL2), KTS(2) )
-       K_DST(3)  = KIIR1Ltd( C(ind_SO2), 2.e0*C(ind_DSTAL3), KTS(3) )
-       K_DST(4)  = KIIR1Ltd( C(ind_SO2), 2.e0*C(ind_DSTAL4), KTS(4) ) 
+    K_DST(1)  = KIIR1Ltd( C(ind_SO2), 2.e0*C(ind_DSTAL1), KTS(1) )
+    K_DST(2)  = KIIR1Ltd( C(ind_SO2), 2.e0*C(ind_DSTAL2), KTS(2) )
+    K_DST(3)  = KIIR1Ltd( C(ind_SO2), 2.e0*C(ind_DSTAL3), KTS(3) )
+    K_DST(4)  = KIIR1Ltd( C(ind_SO2), 2.e0*C(ind_DSTAL4), KTS(4) ) 
 
-       K_DST(5)  = KIIR1Ltd( C(ind_HNO3), C(ind_DSTAL1), KTN(1) )
-       K_DST(6)  = KIIR1Ltd( C(ind_HNO3), C(ind_DSTAL2), KTN(2) )
-       K_DST(7)  = KIIR1Ltd( C(ind_HNO3), C(ind_DSTAL3), KTN(3) )
-       K_DST(8)  = KIIR1Ltd( C(ind_HNO3), C(ind_DSTAL4), KTN(4) )
+    K_DST(5)  = KIIR1Ltd( C(ind_HNO3), C(ind_DSTAL1), KTN(1) )
+    K_DST(6)  = KIIR1Ltd( C(ind_HNO3), C(ind_DSTAL2), KTN(2) )
+    K_DST(7)  = KIIR1Ltd( C(ind_HNO3), C(ind_DSTAL3), KTN(3) )
+    K_DST(8)  = KIIR1Ltd( C(ind_HNO3), C(ind_DSTAL4), KTN(4) )
 
-       K_DST(9)  = KIIR1Ltd( C(ind_H2SO4), 2.e0*C(ind_DSTAL1), KTH(1) )
-       K_DST(10) = KIIR1Ltd( C(ind_H2SO4), 2.e0*C(ind_DSTAL2), KTH(2) )
-       K_DST(11) = KIIR1Ltd( C(ind_H2SO4), 2.e0*C(ind_DSTAL3), KTH(3) )
-       K_DST(12) = KIIR1Ltd( C(ind_H2SO4), 2.e0*C(ind_DSTAL4), KTH(4) )
-       ! Gas phase SO4 production is done here in offline run only
-       F   = 1000.e+0_fp / AIRMW * AVO * 1.e-6_fp
-       M   = State_Met%AIRDEN(I,J,L) * F
-       KK  = K0 * M / Ki
-       F1  = ( 1.e+0_fp + ( LOG10( KK ) )**2 )**( -1 )
-       K_DST(13) = ( K0 * M / ( 1.e+0_fp + KK ) ) * 0.6e+0_fp**F1
+    K_DST(9)  = KIIR1Ltd( C(ind_H2SO4), 2.e0*C(ind_DSTAL1), KTH(1) )
+    K_DST(10) = KIIR1Ltd( C(ind_H2SO4), 2.e0*C(ind_DSTAL2), KTH(2) )
+    K_DST(11) = KIIR1Ltd( C(ind_H2SO4), 2.e0*C(ind_DSTAL3), KTH(3) )
+    K_DST(12) = KIIR1Ltd( C(ind_H2SO4), 2.e0*C(ind_DSTAL4), KTH(4) )
 
-    END IF
+    ! Gas phase SO4 production is done here in offline run only
+    F   = 1000.e+0_fp / AIRMW * AVO * 1.e-6_fp
+    M   = State_Met%AIRDEN(I,J,L) * F
+    KK  = K0 * M / Ki
+    F1  = ( 1.e+0_fp + ( LOG10( KK ) )**2 )**( -1 )
+    K_DST(13) = ( K0 * M / ( 1.e+0_fp + KK ) ) * 0.6e+0_fp**F1
 
     ! Get cloud fraction from met fields
     FC      = State_Met%CLDF(I,J,L)
