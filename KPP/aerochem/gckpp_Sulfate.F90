@@ -451,14 +451,17 @@ CONTAINS
        K_DST(7)  = KIIR1Ltd( C(ind_HNO3), C(ind_DSTAL3), KTN(3) )
        K_DST(8)  = KIIR1Ltd( C(ind_HNO3), C(ind_DSTAL4), KTN(4) )
 
+       K_DST(9)  = KIIR1Ltd( C(ind_H2SO4), 2.e0*C(ind_DSTAL1), KTH(1) )
+       K_DST(10) = KIIR1Ltd( C(ind_H2SO4), 2.e0*C(ind_DSTAL2), KTH(2) )
+       K_DST(11) = KIIR1Ltd( C(ind_H2SO4), 2.e0*C(ind_DSTAL3), KTH(3) )
+       K_DST(12) = KIIR1Ltd( C(ind_H2SO4), 2.e0*C(ind_DSTAL4), KTH(4) )
        ! Gas phase SO4 production is done here in offline run only
        F   = 1000.e+0_fp / AIRMW * AVO * 1.e-6_fp
        M   = State_Met%AIRDEN(I,J,L) * F
        KK  = K0 * M / Ki
        F1  = ( 1.e+0_fp + ( LOG10( KK ) )**2 )**( -1 )
-       RK1 = ( K0 * M / ( 1.e+0_fp + KK ) ) * 0.6e+0_fp**F1
+       K_DST(13) = ( K0 * M / ( 1.e+0_fp + KK ) ) * 0.6e+0_fp**F1
 
-       K_DST(9) = KIIR1Ltd( C(ind_H2SO4), C(ind_DSTAL4), KTN(4) )
     END IF
 
     ! Get cloud fraction from met fields
