@@ -150,8 +150,8 @@ CONTAINS
        ! (4) AEROSOL, CHEMISTRY, TRANSPORT, CONVECTION,
        !      and DEPOSITION menus (in any order) should follow.
        ! (5) Diagnostic menus, including OUTPUT, DIAGNOSTIC,
-       !      PLANEFLIGHT, ND48, ND49, ND50, ND51, and PROD_LOSS
-       !      menus (in any order) should follow next.
+       !      PLANEFLIGHT, ND51, and ND51b menus (in any order)
+       !      should follow next.
        ! (6) The following menus have no other restriction and
        !      can be placed anywhere (but by convention we will
        !      place them after the diagnostic menu): NESTED GRID
@@ -684,10 +684,14 @@ CONTAINS
        Input_Opt%MetField = 'GEOSFP'
     CASE( 'MERRA-2', 'MERRA2' )
        Input_Opt%MetField = 'MERRA2'
+    CASE( 'MODELE2.1' )
+       Input_Opt%MetField = 'MODELE2.1'
+    CASE( 'MODELE2.2' )
+       Input_Opt%MetField = 'MODELE2.2'
     CASE DEFAULT
        ErrMsg = Trim( Input_Opt%MetField) // ' is not a valid '  // &
-                ' met field. Supported met fields are GEOS-FP '   // &
-                ' and MERRA-2. Please check your "input.geos" file.'
+                ' met field. Supported met fields are GEOS-FP, '   // &
+                ' MERRA-2 and ModelE2.1. Please check your "input.geos" file.'
        CALL GC_Error( ErrMsg, RC, ThisLoc )
        RETURN
     END SELECT
@@ -997,9 +1001,13 @@ CONTAINS
        RETURN
     ENDIF
 
-    ! Compute X grid dimension
-    State_Grid%NX = FLOOR( ( State_Grid%XMax - State_Grid%XMin ) / &
-                             State_Grid%DX )
+    ! Center on Int'l Date Line?
+    CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'Center 180', RC )
+    IF ( RC /= GC_SUCCESS ) THEN
+       CALL GC_Error( ErrMsg, RC, ThisLoc )
+       RETURN
+    ENDIF
+    READ( SUBSTRS(1:N), * ) State_Grid%Center180
 
     !-----------------------------------------------------------------
     ! Latitude range
@@ -1038,10 +1046,6 @@ CONTAINS
        CALL GC_Error( ErrMsg, RC, ThisLoc )
        RETURN
     ENDIF
-
-    ! Compute Y grid dimension
-    State_Grid%NY = FLOOR( ( State_Grid%YMax - State_Grid%YMin ) / &
-                             State_Grid%DY ) + 1
 
     ! Use half-sized polar boxes?
     CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'Half Polar', RC )
@@ -1109,6 +1113,14 @@ CONTAINS
        RETURN
     ENDIF
 
+    ! Compute grid horizontal dimensions
+    State_Grid%NX = FLOOR( ( State_Grid%XMax - State_Grid%XMin ) / State_Grid%DX )
+    IF ( State_Grid%HalfPolar .and. .not. State_Grid%NestedGrid ) THEN
+       State_Grid%NY = FLOOR( ( State_Grid%YMax - State_Grid%YMin ) / State_Grid%DY ) + 1
+    ELSE
+       State_Grid%NY = FLOOR( ( State_Grid%YMax - State_Grid%YMin ) / State_Grid%DY )
+    ENDIF
+
     ! Return success
     RC = GC_SUCCESS
 
@@ -1132,6 +1144,8 @@ CONTAINS
                         State_Grid%NZ
        WRITE( 6, 130 ) 'Use half-sized polar boxes? : ', &
                         State_Grid%HalfPolar
+       WRITE( 6, 130 ) 'Center on Intl Date Line?   : ', &
+                        State_Grid%Center180
        WRITE( 6, 130 ) 'Is this a nested-grid sim?  : ', &
                         State_Grid%NestedGrid
        WRITE( 6, 140 ) ' --> Buffer zone (N S E W ) : ', &
@@ -2240,6 +2254,14 @@ CONTAINS
     ENDIF
     READ( SUBSTRS(1:N), * ) Input_Opt%LACTIVEH2O
 
+    ! Use static strat H2O boundary condition?
+    CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'LSTATICH2OBC', RC )
+    IF ( RC /= GC_SUCCESS ) THEN
+       CALL GC_Error( ErrMsg, RC, ThisLoc )
+       RETURN
+    ENDIF
+    READ( SUBSTRS(1:N), * ) Input_Opt%LStaticH2OBC
+
     ! Separator line
     CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'separator 1', RC )
     IF ( RC /= GC_SUCCESS ) THEN
@@ -2302,10 +2324,9 @@ CONTAINS
 #endif
 
     ! Cannot have active H2O without stratospheric chemistry
-    IF ( (.not.Input_Opt%LUCX) .and. Input_Opt%LACTIVEH2O ) THEN
-       ErrMsg = 'Cannot have active H2O without full strat chem!'
-       CALL GC_Error( ErrMsg, RC, ThisLoc )
-       RETURN
+    IF ( .not.Input_Opt%LUCX ) THEN
+       Input_Opt%LACTIVEH2O   = .FALSE.
+       Input_Opt%LStaticH2OBC = .FALSE.
     ENDIF
 
     ! FAST-JX is only used for fullchem and offline aerosol
@@ -2365,6 +2386,8 @@ CONTAINS
                             Input_Opt%LUCX
        WRITE( 6, 100     ) 'Online strat. H2O?          : ', &
                             Input_Opt%LACTIVEH2O
+       WRITE( 6, 100     ) 'Use robust strat H2O BC?    : ', &
+                            Input_Opt%LStaticH2OBC
        WRITE( 6, 100     ) 'Online ozone for FAST-JX?   : ', &
                             Input_Opt%USE_ONLINE_O3
        WRITE( 6, 100     ) 'Ozone from met for FAST-JX? : ', &
@@ -4130,7 +4153,7 @@ CONTAINS
                         TRIM( Input_Opt%ND51_FILE )
        WRITE( 6, 100 ) 'Output as HDF?              : ', &
                         Input_Opt%LND51_HDF
-       WRITE( 6, 120 ) 'ND41 timeseries tracers     : ',  &
+       WRITE( 6, 120 ) 'ND51 timeseries tracers     : ',  &
                         ( Input_Opt%ND51_TRACERS(N), N=1, &
                           Input_Opt%N_ND51 )
        WRITE( 6, 140 ) 'ND51 hour to write to disk  : ', &
@@ -4320,7 +4343,7 @@ CONTAINS
                         TRIM( Input_Opt%ND51b_FILE )
        WRITE( 6, 100 ) 'Output as HDF?               : ', &
                         Input_Opt%LND51b_HDF
-       WRITE( 6, 120 ) 'ND41 timeseries tracers      : ',  &
+       WRITE( 6, 120 ) 'ND51b timeseries tracers      : ',  &
                         ( Input_Opt%ND51b_TRACERS(N), N=1, &
                           Input_Opt%N_ND51b )
        WRITE( 6, 140 ) 'ND51b hour to write to disk  : ', &
@@ -5392,6 +5415,17 @@ CONTAINS
     TS_CONV = Input_Opt%TS_CONV
     TS_DYN  = Input_Opt%TS_DYN
     TS_RAD  = Input_Opt%TS_RAD
+
+    ! If we're doing the reverse integration
+    ! multiply all the timesteps by -1 here
+    if (TS_DYN < 0) THEN
+       TS_CHEM = TS_CHEM * -1
+       TS_EMIS = TS_EMIS * -1
+       TS_CONV = TS_CONV * -1
+       TS_DYN  = TS_DYN  * -1
+       TS_RAD  = TS_RAD  * -1
+    endif
+         
 
     ! NUNIT is time step in minutes for unit conversion
     TS_UNIT = -1

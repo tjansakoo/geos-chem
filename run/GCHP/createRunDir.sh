@@ -77,7 +77,7 @@ RDI_VARS+="RDI_DATA_ROOT=$GC_DATA_ROOT\n"
 printf "${thinline}Choose simulation type:${thinline}"
 printf "   1. Full chemistry\n"
 printf "   2. TransportTracers\n"
-
+printf "   3. CO2 w/ CMS-Flux emissions\n"
 valid_sim=0
 while [ "${valid_sim}" -eq 0 ]; do
     read sim_num
@@ -86,6 +86,10 @@ while [ "${valid_sim}" -eq 0 ]; do
 	sim_name=fullchem
     elif [[ ${sim_num} = "2" ]]; then
 	sim_name=TransportTracers
+    elif [[ ${sim_num} = "3" ]]; then
+	sim_name=CO2
+	sim_name_long=${sim_name}
+	sim_type=${sim_name}
     else
         valid_sim=0
 	printf "Invalid simulation option. Try again.\n"
@@ -289,9 +293,11 @@ mkdir -p ${rundir}
 # Copy run directory files and subdirectories
 cp ${gcdir}/run/shared/cleanRunDir.sh ${rundir}
 cp ./archiveRun.sh                    ${rundir}
-cp ./README                           ${rundir}
-cp ./setEnvironment.sh                ${rundir}
-cp ./gitignore                        ${rundir}/.gitignore
+cp ./logging.yml                      ${rundir}
+# Only copy adjoint for CO2 simulation (for now)
+if [ "${sim_name}" == "CO2" ]; then
+    cp ./runConfig_adj.sh.template     ${rundir}/runConfig_adj.sh
+fi
 if [[ ${sim_name} = "fullchem" ]]; then
     cp -r ${gcdir}/run/shared/metrics.py  ${rundir}
     chmod 744 ${rundir}/metrics.py
@@ -300,6 +306,9 @@ fi
 # Set permissions
 chmod 744 ${rundir}/setEnvironment.sh
 chmod 744 ${rundir}/cleanRunDir.sh
+if [ "${sim_name}" == "CO2" ]; then
+    chmod 744 ${rundir}/runConfig_adj.sh
+fi
 chmod 744 ${rundir}/archiveRun.sh
 
 # Copy species database; append APM or TOMAS species if needed
@@ -361,6 +370,11 @@ echo -e "$RDI_VARS" > rdi_vars.txt
 
 # Call init_rd.sh
 ${srcrundir}/init_rd.sh rdi_vars.txt
+
+# Replace token strings in certain files
+if [ "${sim_name}" == "CO2" ]; then
+    sed -i -e "s|{SIMULATION}|${sim_name}|"       runConfig_adj.sh
+fi
 
 # Call function to setup configuration files with settings common between
 # GEOS-Chem Classic and GCHP.

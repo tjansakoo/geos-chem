@@ -89,11 +89,6 @@ MODULE FAST_JX_MOD
   ! Needed for scaling JNIT/JNITs photolysis to JHNO3
   REAL(fp)      :: JscaleNITs, JscaleNIT, JNITChanA, JNITChanB
 
-#ifdef MODEL_GEOS
-  ! Diagnostics arrays (ckeller, 5/22/18)
-  REAL, ALLOCATABLE, PUBLIC :: EXTRAL_NLEVS(:,:), EXTRAL_NITER(:,:)
-#endif
-
 CONTAINS
 !EOC
 !------------------------------------------------------------------------------
@@ -1324,11 +1319,7 @@ CONTAINS
 !
 ! !LOCAL VARIABLES:
 !
-#ifdef MODEL_GEOS
     INTEGER, PARAMETER  ::  LSPH_ = 200
-#else
-    INTEGER, PARAMETER  ::  LSPH_ = 100
-#endif
 
     ! RZ      Distance from centre of Earth to each point (cm)
     ! RQ      Square of radius ratios
@@ -1435,10 +1426,11 @@ CONTAINS
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE EXTRAL (Input_Opt,DTAUX,L1X,L2X,NX,JXTRA,ILON,ILAT)
+  SUBROUTINE EXTRAL (Input_Opt,State_Diag,DTAUX,L1X,L2X,NX,JXTRA,ILON,ILAT)
 !
 ! !USES:
-    USE Input_Opt_Mod,      ONLY : OptInput
+    USE Input_Opt_Mod,  ONLY : OptInput
+    USE State_Diag_Mod, ONLY : DgnState
 !
 !
 ! !INPUT PARAMETERS:
@@ -1448,6 +1440,10 @@ CONTAINS
     integer,        intent(in) :: NX          !Mie scattering array size
     real(fp),       intent(in) :: DTAUX(L1X)  !cloud+3aerosol OD in each layer
     integer,        intent(in) :: ILON, ILAT  !lon,lat index
+!
+! !INPUT/OUTPUT PARAMETERS:
+!
+    TYPE(DgnState), INTENT(INOUT) :: State_Diag  ! Diagnostics State object
 !
 ! !OUTPUT VARIABLES:
 !
@@ -1570,7 +1566,7 @@ CONTAINS
     ! print error and cut off JXTRAL at lower L if too many levels
     if ( failed ) then
        IF ( Input_Opt%FJX_EXTRAL_ERR ) THEN
-          write(6,'(A,3I5)') 'N_/L2_/L2-cutoff JXTRA:',NX,L2X,L2
+          write(6,'(A,7I5)') 'N_/L2_/L2-cutoff JXTRA:',ILON,ILAT,NX,L2X,L2,JXTRA(L2),JTOTL
        ENDIF
        do L = L2,1,-1
           JXTRA(L) = 0
@@ -1581,14 +1577,18 @@ CONTAINS
     !10 continue
 
     ! Fill diagnostics arrays
-    EXTRAL_NLEVS(ILON,ILAT) = SUM(JXTRA(:))
-    EXTRAL_NITER(ILON,ILAT) = N
+    IF ( State_Diag%Archive_EXTRALNLEVS ) THEN
+       State_Diag%EXTRALNLEVS(ILON,ILAT) = SUM(JXTRA(:))
+    ENDIF
+    IF ( State_Diag%Archive_EXTRALNITER ) THEN
+       State_Diag%EXTRALNITER(ILON,ILAT) = N
+    ENDIF
 #else
     JTOTL    = L2X + 2
     do L2 = L2X,1,-1
        JTOTL  = JTOTL + JXTRA(L2)
        if (JTOTL .gt. NX/2)  then
-          write(6,'(A,3I5)') 'N_/L2_/L2-cutoff JXTRA:',NX,L2X,L2
+          write(6,'(A,7I5)') 'N_/L2_/L2-cutoff JXTRA:',ILON,ILAT,NX,L2X,L2,JXTRA(L2),JTOTL
           do L = L2,1,-1
              JXTRA(L) = 0
           enddo
@@ -1926,14 +1926,6 @@ CONTAINS
 #endif
 
     ENDIF
-
-#ifdef MODEL_GEOS
-    ! Diagnostics arrays
-    ALLOCATE(EXTRAL_NLEVS(State_Grid%NX,State_Grid%NY))
-    ALLOCATE(EXTRAL_NITER(State_Grid%NX,State_Grid%NY))
-    EXTRAL_NLEVS(:,:) = 0.0
-    EXTRAL_NITER(:,:) = 0.0
-#endif
 
   END SUBROUTINE INIT_FJX
 !EOC
@@ -3551,6 +3543,16 @@ CONTAINS
     ! PHOTO_JX begins here!
     !=================================================================
 
+#if defined( MODEL_GEOS )
+    ! Initialize diagnostics arrays
+    IF ( State_Diag%Archive_EXTRALNLEVS ) THEN
+       State_Diag%EXTRALNLEVS(ILON,ILAT) = 0.0 
+    ENDIF
+    IF ( State_Diag%Archive_EXTRALNITER ) THEN
+       State_Diag%EXTRALNITER(ILON,ILAT) = 0.0 
+    ENDIF
+#endif
+
     if (State_Grid%NZ+1 .gt. JXL1_) then
        call EXITC(' PHOTO_JX: not enough levels in JX')
     endif
@@ -3763,7 +3765,7 @@ CONTAINS
     ! Given the aerosol+cloud OD/layer in visible (600 nm) calculate how to add
     !  additonal levels at top of clouds (now uses log spacing)
     ! --------------------------------------------------------------------
-    call EXTRAL(Input_Opt,OD600,L1_,L2EDGE,N_,JXTRA,ILON,ILAT)
+    call EXTRAL(Input_Opt,State_Diag,OD600,L1_,L2EDGE,N_,JXTRA,ILON,ILAT)
     ! --------------------------------------------------------------------
 
     ! set surface reflectance
